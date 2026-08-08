@@ -1,46 +1,89 @@
-import "./App.css";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import Catalog from './pages/Catalog';
+import ProductDetail from './pages/ProductDetail';
+import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
+import Confirmation from './pages/Confirmation';
+import AIAssistant from './pages/AIAssistant';
+import NIFTConsultation from './pages/NIFTConsultation';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Profile from './pages/Profile';
+import MyOrders from './pages/MyOrders';
+import MyOrderDetail from './pages/MyOrderDetail';
+import AdminOrders from './pages/AdminOrders';
+import AdminOrderDetails from './pages/AdminOrderDetails';
+import AdminVendors from './pages/AdminVendors';
+import AdminServiceAreas from './pages/AdminServiceAreas';
+import AdminDecorations from './pages/AdminDecorations';
+import AdminCategories from './pages/AdminCategories';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminLayout from './components/AdminLayout';
+import { CartProvider } from './context/CartContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import './App.css';
+
+function RequireAuth({ children }) {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return children;
+}
+
+function CustomerLayout() {
+  return (
+    <div className="app-shell">
+      <Navbar />
+      <Outlet />
+      <Footer />
+    </div>
+  );
+}
 
 function App() {
   return (
-    <main className="app">
-      <div className="card">
-        <div className="badge">🚀 Launching Soon</div>
-
-        <div className="emoji">🎉</div>
-
-        <h1>DecorFesto</h1>
-
-        <h2>Beautiful Celebrations, Thoughtfully Crafted.</h2>
-
-        <p>
-          India's premium decoration booking platform for beautiful,
-          unforgettable celebrations.
-        </p>
-
-        <div className="services">
-          <span>🎈 Birthday</span>
-          <span>💍 Anniversary</span>
-          <span>👶 Baby Shower</span>
-          <span>💖 Proposal</span>
-          <span>🏠 Housewarming</span>
-          <span>🏢 Corporate</span>
-        </div>
-
-        <a href="mailto:hello@decorfesto.com" className="button">
-          Contact Us
-        </a>
-
-        <footer>
-          📍 Delhi NCR, India
-          <br />
-          © 2026 DecorFesto
-          <br />
-          <small>Designed & Developed with ❤️ by Ceta Cato</small>
-        </footer>
-      </div>
-    </main>
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <Routes>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="orders" element={<AdminOrders />} />
+              <Route path="orders/:id" element={<AdminOrderDetails />} />
+              <Route path="vendors" element={<AdminVendors />} />
+              <Route path="service-areas" element={<AdminServiceAreas />} />
+              <Route path="decorations" element={<AdminDecorations />} />
+              <Route path="categories" element={<AdminCategories />} />
+              <Route path="*" element={<Navigate to="/admin" replace />} />
+            </Route>
+            <Route path="/" element={<CustomerLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/checkout" element={<RequireAuth><Checkout /></RequireAuth>} />
+              <Route path="/confirmation" element={<RequireAuth><Confirmation /></RequireAuth>} />
+              <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+              <Route path="/my-orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
+              <Route path="/my-orders/:id" element={<RequireAuth><MyOrderDetail /></RequireAuth>} />
+              <Route path="/ai-assistant" element={<AIAssistant />} />
+              <Route path="/consultation" element={<NIFTConsultation />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 
 export default App;
-

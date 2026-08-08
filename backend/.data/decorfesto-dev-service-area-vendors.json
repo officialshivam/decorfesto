@@ -1,0 +1,16 @@
+[
+  {
+    "id": "110001#vendor-001",
+    "pincode": "110001",
+    "vendorId": "vendor-001",
+    "createdAt": "2026-08-08T17:30:32.330Z",
+    "updatedAt": "2026-08-08T17:30:32.330Z"
+  },
+  {
+    "id": "400001#vendor-001",
+    "pincode": "400001",
+    "vendorId": "vendor-001",
+    "createdAt": "2026-08-08T17:30:32.332Z",
+    "updatedAt": "2026-08-08T17:30:32.332Z"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "110001",
+    "pincode": "110001",
+    "city": "Delhi",
+    "serviceable": true,
+    "leadTimeHours": 24,
+    "createdAt": "2026-08-08T17:30:32.322Z",
+    "updatedAt": "2026-08-08T17:30:32.322Z"
+  },
+  {
+    "id": "400001",
+    "pincode": "400001",
+    "city": "Mumbai",
+    "serviceable": true,
+    "leadTimeHours": 36,
+    "createdAt": "2026-08-08T17:30:32.323Z",
+    "updatedAt": "2026-08-08T17:30:32.323Z"
+  }
+]
