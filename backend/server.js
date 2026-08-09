@@ -44,6 +44,10 @@ const apiPrefixes = [
 ];
 
 function isApiRequest(pathname) {
+  if (pathname === '/admin/dashboard') {
+    return true;
+  }
+
   return (
     pathname === '/health' ||
     apiPrefixes.some(

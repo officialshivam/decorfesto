@@ -5,11 +5,42 @@ import { listVendors, getVendor, createVendor } from './handlers/vendors.js';
 import { createServiceArea, getServiceArea, listServiceAreaVendors } from './handlers/serviceAreas.js';
 import { createOrder, getOrder, listOrders, updateOrderStatus } from './handlers/orders.js';
 import { checkAvailability } from './handlers/availability.js';
+import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
+
+async function healthCheck() {
+  const resourceNames = ['orders', 'customers', 'vendors', 'service-areas', 'service-area-vendors', 'decorations', 'availability-checks'];
+  const resourceStatuses = {};
+
+  let degraded = false;
+  for (const resourceName of resourceNames) {
+    const repository = createRepository(resourceName);
+    try {
+      const items = await repository.list();
+      resourceStatuses[resourceName] = { ok: true, count: items.length };
+    } catch (error) {
+      degraded = true;
+      resourceStatuses[resourceName] = { ok: false, error: error.message };
+    }
+  }
+
+  return {
+    statusCode: degraded ? 503 : 200,
+    body: {
+      status: degraded ? 'degraded' : 'ok',
+      api: 'healthy',
+      backend: degraded ? 'degraded' : 'healthy',
+      repositories: resourceStatuses,
+      uptimeSeconds: Math.floor(process.uptime()),
+      checkedAt: new Date().toISOString(),
+    },
+  };
+}
 
 const routeHandlers = {
   GET: {
-    '/health': async () => ({ statusCode: 200, body: { status: 'ok' } }),
+    '/health': healthCheck,
+    '/admin/dashboard': getDashboard,
     '/decorations': listDecorations,
     '/decorations/:id': getDecoration,
     '/customers/:id': getCustomer,

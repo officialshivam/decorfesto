@@ -21,7 +21,32 @@ export async function checkAvailability({ req }) {
   // Use normalized string pincode for lookup
   const serviceArea = await serviceAreaRepo.getById(pincode);
 
-  if (!serviceArea || serviceArea.serviceable !== true || serviceArea.active === false) {
+  const mappingRepo = createRepository('service-area-vendors');
+  let mappings = [];
+
+  const available = Boolean(serviceArea && serviceArea.serviceable === true && serviceArea.active !== false);
+
+  if (available) {
+    // Use the same normalized pincode for vendor mapping
+    mappings = await mappingRepo.queryByField('pincode', pincode);
+  }
+
+  const checkRecord = {
+    id: `check-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    pincode,
+    available,
+    vendorCount: mappings.length,
+    checkedAt: new Date().toISOString(),
+  };
+
+  const checkRepo = createRepository('availability-checks');
+  try {
+    await checkRepo.create(checkRecord);
+  } catch (error) {
+    console.warn('Unable to persist availability check.', error);
+  }
+
+  if (!available) {
     return {
       statusCode: 200,
       body: {
@@ -31,11 +56,6 @@ export async function checkAvailability({ req }) {
       },
     };
   }
-
-  const mappingRepo = createRepository('service-area-vendors');
-
-  // Use the same normalized pincode for vendor mapping
-  const mappings = await mappingRepo.queryByField('pincode', pincode);
 
   return {
     statusCode: 200,
