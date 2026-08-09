@@ -12,17 +12,25 @@ export async function createServiceArea({ req }) {
 
   const repository = createRepository('service-areas');
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  const existingArea = await repository.getById(payload.pincode);
+  const timestamp = new Date().toISOString();
   const serviceArea = {
     id: payload.pincode || `service-area-${Date.now()}`,
     pincode: payload.pincode,
     city: payload.city || '',
     serviceable: payload.serviceable !== false,
-    leadTimeHours: payload.leadTimeHours || 24,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    active: payload.active !== false,
+    leadTimeHours: Number(payload.leadTimeHours || 24),
+    createdAt: existingArea?.createdAt || timestamp,
+    updatedAt: timestamp,
   };
 
-  await repository.create(serviceArea);
+  if (existingArea) {
+    await repository.update(existingArea.id, serviceArea);
+  } else {
+    await repository.create(serviceArea);
+  }
+
   return {
     statusCode: 201,
     body: { serviceArea },

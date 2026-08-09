@@ -13,5 +13,20 @@
     "status": "active",
     "createdAt": "2026-08-08T17:30:32.319Z",
     "updatedAt": "2026-08-08T17:30:32.319Z"
+  },
+  {
+    "id": "vendor-002",
+    "name": "Delhi Celebrations Co.",
+    "contactName": "Priya Sharma",
+    "email": "delhi@decorfesto.com",
+    "phone": "+919812345670",
+    "specialties": [
+      "Balloon",
+      "Kids",
+      "Corporate"
+    ],
+    "status": "active",
+    "createdAt": "2026-08-09T14:23:13.673Z",
+    "updatedAt": "2026-08-09T14:23:13.675Z"
   }
 ]

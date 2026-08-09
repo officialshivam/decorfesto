@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { getStoredServiceAreas } from '../services/mockServiceAreas';
+import { checkAvailabilityOnServer } from '../services/serviceAreaApi';
 
 function AvailabilityChecker({ onStatusChange, onPincodeChange }) {
   const [pincode, setPincode] = useState('');
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
 
-  const checkAvailability = () => {
+  const checkAvailability = async () => {
     const normalized = pincode.trim();
     if (!/^[1-9][0-9]{5}$/.test(normalized)) {
       setError('Please enter a valid 6-digit pincode.');
@@ -16,12 +18,24 @@ function AvailabilityChecker({ onStatusChange, onPincodeChange }) {
       return;
     }
 
-    const serviceArea = getStoredServiceAreas().find((area) => area.pincode === normalized);
-    const result = serviceArea?.serviceable === true && serviceArea.active === true
-      ? { available: true, message: 'Decoration service available at your location.' }
-      : { available: false, message: 'Decoration service is not available at your location.' };
-    setStatus(result);
     setError('');
+    setIsChecking(true);
+
+    let result;
+    try {
+      const serverResponse = await checkAvailabilityOnServer(normalized);
+      result = serverResponse.available
+        ? { available: true, message: 'Decoration service available at your location.' }
+        : { available: false, message: 'Decoration service is not available at your location.' };
+    } catch {
+      const serviceArea = getStoredServiceAreas().find((area) => area.pincode === normalized);
+      result = serviceArea?.serviceable === true && serviceArea.active === true
+        ? { available: true, message: 'Decoration service available at your location.' }
+        : { available: false, message: 'Decoration service is not available at your location.' };
+    }
+
+    setStatus(result);
+    setIsChecking(false);
     onStatusChange({ available: result.available, message: result.message });
     onPincodeChange(normalized);
   };
@@ -54,8 +68,8 @@ function AvailabilityChecker({ onStatusChange, onPincodeChange }) {
             inputMode="numeric"
           />
         </label>
-        <button type="button" className="button" onClick={checkAvailability}>
-          Check Availability
+        <button type="button" className="button" onClick={checkAvailability} disabled={isChecking}>
+          {isChecking ? 'Checking…' : 'Check Availability'}
         </button>
       </div>
       {error ? <p className="availability error">{error}</p> : null}

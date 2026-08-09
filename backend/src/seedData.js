@@ -33,10 +33,8 @@ export async function seedBackendData() {
     await Promise.all(products.map((product) => decorationRepo.create(toDecorationRecord(product))));
   }
 
-  const vendorRepo = createRepository('vendors');
-  const existingVendors = await vendorRepo.list();
-  if (existingVendors.length === 0) {
-    await vendorRepo.create({
+  const defaultVendors = [
+    {
       id: 'vendor-001',
       name: 'DecorFesto Studio',
       contactName: 'Aarav Mehta',
@@ -44,29 +42,68 @@ export async function seedBackendData() {
       phone: '+919876543210',
       specialties: ['Balloon', 'Floral', 'Birthday'],
       status: 'active',
+    },
+    {
+      id: 'vendor-002',
+      name: 'Delhi Celebrations Co.',
+      contactName: 'Priya Sharma',
+      email: 'delhi@decorfesto.com',
+      phone: '+919812345670',
+      specialties: ['Balloon', 'Kids', 'Corporate'],
+      status: 'active',
+    },
+  ];
+
+  const vendorRepo = createRepository('vendors');
+  const existingVendors = await vendorRepo.list();
+  const existingVendorIds = new Set(existingVendors.map((vendor) => vendor.id));
+  for (const defaultVendor of defaultVendors) {
+    if (existingVendorIds.has(defaultVendor.id)) {
+      continue;
+    }
+
+    await vendorRepo.create({
+      ...defaultVendor,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
   }
 
-  const serviceAreaRepo = createRepository('service-areas');
-  const existingServiceAreas = await serviceAreaRepo.list();
-  if (existingServiceAreas.length === 0) {
-    await serviceAreaRepo.create({
+  const defaultServiceAreas = [
+    {
       id: '110001',
       pincode: '110001',
       city: 'Delhi',
       serviceable: true,
       leadTimeHours: 24,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    await serviceAreaRepo.create({
+    },
+    {
+      id: '110032',
+      pincode: '110032',
+      city: 'Delhi',
+      serviceable: true,
+      leadTimeHours: 24,
+    },
+    {
       id: '400001',
       pincode: '400001',
       city: 'Mumbai',
       serviceable: true,
       leadTimeHours: 36,
+    },
+  ];
+
+  const serviceAreaRepo = createRepository('service-areas');
+  const existingServiceAreas = await serviceAreaRepo.list();
+  const existingServiceAreaIds = new Set(existingServiceAreas.map((area) => area.id));
+  for (const defaultArea of defaultServiceAreas) {
+    if (existingServiceAreaIds.has(defaultArea.id)) {
+      continue;
+    }
+
+    await serviceAreaRepo.create({
+      ...defaultArea,
+      active: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -74,20 +111,31 @@ export async function seedBackendData() {
 
   const serviceAreaVendorRepo = createRepository('service-area-vendors');
   const existingServiceAreaVendors = await serviceAreaVendorRepo.list();
-  if (existingServiceAreaVendors.length === 0) {
-    await serviceAreaVendorRepo.create({
-      id: '110001#vendor-001',
-      pincode: '110001',
+  const existingMappings = new Set(existingServiceAreaVendors.map((mapping) => mapping.id));
+  const defaultMappings = defaultServiceAreas
+    .filter((area) => area.id !== '110032')
+    .map((area) => ({
+      id: `${area.id}#vendor-001`,
+      pincode: area.id,
       vendorId: 'vendor-001',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    });
-    await serviceAreaVendorRepo.create({
-      id: '400001#vendor-001',
-      pincode: '400001',
-      vendorId: 'vendor-001',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    }));
+  defaultMappings.push({
+    id: '110032#vendor-002',
+    pincode: '110032',
+    vendorId: 'vendor-002',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  for (const mapping of defaultMappings) {
+    if (existingMappings.has(mapping.id)) {
+      continue;
+    }
+
+    await serviceAreaVendorRepo.create(mapping);
   }
+
+
 }

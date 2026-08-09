@@ -12,5 +12,12 @@
     "vendorId": "vendor-001",
     "createdAt": "2026-08-08T17:30:32.332Z",
     "updatedAt": "2026-08-08T17:30:32.332Z"
+  },
+  {
+    "id": "110032#vendor-002",
+    "pincode": "110032",
+    "vendorId": "vendor-002",
+    "createdAt": "2026-08-09T14:23:13.695Z",
+    "updatedAt": "2026-08-09T14:23:13.695Z"
   }
 ]

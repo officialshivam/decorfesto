@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getStoredServiceAreas, saveStoredServiceArea } from '../services/mockServiceAreas';
+import { saveServiceAreaOnServer } from '../services/serviceAreaApi';
 
 const emptyServiceArea = {
   id: '',
@@ -13,6 +14,8 @@ const emptyServiceArea = {
 function AdminServiceAreas() {
   const [serviceAreas, setServiceAreas] = useState(() => getStoredServiceAreas());
   const [form, setForm] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -22,13 +25,24 @@ function AdminServiceAreas() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setFormError('');
+    setIsSaving(true);
+
+    try {
+      await saveServiceAreaOnServer(form);
+    } catch {
+      // The API may be unreachable in local frontend-only mode.
+      // The local mock store still keeps the entry for this device.
+    }
+
     const savedArea = saveStoredServiceArea(form);
     setServiceAreas((current) => {
       const exists = current.some((area) => area.id === savedArea.id);
       return exists ? current.map((area) => (area.id === savedArea.id ? savedArea : area)) : [...current, savedArea];
     });
+    setIsSaving(false);
     setForm(null);
   };
 
@@ -68,8 +82,9 @@ function AdminServiceAreas() {
                   <option value="false">Inactive</option>
                 </select>
               </label>
+              {formError ? <p className="field-error">{formError}</p> : null}
               <div className="confirmation-actions">
-                <button type="submit" className="button">Save Service Area</button>
+                <button type="submit" className="button" disabled={isSaving}>{isSaving ? 'Saving…' : 'Save Service Area'}</button>
                 <button type="button" className="button button--ghost" onClick={() => setForm(null)}>Cancel</button>
               </div>
             </form>
