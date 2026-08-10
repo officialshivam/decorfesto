@@ -1,0 +1,58 @@
+export const categories = [
+  {
+    id: 'birthday',
+    name: 'Birthday',
+    icon: '🎂',
+    description: 'Colorful balloon setups, themed backdrops, and joyful photo corners.',
+    tag: 'Playful & vibrant',
+  },
+  {
+    id: 'anniversary',
+    name: 'Anniversary',
+    icon: '💖',
+    description: 'Romantic candlelight, floral arches, and intimate luxury styling.',
+    tag: 'Romantic & elegant',
+  },
+  {
+    id: 'baby-shower',
+    name: 'Baby Shower',
+    icon: '🧸',
+    description: 'Soft pastel themes with charming details for a memorable celebration.',
+    tag: 'Sweet & delicate',
+  },
+  {
+    id: 'proposal',
+    name: 'Proposal',
+    icon: '💍',
+    description: 'Luxury setups designed to make the moment feel unforgettable.',
+    tag: 'Intimate & grand',
+  },
+  {
+    id: 'housewarming',
+    name: 'Housewarming',
+    icon: '🏠',
+    description: 'Warm welcome setups that bring charm to every new beginning.',
+    tag: 'Warm & inviting',
+  },
+  {
+    id: 'corporate',
+    name: 'Corporate',
+    icon: '🏢',
+    description: 'Premium event styling for launches, parties, and client experiences.',
+    tag: 'Polished & professional',
+  },
+  {
+    id: 'engagement',
+    name: 'Engagement',
+    icon: '💐',
+    description: 'Graceful stage decor, floral installations, and celebratory charm.',
+    tag: 'Festive & graceful',
+  },
+  {
+    id: 'wedding',
+    name: 'Wedding',
+    icon: '💫',
+    description: 'Grand statements and luxurious detailing built for once-in-a-lifetime moments.',
+    tag: 'Grand & timeless',
+  },
+];

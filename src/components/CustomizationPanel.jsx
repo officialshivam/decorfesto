@@ -71,24 +71,28 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
       </div>
 
       <div className="customization-grid">
-        {optionGroups.map((group) => (
-          <label key={group.key} className="customization-field">
-            <span>{group.label}</span>
-            <select
-             value={selections[group.key] || group.options[0].value}
-              onChange={(event) => onSelectionChange(group.key, event.target.value)}
-            >
-             {group.options.map((option) => {
-                const optionValue = option.price ? `${option.value} +₹${option.price}` : option.value;
-                return (
-                  <option key={optionValue} value={optionValue}>
-                    {option.value}{option.price ? ` +₹${option.price}` : ''}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-        ))}
+        {optionGroups.map((group) => {
+          const firstOption = group.options && group.options[0];
+          const defaultVal = firstOption ? (firstOption.price ? `${firstOption.value} +₹${firstOption.price}` : firstOption.value) : '';
+          return (
+            <label key={group.key} className="customization-field">
+              <span>{group.label}</span>
+              <select
+                value={selections[group.key] || defaultVal}
+                onChange={(event) => onSelectionChange(group.key, event.target.value)}
+              >
+                {group.options.map((option) => {
+                  const optionValue = option.price ? `${option.value} +₹${option.price}` : option.value;
+                  return (
+                    <option key={optionValue} value={optionValue}>
+                      {option.value}{option.price ? ` +₹${option.price}` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          );
+        })}
       </div>
 
       <div className="pricing-card">

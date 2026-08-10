@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import AvailabilityChecker from '../components/AvailabilityChecker';
@@ -7,14 +7,33 @@ import CustomizationPanel from '../components/CustomizationPanel';
 import DateTimeSelector from '../components/DateTimeSelector';
 import { getActiveStoredDecorations } from '../services/mockDecorations';
 
-const initialSelectionState = {
-  balloonTheme: 'Classic',
-  balloonColors: 'Pink & White',
-  nameCustomization: 'No',
-  ledLights: 'No additional cost',
-  extraFlowers: 'None',
-  cakeTable: 'Included',
-};
+function getInitialSelections(product) {
+  if (!product) return {};
+  const groups = (product.customizationOptions && product.customizationOptions.length > 0)
+    ? product.customizationOptions
+    : [];
+
+  if (groups.length === 0) {
+    return {
+      balloonTheme: 'Classic',
+      balloonColors: 'Pink & White',
+      nameCustomization: 'No',
+      ledLights: 'No additional cost',
+      extraFlowers: 'None',
+      cakeTable: 'Included',
+    };
+  }
+
+  const initial = {};
+  groups.forEach((group) => {
+    if (group.options && group.options.length > 0) {
+      const defaultOpt = group.options[0];
+      const val = defaultOpt.price ? `${defaultOpt.value} +₹${defaultOpt.price}` : defaultOpt.value;
+      initial[group.key] = val;
+    }
+  });
+  return initial;
+}
 
 function ProductDetail() {
   const { id } = useParams();
@@ -24,10 +43,17 @@ function ProductDetail() {
     () => getActiveStoredDecorations().find((item) => String(item.id) === id),
     [id],
   );
-  const [selections, setSelections] = useState(initialSelectionState);
+
+  const [selections, setSelections] = useState(() => getInitialSelections(product));
   const [availability, setAvailability] = useState({ available: false, message: '', pincode: '' });
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+
+  useEffect(() => {
+    if (product) {
+      setSelections(getInitialSelections(product));
+    }
+  }, [product?.id]);
 
   if (!product) {
     return (
@@ -45,7 +71,7 @@ function ProductDetail() {
 
   const savings = product.originalPrice - product.price;
   const addOnCost = Object.values(selections).reduce((sum, value) => {
-    const match = value.match(/\+(₹\d+)/);
+    const match = String(value || '').match(/\+(₹\d+)/);
     if (!match) {
       return sum;
     }
