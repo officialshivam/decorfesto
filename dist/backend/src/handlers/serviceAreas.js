@@ -12,15 +12,17 @@ export async function createServiceArea({ req }) {
 
   const repository = createRepository('service-areas');
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-  const existingArea = await repository.getById(payload.pincode);
+  const pincode = String(payload.pincode || '').trim();
+
+  const existingArea = await repository.getById(pincode);
   const timestamp = new Date().toISOString();
+  const isServiceable = payload.serviceable === true;
+
   const serviceArea = {
-    id: payload.pincode || `service-area-${Date.now()}`,
-    pincode: payload.pincode,
-    city: payload.city || '',
-    serviceable: payload.serviceable !== false,
-    active: payload.active !== false,
-    leadTimeHours: Number(payload.leadTimeHours || 24),
+    id: pincode || `service-area-${Date.now()}`,
+    pincode,
+    city: payload.city || existingArea?.city || '',
+    serviceable: isServiceable,
     createdAt: existingArea?.createdAt || timestamp,
     updatedAt: timestamp,
   };
