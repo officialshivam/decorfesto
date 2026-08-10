@@ -49,6 +49,7 @@ function AdminOrderDetails() {
   }
 
   const decoration = order.decorationName || order.items?.[0]?.productName || 'DecorFesto package';
+  const remarks = order.remarks || order.customization?.remarks || order.items?.[0]?.remarks || order.items?.[0]?.customization?.remarks;
 
   return (
     <main className="page">
@@ -74,6 +75,12 @@ function AdminOrderDetails() {
             <div className="summary-box__row"><span>Payment status</span><strong>{order.paymentStatus || 'Pending'}</strong></div>
             <div className="summary-box__row"><span>Booking status</span><strong>{order.bookingStatus || 'Order Received'}</strong></div>
             <div className="summary-box__row"><span>Assigned vendor</span><strong>{order.vendorName || 'Not assigned'}</strong></div>
+            {remarks && (
+              <div className="summary-box__row" style={{ color: 'var(--accent-dark)', fontWeight: '600' }}>
+                <span>Special Instructions / Remarks</span>
+                <strong>"{remarks}"</strong>
+              </div>
+            )}
           </div>
 
           <div className="payment-card">

@@ -3,6 +3,12 @@ import { useCart } from '../context/CartContext';
 function CartItem({ item }) {
   const { updateQuantity, removeItem } = useCart();
 
+  const customizationEntries = Object.entries(item.customization || {})
+    .filter(([key]) => key !== 'remarks')
+    .map(([, val]) => val);
+
+  const remarks = item.remarks || item.customization?.remarks;
+
   return (
     <article className="cart-item">
       <img src={item.image} alt={item.productName} className="cart-item__image" />
@@ -16,7 +22,14 @@ function CartItem({ item }) {
         </div>
 
         <div className="cart-item__details">
-          <p><strong>Customization:</strong> {Object.values(item.customization).join(' • ')}</p>
+          {customizationEntries.length > 0 && (
+            <p><strong>Customization:</strong> {customizationEntries.join(' • ')}</p>
+          )}
+          {remarks && (
+            <p className="cart-item__remarks" style={{ color: 'var(--accent-dark)', fontWeight: '600' }}>
+              <strong>Special Instructions / Remarks:</strong> "{remarks}"
+            </p>
+          )}
           <p><strong>Pincode:</strong> {item.pincode}</p>
           <p><strong>Date:</strong> {item.date}</p>
           <p><strong>Time:</strong> {item.time}</p>

@@ -127,6 +127,22 @@ export const columnMaps = {
     createdAt: 'created_at',
     updatedAt: 'updated_at',
   },
+  customizations: {
+    id: 'id',
+    type: 'type',
+    name: 'name',
+    category: 'category',
+    description: 'description',
+    adminNotes: 'admin_notes',
+    price: 'price',
+    active: 'active',
+    displayOrder: 'display_order',
+    image: 'image',
+    colors: 'colors',
+    assignedDesigns: 'assigned_designs',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
   'availability-checks': {
     id: 'id',
     pincode: 'pincode',
@@ -156,6 +172,8 @@ const JSON_COLUMNS = new Set([
   'short_description',
   'description',
   'setup_requirements',
+  'colors',
+  'assigned_designs',
 ]);
 
 const DATE_COLUMNS = new Set([
@@ -179,6 +197,8 @@ const JSON_FIELD_FALLBACKS = new Map([
   ['gallery_urls', '[]'],
   ['images', '[]'],
   ['excluded_items', '[]'],
+  ['colors', '[]'],
+  ['assigned_designs', '[]'],
 ]);
 
 function deserializeJson(value) {
@@ -203,6 +223,7 @@ const DECIMAL_COLUMNS = new Set([
   'total',
   'add_on_price',
   'total_price',
+  'price',
 ]);
 
 function mapForWrite(values, columnMap) {
@@ -501,11 +522,9 @@ export function createRepository(resourceName) {
   return new LocalJsonRepository(resourceName);
 }
 
-export async function withTransaction(callback) {
+export function withTransaction(callback) {
   if (useMysql) {
     return MySqlRepository.withTransaction(callback);
   }
   return LocalJsonRepository.withTransaction(callback);
 }
-
-

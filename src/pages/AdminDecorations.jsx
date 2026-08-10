@@ -106,11 +106,32 @@ function AdminDecorations() {
     setForm((current) => ({ ...current, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const addImageAsset = (asset) => {
-    setForm((current) => ({
-      ...current,
-      imageAssets: [...(current.imageAssets || []), { ...asset, isPrimary: (current.imageAssets || []).length === 0 }],
-    }));
+  const addImageAsset = (asset, makePrimary = false) => {
+    setForm((current) => {
+      const existing = current.imageAssets || [];
+      const isFirst = existing.length === 0;
+      const shouldBePrimary = makePrimary || isFirst;
+
+      const updatedAssets = shouldBePrimary
+        ? [
+            ...existing.map((a) => ({ ...a, isPrimary: false })),
+            { ...asset, isPrimary: true },
+          ]
+        : [...existing, { ...asset, isPrimary: asset.isPrimary === true }];
+
+      const primaryAsset = updatedAssets.find((a) => a.isPrimary) || updatedAssets[0];
+      const newImageUrl = primaryAsset ? primaryAsset.url : '';
+      const newGalleryUrls = updatedAssets.map((a) => a.url);
+
+      return {
+        ...current,
+        imageAssets: updatedAssets,
+        imageUrl: newImageUrl,
+        image: newImageUrl,
+        galleryUrls: newGalleryUrls,
+        images: newGalleryUrls,
+      };
+    });
   };
 
   const handleAddImageUrl = () => {
@@ -118,7 +139,7 @@ function AdminDecorations() {
     if (!url) return;
     try {
       new URL(url);
-      addImageAsset(createImageAsset(url));
+      addImageAsset(createImageAsset(url, { isPrimary: true }), true);
       setImageUrlInput('');
       setImageError('');
     } catch {
@@ -135,10 +156,10 @@ function AdminDecorations() {
       return;
     }
     try {
-      const assets = await Promise.all(files.map(async (file) => createImageAsset(await readImageFile(file), {
-        name: file.name, mimeType: file.type, source: 'local-preview',
+      const assets = await Promise.all(files.map(async (file, idx) => createImageAsset(await readImageFile(file), {
+        name: file.name, mimeType: file.type, source: 'local-preview', isPrimary: idx === 0,
       })));
-      assets.forEach(addImageAsset);
+      assets.forEach((ast, idx) => addImageAsset(ast, idx === 0));
       setImageError('');
     } catch {
       setImageError('Unable to read one or more images.');
@@ -146,13 +167,47 @@ function AdminDecorations() {
   };
 
   const setPrimaryImage = (imageId) => {
-    setForm((current) => ({ ...current, imageAssets: current.imageAssets.map((asset) => ({ ...asset, isPrimary: asset.id === imageId })) }));
+    setForm((current) => {
+      const updatedAssets = (current.imageAssets || []).map((asset) => ({
+        ...asset,
+        isPrimary: asset.id === imageId,
+      }));
+      const primaryAsset = updatedAssets.find((a) => a.isPrimary);
+      const newImageUrl = primaryAsset ? primaryAsset.url : '';
+      const newGalleryUrls = updatedAssets.map((a) => a.url);
+
+      return {
+        ...current,
+        imageAssets: updatedAssets,
+        imageUrl: newImageUrl,
+        image: newImageUrl,
+        galleryUrls: newGalleryUrls,
+        images: newGalleryUrls,
+      };
+    });
   };
 
   const removeImage = (imageId) => {
     setForm((current) => {
-      const remaining = current.imageAssets.filter((asset) => asset.id !== imageId);
-      return { ...current, imageAssets: remaining.map((asset, index) => ({ ...asset, isPrimary: asset.isPrimary || index === 0 })) };
+      const remainingAssets = (current.imageAssets || []).filter((asset) => asset.id !== imageId);
+      const hasPrimary = remainingAssets.some((a) => a.isPrimary);
+      const updatedAssets = remainingAssets.map((asset, index) => ({
+        ...asset,
+        isPrimary: hasPrimary ? asset.isPrimary : index === 0,
+      }));
+
+      const primaryAsset = updatedAssets.find((a) => a.isPrimary) || updatedAssets[0];
+      const newImageUrl = primaryAsset ? primaryAsset.url : '';
+      const newGalleryUrls = updatedAssets.map((a) => a.url);
+
+      return {
+        ...current,
+        imageAssets: updatedAssets,
+        imageUrl: newImageUrl,
+        image: newImageUrl,
+        galleryUrls: newGalleryUrls,
+        images: newGalleryUrls,
+      };
     });
   };
 
@@ -167,38 +222,69 @@ function AdminDecorations() {
       imageAssets: decoration.imageAssets || [],
       customizationOptions: parseCustomizationOptions(decoration.customizationOptions),
     });
-    setDecorations((current) => {
-      const exists = current.some((entry) => entry.id === savedDecoration.id);
-      return exists ? current.map((entry) => (entry.id === savedDecoration.id ? savedDecoration : entry)) : [...current, savedDecoration];
-    });
+    setDecorations(getStoredDecorations());
     return savedDecoration;
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    setImageError('');
+    setSuccessMessage('');
+
     try {
-      const isEditing = Boolean(form.id);
-      const decName = form.name || 'Decoration';
-      saveDecoration(form);
+      let currentForm = { ...form };
+
+      // Auto-convert pending image URL input if present
+      const pendingUrl = imageUrlInput.trim();
+      if (pendingUrl) {
+        try {
+          new URL(pendingUrl);
+          const newAsset = createImageAsset(pendingUrl, { source: 'hosted-url', isPrimary: true });
+          const existingAssets = (currentForm.imageAssets || []).map((a) => ({ ...a, isPrimary: false }));
+          currentForm.imageAssets = [...existingAssets, newAsset];
+          currentForm.imageUrl = pendingUrl;
+          currentForm.image = pendingUrl;
+          currentForm.galleryUrls = currentForm.imageAssets.map((a) => a.url);
+          currentForm.images = currentForm.galleryUrls;
+          setImageUrlInput('');
+        } catch {
+          setImageError('Failed to update decoration. Enter a valid image URL.');
+          setSuccessMessage('');
+          return;
+        }
+      }
+
+      const isEditing = Boolean(currentForm.id);
+      saveDecoration(currentForm);
+
+      setDecorations(getStoredDecorations());
       setForm(null);
-      setSuccessMessage(isEditing ? `"${decName}" updated successfully!` : `"${decName}" added successfully!`);
+      setSuccessMessage(isEditing ? 'Decoration updated successfully!' : 'Decoration added successfully!');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
       setTimeout(() => {
         setSuccessMessage('');
       }, 5000);
     } catch (err) {
       console.error('Error saving decoration:', err);
-      setImageError('Unable to save decoration. Please check inputs.');
+      setImageError('Failed to update decoration. Please try again.');
+      setSuccessMessage('');
     }
   };
 
   const handleToggleActive = (decoration) => {
-    const nextActive = !decoration.active;
-    saveDecoration({ ...decoration, active: nextActive });
-    setSuccessMessage(`"${decoration.name}" ${nextActive ? 'activated' : 'deactivated'} successfully!`);
-    setTimeout(() => {
+    try {
+      const nextActive = !decoration.active;
+      saveDecoration({ ...decoration, active: nextActive });
+      setSuccessMessage(`"${decoration.name}" ${nextActive ? 'activated' : 'deactivated'} successfully!`);
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 4000);
+    } catch (err) {
+      console.error('Error toggling active status:', err);
+      setImageError('Failed to update decoration. Please try again.');
       setSuccessMessage('');
-    }, 4000);
+    }
   };
 
   const handleCustomizationAssignmentToggle = (itemId, isChecked) => {
@@ -222,6 +308,12 @@ function AdminDecorations() {
               <path d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM8 15L3 10L4.41 8.59L8 12.17L15.59 4.58L17 6L8 15Z" fill="#137333"/>
             </svg>
             <span>{successMessage}</span>
+          </div>
+        ) : null}
+
+        {imageError ? (
+          <div className="admin-error-banner" role="alert" style={{ marginBottom: '16px', padding: '12px 16px', background: '#fce8e6', color: '#c5221f', borderRadius: '8px', fontWeight: '600' }}>
+            <span>{imageError}</span>
           </div>
         ) : null}
 
@@ -303,11 +395,27 @@ function AdminDecorations() {
               ) : null}
 
               <fieldset className="admin-decorations__section"><legend>Images</legend>
-                <label className="search-field"><span>Hosted image URL</span><input type="url" value={imageUrlInput} onChange={(event) => setImageUrlInput(event.target.value)} placeholder="https://your-hostinger-domain.com/image.jpg" /></label>
+                <label className="search-field"><span>Hosted image URL</span><input type="url" value={imageUrlInput} onChange={(event) => setImageUrlInput(event.target.value)} placeholder="https://images.unsplash.com/your-image.jpg" /></label>
                 <button type="button" className="button button--small button--ghost" onClick={handleAddImageUrl}>Add Image URL</button>
                 <label className="search-field"><span>Local image preview</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageFiles} /><small>JPG, PNG, or WebP up to 2 MB each.</small></label>
-                {imageError ? <p className="field-error">{imageError}</p> : null}
-                {form.imageAssets?.length ? <div className="admin-decoration-images">{form.imageAssets.map((asset) => <div key={asset.id} className="admin-decoration-images__item"><img src={asset.url} alt={asset.name || form.name || 'Decoration preview'} /><span>{asset.isPrimary ? 'Cover image' : 'Gallery image'}</span><div><button type="button" className="text-link" onClick={() => setPrimaryImage(asset.id)}>Set as cover</button><button type="button" className="text-link" onClick={() => removeImage(asset.id)}>Remove</button></div></div>)}</div> : null}
+                {form.imageAssets?.length ? (
+                  <div className="admin-decoration-images">
+                    {form.imageAssets.map((asset) => (
+                      <div key={asset.id} className={`admin-decoration-images__item${asset.isPrimary ? ' admin-decoration-images__item--primary' : ''}`}>
+                        <img src={asset.url} alt={asset.name || form.name || 'Decoration preview'} />
+                        <span style={{ fontWeight: asset.isPrimary ? '700' : '400', color: asset.isPrimary ? '#137333' : 'inherit' }}>
+                          {asset.isPrimary ? '★ Cover image' : 'Gallery image'}
+                        </span>
+                        <div>
+                          {!asset.isPrimary && (
+                            <button type="button" className="text-link" onClick={() => setPrimaryImage(asset.id)}>Set as cover</button>
+                          )}
+                          <button type="button" className="text-link" onClick={() => removeImage(asset.id)}>Remove</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </fieldset>
               <fieldset className="admin-decorations__section"><legend>Package Details</legend>
                 <label className="search-field"><span>Rating</span><input name="rating" type="number" min="0" max="5" step="0.1" value={form.rating} onChange={handleChange} required /></label>
@@ -323,7 +431,10 @@ function AdminDecorations() {
                 <label className="checkbox-row"><input name="featured" type="checkbox" checked={form.featured} onChange={handleChange} /><span>Featured / Popular</span></label>
                 <label className="checkbox-row"><input name="active" type="checkbox" checked={form.active} onChange={handleChange} /><span>Active</span></label>
               </fieldset>
-              <div className="confirmation-actions"><button type="submit" className="button">Save Decoration</button><button type="button" className="button button--ghost" onClick={() => setForm(null)}>Cancel</button></div>
+              <div className="confirmation-actions">
+                <button type="submit" className="button">Save Decoration</button>
+                <button type="button" className="button button--ghost" onClick={() => { setForm(null); setImageError(''); setSuccessMessage(''); }}>Cancel</button>
+              </div>
             </form>
           </div>
         ) : null}

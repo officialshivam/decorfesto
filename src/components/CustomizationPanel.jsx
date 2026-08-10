@@ -1,28 +1,36 @@
 import { useMemo, useRef } from 'react';
 import { getCustomizationsForDesign } from '../services/mockCustomizations';
 
-function CustomizationPanel({ product, selections, onSelectionChange, priceBreakdown, customizationGroups }) {
+function CustomizationPanel({
+  product,
+  selections,
+  onSelectionChange,
+  remarks,
+  onRemarksChange,
+  priceBreakdown,
+  customizationGroups,
+}) {
   const carouselRef = useRef(null);
 
-  // Fetch admin-managed Color Palettes assigned to this design
+  // Fetch admin-managed Color Palettes assigned to this specific design
   const colorPalettes = useMemo(
     () => getCustomizationsForDesign(product?.id, 'colorPalette'),
     [product?.id],
   );
 
-  // Fetch admin-managed Floral Arrangements assigned to this design
+  // Fetch admin-managed Floral Arrangements assigned to this specific design
   const floralArrangements = useMemo(
     () => getCustomizationsForDesign(product?.id, 'floralArrangement'),
     [product?.id],
   );
 
-  // Fetch admin-managed Add-on Cards assigned to this design
+  // Fetch admin-managed Add-on Cards assigned to this specific design
   const addOnCards = useMemo(
     () => getCustomizationsForDesign(product?.id, 'addon'),
     [product?.id],
   );
 
-  // Default option groups (Balloon Theme, Cake Table, etc. if available)
+  // Additional structured groups (if configured in product metadata)
   const optionGroups = useMemo(() => {
     if (customizationGroups && customizationGroups.length > 0) {
       return customizationGroups;
@@ -43,12 +51,12 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
   };
 
   const handleToggleAddOn = (addon) => {
-    const isSelected = selections[addon.id] !== undefined;
+    const isSelected = Boolean(selections[addon.id]);
     if (isSelected) {
-      // Remove add-on
+      // Remove add-on from selected customization state
       onSelectionChange(addon.id, null);
     } else {
-      // Add add-on
+      // Add add-on to selected customization state
       const priceStr = addon.price ? `+₹${addon.price}` : 'Included';
       onSelectionChange(addon.id, `${addon.name} ${priceStr}`);
     }
@@ -76,21 +84,30 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
                 <div
                   key={palette.id}
                   className={`palette-card${isSelected ? ' palette-card--selected' : ''}`}
-                  onClick={() =>
-                    onSelectionChange(
-                      'themePalette',
-                      palette.price ? `${palette.name} +₹${palette.price}` : palette.name,
-                    )
-                  }
+                  onClick={() => {
+                    if (isSelected) {
+                      onSelectionChange('themePalette', null);
+                    } else {
+                      onSelectionChange(
+                        'themePalette',
+                        palette.price ? `${palette.name} +₹${palette.price}` : palette.name,
+                      );
+                    }
+                  }}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) =>
-                    e.key === 'Enter' &&
-                    onSelectionChange(
-                      'themePalette',
-                      palette.price ? `${palette.name} +₹${palette.price}` : palette.name,
-                    )
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (isSelected) {
+                        onSelectionChange('themePalette', null);
+                      } else {
+                        onSelectionChange(
+                          'themePalette',
+                          palette.price ? `${palette.name} +₹${palette.price}` : palette.name,
+                        );
+                      }
+                    }
+                  }}
                 >
                   <div className="palette-card__swatches">
                     {Array.isArray(palette.colors) &&
@@ -126,21 +143,30 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
                 <div
                   key={floral.id}
                   className={`floral-card${isSelected ? ' floral-card--selected' : ''}`}
-                  onClick={() =>
-                    onSelectionChange(
-                      'floralArrangement',
-                      floral.price ? `${floral.name} +₹${floral.price}` : floral.name,
-                    )
-                  }
+                  onClick={() => {
+                    if (isSelected) {
+                      onSelectionChange('floralArrangement', null);
+                    } else {
+                      onSelectionChange(
+                        'floralArrangement',
+                        floral.price ? `${floral.name} +₹${floral.price}` : floral.name,
+                      );
+                    }
+                  }}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) =>
-                    e.key === 'Enter' &&
-                    onSelectionChange(
-                      'floralArrangement',
-                      floral.price ? `${floral.name} +₹${floral.price}` : floral.name,
-                    )
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (isSelected) {
+                        onSelectionChange('floralArrangement', null);
+                      } else {
+                        onSelectionChange(
+                          'floralArrangement',
+                          floral.price ? `${floral.name} +₹${floral.price}` : floral.name,
+                        );
+                      }
+                    }
+                  }}
                 >
                   {floral.image && (
                     <div className="floral-card__media">
@@ -167,7 +193,7 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
         </div>
       )}
 
-      {/* 3. HORIZONTAL SCROLL CAROUSEL FOR ADD-ONS (UNIFORM ALIGNMENT & EXACT SIZING) */}
+      {/* 3. HORIZONTAL SCROLL CAROUSEL FOR ADD-ONS (STRICT TOGGLE & EXACT EQUAL SIZING) */}
       {addOnCards.length > 0 && (
         <div className="customization-section addon-carousel-section">
           <div className="addon-carousel__header">
@@ -194,7 +220,7 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
 
           <div className="addon-carousel__track" ref={carouselRef}>
             {addOnCards.map((addon) => {
-              const isSelected = selections[addon.id] !== undefined;
+              const isSelected = Boolean(selections[addon.id]);
               const priceText = addon.price ? `+₹${addon.price}` : 'Included';
 
               return (
@@ -216,7 +242,7 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
                         className={`button button--small${isSelected ? ' button--selected' : ' button--ghost'}`}
                         onClick={() => handleToggleAddOn(addon)}
                       >
-                        {isSelected ? 'Added ✓' : '+ Add'}
+                        {isSelected ? 'Added ✓' : 'Add'}
                       </button>
                     </div>
                   </div>
@@ -264,6 +290,20 @@ function CustomizationPanel({ product, selections, onSelectionChange, priceBreak
           </div>
         </div>
       )}
+
+      {/* 5. SPECIAL INSTRUCTIONS / REMARKS FIELD */}
+      <div className="customization-section remarks-section">
+        <h3>Special Instructions / Remarks</h3>
+        <label className="search-field">
+          <span>Custom Requests & Notes (Optional)</span>
+          <textarea
+            value={remarks || ''}
+            onChange={(e) => onRemarksChange && onRemarksChange(e.target.value)}
+            placeholder="Any special request, color preference, name, message, or other instructions..."
+            rows={3}
+          />
+        </label>
+      </div>
 
       {/* PRICING BREAKDOWN CARD */}
       <div className="pricing-card">

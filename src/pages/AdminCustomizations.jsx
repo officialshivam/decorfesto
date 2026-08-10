@@ -9,7 +9,7 @@ import {
 const TYPE_TABS = [
   { id: 'colorPalette', label: 'Theme Color Palettes' },
   { id: 'floralArrangement', label: 'Floral Arrangements' },
-  { id: 'addon', label: 'Add-Ons & Recommended Experience Cards' },
+  { id: 'addon', label: 'Recommended Add-ons & Experience Cards' },
 ];
 
 function AdminCustomizations() {
@@ -60,11 +60,13 @@ function AdminCustomizations() {
     name: '',
     category: activeTab === 'colorPalette' ? 'Theme Color Palette' : activeTab === 'floralArrangement' ? 'Floral Arrangement' : 'Recommended',
     description: '',
+    adminNotes: '',
     price: 0,
     active: true,
+    displayOrder: 1,
     image: '',
     colorsHex: '#FFC0CB, #FFFFFF',
-    assignedDesigns: [], // Default is EMPTY (no designs assigned)
+    assignedDesigns: [], // Default is EMPTY (must be assigned explicitly)
   };
 
   const [form, setForm] = useState(initialFormState);
@@ -74,6 +76,7 @@ function AdminCustomizations() {
       ...initialFormState,
       type: activeTab,
       category: activeTab === 'colorPalette' ? 'Theme Color Palette' : activeTab === 'floralArrangement' ? 'Floral Arrangement' : 'Recommended',
+      displayOrder: filteredItems.length + 1,
       assignedDesigns: [], // Default empty
     });
     setEditingItem(null);
@@ -88,8 +91,10 @@ function AdminCustomizations() {
       name: item.name || '',
       category: item.category || '',
       description: item.description || '',
+      adminNotes: item.adminNotes || '',
       price: item.price || 0,
       active: item.active !== false,
+      displayOrder: item.displayOrder || 1,
       image: item.image || '',
       colorsHex: Array.isArray(item.colors) ? item.colors.join(', ') : '',
       assignedDesigns: Array.isArray(item.assignedDesigns) ? item.assignedDesigns.map(String) : [],
@@ -153,8 +158,10 @@ function AdminCustomizations() {
       name: form.name.trim(),
       category: form.category.trim() || 'Customization',
       description: form.description.trim(),
+      adminNotes: form.adminNotes.trim(),
       price: Number(form.price || 0),
       active: form.active,
+      displayOrder: Number(form.displayOrder || 1),
       image: form.image.trim(),
       colors: colors.length > 0 ? colors : undefined,
       assignedDesigns: form.assignedDesigns,
@@ -171,7 +178,7 @@ function AdminCustomizations() {
         <div className="section__heading section__heading--left">
           <span className="eyebrow">Admin Dashboard</span>
           <h1>Customization Management</h1>
-          <p>Assign Theme Color Palettes, Floral Arrangements, and Add-ons to specific decoration designs.</p>
+          <p>Create, edit, disable, enable, delete, and assign Theme Color Palettes, Floral Arrangements, and Add-ons to specific decoration designs.</p>
         </div>
 
         {notice && <div className="admin-success-banner">✓ {notice}</div>}
@@ -194,13 +201,13 @@ function AdminCustomizations() {
           </div>
 
           <button type="button" className="button button--small" onClick={handleOpenAddForm}>
-            + Add New {TYPE_TABS.find((t) => t.id === activeTab)?.label.slice(0, -1) || 'Item'}
+            + Add New Option
           </button>
         </div>
 
         {isFormOpen && (
           <div className="card-panel admin-customizations__form-card">
-            <h2>{editingItem ? `Edit Customization: "${editingItem.name}"` : 'Create New Customization Option'}</h2>
+            <h2>{editingItem ? `Edit Option: "${editingItem.name}"` : 'Create New Customization Option'}</h2>
             <form onSubmit={handleSubmit} className="admin-decorations__form">
               <div className="admin-decorations__grid">
                 <label className="search-field">
@@ -209,16 +216,16 @@ function AdminCustomizations() {
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Red & Gold Luxury"
+                    placeholder="e.g. Warm LED Fairy Lights"
                   />
                 </label>
 
                 <label className="search-field">
-                  <span>Category</span>
+                  <span>Category / Badge</span>
                   <input
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    placeholder="e.g. Theme Color Palette"
+                    placeholder="e.g. Recommended, Personalization, Entertainment"
                   />
                 </label>
 
@@ -230,6 +237,16 @@ function AdminCustomizations() {
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: e.target.value })}
                     placeholder="0 for Included, or add-on price"
+                  />
+                </label>
+
+                <label className="search-field">
+                  <span>Display Priority</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.displayOrder}
+                    onChange={(e) => setForm({ ...form, displayOrder: e.target.value })}
                   />
                 </label>
 
@@ -256,13 +273,35 @@ function AdminCustomizations() {
                 )}
               </div>
 
-              <label className="search-field">
-                <span>Description</span>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Short description displayed to customers..."
+              <div className="admin-decorations__grid">
+                <label className="search-field">
+                  <span>Customer-Facing Description</span>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Short description displayed to customers on customize page..."
+                    rows={2}
+                  />
+                </label>
+
+                <label className="search-field">
+                  <span>Internal / Admin Notes (Hidden from customers)</span>
+                  <textarea
+                    value={form.adminNotes}
+                    onChange={(e) => setForm({ ...form, adminNotes: e.target.value })}
+                    placeholder="Supplier notes, inventory requirements, vendor instructions..."
+                    rows={2}
+                  />
+                </label>
+              </div>
+
+              <label className="checkbox-row" style={{ margin: '12px 0' }}>
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(e) => setForm({ ...form, active: e.target.checked })}
                 />
+                <span>Active / Enabled (visible to customers when assigned)</span>
               </label>
 
               {/* HIERARCHICAL & SEARCHABLE DESIGN ASSIGNMENT PANEL */}
@@ -384,6 +423,7 @@ function AdminCustomizations() {
                   <th>Price</th>
                   <th>Status</th>
                   <th>Assigned Designs</th>
+                  <th>Admin Notes</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -438,6 +478,15 @@ function AdminCustomizations() {
                         <strong style={{ color: assignedCount > 0 ? 'var(--accent-dark)' : 'var(--text-muted)' }}>
                           {assignedCount > 0 ? `${assignedCount} Designs Assigned` : 'Unassigned (0)'}
                         </strong>
+                      </td>
+                      <td>
+                        {item.adminNotes ? (
+                          <small style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            {item.adminNotes.slice(0, 40)}...
+                          </small>
+                        ) : (
+                          <small style={{ color: '#ccc' }}>—</small>
+                        )}
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px' }}>

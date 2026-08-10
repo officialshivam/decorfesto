@@ -1,31 +1,25 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-
-const initialForm = {
-  fullName: '',
-  mobile: '',
-  email: '',
-  address: '',
-  pincode: '',
-};
+import { addOrder, getStoredUser } from '../services/mockAuth';
 
 function Checkout() {
   const navigate = useNavigate();
   const { items, clearCart } = useCart();
-  const { user, addOrder } = useAuth();
-  const [form, setForm] = useState(() => ({
-    ...initialForm,
-    fullName: user?.fullName || '',
-    mobile: String(user?.mobile || '').replace(/\D/g, '').slice(-10),
+  const user = getStoredUser();
+
+  const [form, setForm] = useState({
+    fullName: user?.name || '',
+    mobile: user?.mobile || '',
     email: user?.email || '',
     address: user?.savedAddress || '',
-  }));
+    pincode: items[0]?.pincode || '',
+  });
+
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
 
-  const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.totalPrice * item.quantity, 0), [items]);
+  const subtotal = items.reduce((sum, item) => sum + item.totalPrice * item.quantity, 0);
   const serviceCharges = items.length > 0 ? 299 : 0;
   const total = subtotal + serviceCharges;
 
@@ -73,11 +67,16 @@ function Checkout() {
       return;
     }
 
+    const orderRemarks = items
+      .map((i) => i.remarks || i.customization?.remarks)
+      .filter(Boolean)
+      .join('; ');
+
     const order = {
       id: `DFC-${Date.now().toString().slice(-6)}`,
       customerName: form.fullName.trim(),
-      mobile: `+91 ${form.mobile.trim()}`,
-      email: form.email.trim(),
+      customerMobile: `+91 ${form.mobile.trim()}`,
+      customerEmail: form.email.trim(),
       address: form.address.trim(),
       pincode: form.pincode.trim(),
       items,
@@ -85,6 +84,7 @@ function Checkout() {
       serviceCharges,
       paymentStatus: 'Payment Pending / Mock',
       bookingStatus: 'Order Received',
+      remarks: orderRemarks,
       reviewMessage: 'DecorFesto will review your booking shortly and confirm the next step with you.',
       createdAt: new Date().toISOString(),
     };
@@ -95,6 +95,7 @@ function Checkout() {
       email: form.email.trim(),
       savedAddress: form.address.trim(),
     });
+
     clearCart();
     navigate('/confirmation', { state: { order } });
   };
@@ -113,74 +114,80 @@ function Checkout() {
             <div className="card-panel__header">
               <h2>Customer information</h2>
             </div>
-            <div className="checkout-form">
+            <form className="checkout-form" onSubmit={(e) => e.preventDefault()}>
               <label className="search-field">
                 <span>Full Name</span>
-                <input name="fullName" value={form.fullName} onChange={handleChange} placeholder="Enter your full name" />
-                {errors.fullName ? <p className="field-error">{errors.fullName}</p> : null}
+                <input name="fullName" value={form.fullName} onChange={handleChange} placeholder="Shivam Gupta" required />
+                {errors.fullName && <small className="field-error">{errors.fullName}</small>}
               </label>
+
               <label className="search-field">
                 <span>Mobile Number</span>
-                <div className="mobile-input-row">
-                  <span className="mobile-prefix">+91</span>
-                  <input name="mobile" value={form.mobile} onChange={handleChange} placeholder="9876543210" inputMode="numeric" maxLength={10} />
-                </div>
-                {errors.mobile ? <p className="field-error">{errors.mobile}</p> : null}
+                <input name="mobile" value={form.mobile} onChange={handleChange} placeholder="9876543210" required />
+                {errors.mobile && <small className="field-error">{errors.mobile}</small>}
               </label>
+
               <label className="search-field">
-                <span>Email</span>
-                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="Enter your email" />
-                {errors.email ? <p className="field-error">{errors.email}</p> : null}
+                <span>Email Address</span>
+                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="shivam@example.com" required />
+                {errors.email && <small className="field-error">{errors.email}</small>}
               </label>
+
               <label className="search-field">
-                <span>Full Address</span>
-                <input name="address" value={form.address} onChange={handleChange} placeholder="Enter your delivery address" />
-                {errors.address ? <p className="field-error">{errors.address}</p> : null}
+                <span>Full Delivery Address</span>
+                <textarea name="address" value={form.address} onChange={handleChange} placeholder="Flat, Building, Street, Area" required />
+                {errors.address && <small className="field-error">{errors.address}</small>}
               </label>
+
               <label className="search-field">
                 <span>Pincode</span>
-                <input name="pincode" value={form.pincode} onChange={handleChange} placeholder="Enter your pincode" inputMode="numeric" maxLength={6} />
-                {errors.pincode ? <p className="field-error">{errors.pincode}</p> : null}
+                <input name="pincode" value={form.pincode} onChange={handleChange} placeholder="110001" required />
+                {errors.pincode && <small className="field-error">{errors.pincode}</small>}
               </label>
-            </div>
-            {submitError ? <p className="field-error field-error--summary">{submitError}</p> : null}
+
+              {submitError && <div className="admin-error-banner">{submitError}</div>}
+            </form>
           </div>
 
           <aside className="card-panel sticky-summary">
             <div className="card-panel__header">
-              <h2>Booking summary</h2>
+              <h2>Booking Summary</h2>
             </div>
-            <div className="summary-box">
+
+            <div className="cart-list">
               {items.map((item) => (
-                <div key={item.key} className="summary-box__row summary-box__row--stacked">
-                  <span>{item.productName}</span>
-                  <strong>₹{(item.totalPrice * item.quantity).toLocaleString('en-IN')}</strong>
-                  <small>
-                    {item.quantity} × {Object.values(item.customization).join(' • ')} • {item.pincode} • {item.date} • {item.time}
-                  </small>
+                <div key={item.key} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <strong>{item.productName}</strong>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    ₹{item.totalPrice.toLocaleString('en-IN')} × {item.quantity}
+                  </div>
+                  {(item.remarks || item.customization?.remarks) && (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--accent-dark)', fontWeight: '600', marginTop: '4px' }}>
+                      Remarks: "{item.remarks || item.customization?.remarks}"
+                    </div>
+                  )}
                 </div>
               ))}
+            </div>
+
+            <div className="summary-box" style={{ marginTop: '16px' }}>
               <div className="summary-box__row">
-                <span>Service / booking charges</span>
+                <span>Subtotal</span>
+                <strong>₹{subtotal.toLocaleString('en-IN')}</strong>
+              </div>
+              <div className="summary-box__row">
+                <span>Service charges</span>
                 <strong>₹{serviceCharges.toLocaleString('en-IN')}</strong>
               </div>
               <div className="summary-box__row pricing-row--total">
-                <span>Total</span>
+                <span>Total Amount</span>
                 <strong>₹{total.toLocaleString('en-IN')}</strong>
               </div>
             </div>
 
-            <div className="payment-card">
-              <h3>Online Payment</h3>
-              <p>Payment is mocked for this frontend phase. Your booking request will be reviewed by DecorFesto after confirmation.</p>
-              <button type="button" className="button button--full" onClick={handlePlaceOrder}>
-                Pay & Place Order
-              </button>
-            </div>
-
-            <Link to="/cart" className="text-link">
-              Back to cart
-            </Link>
+            <button type="button" className="button button--full" onClick={handlePlaceOrder} style={{ marginTop: '16px' }}>
+              Place Booking Request
+            </button>
           </aside>
         </div>
       </section>

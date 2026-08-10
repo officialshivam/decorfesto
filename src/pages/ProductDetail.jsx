@@ -14,14 +14,7 @@ function getInitialSelections(product) {
     : [];
 
   if (groups.length === 0) {
-    return {
-      balloonTheme: 'Classic',
-      balloonColors: 'Pink & White',
-      nameCustomization: 'No',
-      ledLights: 'No additional cost',
-      extraFlowers: 'None',
-      cakeTable: 'Included',
-    };
+    return {};
   }
 
   const initial = {};
@@ -45,6 +38,7 @@ function ProductDetail() {
   );
 
   const [selections, setSelections] = useState(() => getInitialSelections(product));
+  const [remarks, setRemarks] = useState('');
   const [availability, setAvailability] = useState({ available: false, message: '', pincode: '' });
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -52,6 +46,7 @@ function ProductDetail() {
   useEffect(() => {
     if (product) {
       setSelections(getInitialSelections(product));
+      setRemarks('');
     }
   }, [product?.id]);
 
@@ -71,6 +66,7 @@ function ProductDetail() {
 
   const savings = product.originalPrice - product.price;
   const addOnCost = Object.values(selections).reduce((sum, value) => {
+    if (!value) return sum;
     const match = String(value || '').match(/\+(₹\d+)/);
     if (!match) {
       return sum;
@@ -92,12 +88,26 @@ function ProductDetail() {
   }
 
   const handleSelectionChange = (key, value) => {
-    setSelections((current) => ({ ...current, [key]: value }));
+    setSelections((current) => {
+      if (value === null || value === undefined || value === '') {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      }
+      return { ...current, [key]: value };
+    });
   };
 
   const handleAddToCart = () => {
     if (!availability.available || !date || !time) {
       return;
+    }
+
+    const finalCustomization = {
+      ...selections,
+    };
+    if (remarks.trim()) {
+      finalCustomization.remarks = remarks.trim();
     }
 
     addItem({
@@ -106,7 +116,8 @@ function ProductDetail() {
       productName: product.name,
       occasion: product.occasion,
       image: product.image,
-      customization: selections,
+      customization: finalCustomization,
+      remarks: remarks.trim(),
       pincode: availability.pincode,
       date,
       time,
@@ -189,6 +200,8 @@ function ProductDetail() {
               product={product}
               selections={selections}
               onSelectionChange={handleSelectionChange}
+              remarks={remarks}
+              onRemarksChange={setRemarks}
               priceBreakdown={{ addOns: addOnCost, total: totalPrice }}
               customizationGroups={product.customizationOptions}
             />

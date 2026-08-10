@@ -8,28 +8,57 @@ function asList(value) {
 }
 
 function normalizeImageAssets(decoration) {
+  // 1. If explicit imageAssets array is provided (even if empty []), use it directly!
+  if (Array.isArray(decoration.imageAssets)) {
+    const assets = decoration.imageAssets
+      .map((asset, index) => {
+        const url = typeof asset === 'string' ? asset : asset?.url;
+        if (!url) return null;
+        return {
+          id: typeof asset === 'string' ? `image-${index}` : (asset.id || `image-${index}`),
+          url,
+          name: typeof asset === 'string' ? '' : (asset.name || ''),
+          mimeType: typeof asset === 'string' ? '' : (asset.mimeType || ''),
+          source: typeof asset === 'string' ? 'hosted-url' : (asset.source || 'hosted-url'),
+          isPrimary: typeof asset === 'string' ? (decoration.imageUrl ? asset === decoration.imageUrl : index === 0) : asset.isPrimary === true,
+        };
+      })
+      .filter(Boolean);
+
+    if (assets.length === 0) {
+      return [];
+    }
+
+    const primaryIndex = assets.findIndex((asset) => asset.isPrimary);
+    const primaryAsset = assets[primaryIndex >= 0 ? primaryIndex : 0];
+
+    return assets.map((asset) => ({
+      ...asset,
+      isPrimary: asset.id === primaryAsset?.id,
+    }));
+  }
+
+  // 2. Fallback for legacy items without imageAssets array:
   const legacyUrls = asList(decoration.galleryUrls).length
     ? decoration.galleryUrls
-    : (asList(decoration.images).length ? decoration.images : [decoration.imageUrl || decoration.image || products[0].image]);
-  const candidates = asList(decoration.imageAssets).length ? decoration.imageAssets : legacyUrls;
-  const assets = candidates
+    : (asList(decoration.images).length ? decoration.images : (decoration.imageUrl || decoration.image ? [decoration.imageUrl || decoration.image] : []));
+
+  const assets = legacyUrls
     .map((asset, index) => {
-      const url = typeof asset === 'string' ? asset : asset.url;
+      const url = typeof asset === 'string' ? asset : asset?.url;
       if (!url) return null;
       return {
-        id: typeof asset === 'string' ? `image-${index}` : (asset.id || `image-${index}`),
+        id: `image-${index}`,
         url,
-        name: typeof asset === 'string' ? '' : (asset.name || ''),
-        mimeType: typeof asset === 'string' ? '' : (asset.mimeType || ''),
-        source: typeof asset === 'string' ? 'hosted-url' : (asset.source || 'hosted-url'),
-        isPrimary: typeof asset === 'string' ? asset === decoration.imageUrl : asset.isPrimary === true,
+        name: '',
+        mimeType: '',
+        source: 'hosted-url',
+        isPrimary: index === 0,
       };
     })
     .filter(Boolean);
-  const primaryIndex = assets.findIndex((asset) => asset.isPrimary);
-  const primaryAsset = assets[primaryIndex >= 0 ? primaryIndex : 0];
 
-  return assets.map((asset, index) => ({ ...asset, isPrimary: asset.id === primaryAsset?.id || (primaryIndex < 0 && index === 0) }));
+  return assets;
 }
 
 function categoryFor(decoration) {
@@ -46,10 +75,12 @@ function normalizeDecoration(decoration, index = 0) {
   const packageData = { ...decoration };
   delete packageData.serviceLocation;
   delete packageData.location;
+
   const imageAssets = normalizeImageAssets(packageData);
   const primaryImage = imageAssets.find((asset) => asset.isPrimary) || imageAssets[0];
-  const imageUrl = primaryImage?.url || products[0].image;
+  const imageUrl = primaryImage ? primaryImage.url : '';
   const galleryUrls = imageAssets.map((asset) => asset.url);
+
   const basePrice = Number(packageData.basePrice ?? packageData.price ?? 0);
   const customizationOptions = asList(packageData.customizationOptions);
   const hasStructuredGroups = customizationOptions.length > 0 && customizationOptions.every(
@@ -127,14 +158,26 @@ export function getActiveStoredDecorations() {
 export function saveStoredDecoration(decoration) {
   const decorations = readDecorations();
   const existingDecoration = decorations.find((entry) => entry.id === decoration.id || entry.decorationId === decoration.decorationId);
+
+  // Clean legacy image array properties from existingDecoration so they don't resurrect removed images
+  const cleanedExisting = existingDecoration ? { ...existingDecoration } : {};
+  if (Array.isArray(decoration.imageAssets)) {
+    delete cleanedExisting.galleryUrls;
+    delete cleanedExisting.images;
+    delete cleanedExisting.imageAssets;
+    delete cleanedExisting.imageUrl;
+    delete cleanedExisting.image;
+  }
+
   const nextDecoration = normalizeDecoration({
-    ...existingDecoration,
+    ...cleanedExisting,
     ...decoration,
     decorationId: decoration.decorationId || existingDecoration?.decorationId || `decoration-${Date.now()}`,
     id: decoration.id || existingDecoration?.id || decoration.decorationId || `decoration-${Date.now()}`,
     createdAt: existingDecoration?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
+
   const nextDecorations = existingDecoration
     ? decorations.map((entry) => (entry.id === existingDecoration.id ? nextDecoration : entry))
     : [...decorations, nextDecoration];
