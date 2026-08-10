@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { handleApiRequest, initializeBackend } from './src/router.js';
-import { localPort } from './src/config.js';
+import { getCorsHeaders, localPort } from './src/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +41,7 @@ const apiPrefixes = [
   '/service-areas',
   '/orders',
   '/availability',
+  '/auth',
 ];
 
 function isApiRequest(pathname) {
@@ -196,7 +197,7 @@ async function main() {
       if (!res.headersSent) {
         res.writeHead(500, {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...getCorsHeaders(req.headers),
         });
       }
 

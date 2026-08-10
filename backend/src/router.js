@@ -7,6 +7,8 @@ import { createOrder, getOrder, listOrders, updateOrderStatus } from './handlers
 import { checkAvailability } from './handlers/availability.js';
 import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
+import { adminLogin } from './auth.js';
+import { getCorsHeaders } from './config.js';
 
 async function healthCheck() {
   const resourceNames = ['orders', 'customers', 'vendors', 'service-areas', 'service-area-vendors', 'decorations', 'availability-checks'];
@@ -52,6 +54,7 @@ const routeHandlers = {
     '/orders/:id': getOrder,
   },
   POST: {
+    '/auth/admin-login': adminLogin,
     '/customers': createCustomer,
     '/vendors': createVendor,
     '/service-areas': createServiceArea,
@@ -110,16 +113,17 @@ export async function handleApiRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname;
   const method = req.method.toUpperCase();
+  const corsHeaders = getCorsHeaders(req.headers);
 
   if (method === 'OPTIONS') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-User-Role' });
+    res.writeHead(200, { 'Content-Type': 'application/json', ...corsHeaders });
     res.end(JSON.stringify({ ok: true }));
     return;
   }
 
   const route = matchRoute(pathname, method, routeHandlers[method] || {});
   if (!route) {
-    res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(404, { 'Content-Type': 'application/json', ...corsHeaders });
     res.end(JSON.stringify({ error: 'Route not found.' }));
     return;
   }
@@ -138,17 +142,21 @@ export async function handleApiRequest(req, res) {
   try {
     const response = await handler(context);
     if (!response) {
-      res.writeHead(204, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.writeHead(204, { 'Content-Type': 'application/json', ...corsHeaders });
       res.end();
       return;
     }
 
     const statusCode = response.statusCode || 200;
     const body = response.body;
-    res.writeHead(statusCode, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(statusCode, {
+      'Content-Type': 'application/json',
+      ...corsHeaders,
+      ...response.headers,
+    });
     res.end(JSON.stringify(body));
   } catch (error) {
-    res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(500, { 'Content-Type': 'application/json', ...corsHeaders });
     res.end(JSON.stringify({ error: error.message || 'Internal server error.' }));
   }
 }

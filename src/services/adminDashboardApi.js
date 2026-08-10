@@ -16,11 +16,18 @@ async function getJson(path, extraHeaders = {}) {
   const bases = resolveApiBases();
   let lastError;
 
+  const headers = { ...extraHeaders };
+  const sessionToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('decorfesto_admin_token') : null;
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+  }
+
   for (const base of bases) {
     try {
       const response = await fetch(`${base}${path}`, {
         method: 'GET',
-        headers: { 'X-User-Role': 'admin', ...extraHeaders },
+        credentials: 'include',
+        headers,
       });
 
       if (!response.ok) {
@@ -29,6 +36,37 @@ async function getJson(path, extraHeaders = {}) {
       }
 
       return await response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
+export async function loginAdminCredentials({ username, password }) {
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/auth/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Admin authentication failed.');
+      }
+
+      if (data.token && typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('decorfesto_admin_token', data.token);
+      }
+
+      return data;
     } catch (error) {
       lastError = error;
     }

@@ -973,6 +973,21 @@ input {
   color: #1f8b4c;
 }
 
+.admin-success-banner {
+  background-color: #e6f4ea;
+  color: #137333;
+  border: 1px solid #ceead6;
+  padding: 12px 18px;
+  border-radius: 8px;
+  margin: 16px 0;
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
 .error {
   color: #b63f3f;
 }

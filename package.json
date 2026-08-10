@@ -11,6 +11,8 @@
     "backend": "node backend/server.js"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
+    "mysql2": "^3.23.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2"

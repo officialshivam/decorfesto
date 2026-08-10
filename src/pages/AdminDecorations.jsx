@@ -5,9 +5,9 @@ import { getStoredCategories } from '../services/mockCategories';
 
 const emptyDecoration = {
   id: '', decorationId: '', name: '', category: 'Birthday', shortDescription: '', description: '',
-  basePrice: '', originalPrice: '', imageAssets: [], rating: '', reviewCount: '',
+  price: '', basePrice: '', originalPrice: '', imageAssets: [], rating: '4.8', reviewCount: '12',
   highlights: '', includedItems: '', excludedItems: '', customizationOptions: '', addOns: '',
-  duration: '', setupRequirements: '', featured: false, active: true, displayOrder: '',
+  duration: '4 hours', setupRequirements: '', featured: false, active: true, displayOrder: '1',
 };
 
 const listFields = ['highlights', 'includedItems', 'excludedItems', 'addOns'];
@@ -15,8 +15,12 @@ const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
 const supportedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 function toFormDecoration(decoration) {
+  const priceVal = decoration.price ?? decoration.basePrice ?? decoration.originalPrice ?? '';
   return {
     ...decoration,
+    price: priceVal,
+    basePrice: priceVal,
+    originalPrice: priceVal,
     ...Object.fromEntries(listFields.map((field) => [field, (decoration[field] || []).join(', ')])),
     imageAssets: decoration.imageAssets || [],
     customizationOptions: JSON.stringify(decoration.customizationOptions || [], null, 2),
@@ -68,21 +72,27 @@ function AdminDecorations() {
   const [priceSort, setPriceSort] = useState('displayOrder');
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [imageError, setImageError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const visibleDecorations = useMemo(() => {
     const minimum = minPrice === '' ? null : Number(minPrice);
     const maximum = maxPrice === '' ? null : Number(maxPrice);
-    const filtered = decorations.filter((decoration) => (
-      decoration.name.toLowerCase().includes(query.toLowerCase())
-      && (category === 'All' || decoration.category === category)
-      && (status === 'All' || (status === 'Active' ? decoration.active : !decoration.active))
-      && (minimum === null || decoration.basePrice >= minimum)
-      && (maximum === null || decoration.basePrice <= maximum)
-    ));
+    const filtered = decorations.filter((decoration) => {
+      const p = Number(decoration.price ?? decoration.basePrice ?? 0);
+      return (
+        decoration.name.toLowerCase().includes(query.toLowerCase())
+        && (category === 'All' || decoration.category === category)
+        && (status === 'All' || (status === 'Active' ? decoration.active : !decoration.active))
+        && (minimum === null || p >= minimum)
+        && (maximum === null || p <= maximum)
+      );
+    });
     return filtered.sort((first, second) => {
-      if (priceSort === 'lowToHigh') return first.basePrice - second.basePrice;
-      if (priceSort === 'highToLow') return second.basePrice - first.basePrice;
-      return first.displayOrder - second.displayOrder;
+      const p1 = Number(first.price ?? first.basePrice ?? 0);
+      const p2 = Number(second.price ?? second.basePrice ?? 0);
+      if (priceSort === 'lowToHigh') return p1 - p2;
+      if (priceSort === 'highToLow') return p2 - p1;
+      return (first.displayOrder || 0) - (second.displayOrder || 0);
     });
   }, [category, decorations, maxPrice, minPrice, priceSort, query, status]);
 
@@ -142,8 +152,12 @@ function AdminDecorations() {
   };
 
   const saveDecoration = (decoration) => {
+    const numPrice = Number(decoration.price ?? decoration.basePrice ?? 0);
     const savedDecoration = saveStoredDecoration({
       ...decoration,
+      price: numPrice,
+      basePrice: numPrice,
+      originalPrice: numPrice,
       ...Object.fromEntries(listFields.map((field) => [field, parseList(decoration[field])])),
       imageAssets: decoration.imageAssets || [],
       customizationOptions: parseCustomizationOptions(decoration.customizationOptions),
@@ -152,12 +166,34 @@ function AdminDecorations() {
       const exists = current.some((entry) => entry.id === savedDecoration.id);
       return exists ? current.map((entry) => (entry.id === savedDecoration.id ? savedDecoration : entry)) : [...current, savedDecoration];
     });
+    return savedDecoration;
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    saveDecoration(form);
-    setForm(null);
+    try {
+      const isEditing = Boolean(form.id);
+      const decName = form.name || 'Decoration';
+      saveDecoration(form);
+      setForm(null);
+      setSuccessMessage(isEditing ? `"${decName}" updated successfully!` : `"${decName}" added successfully!`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+    } catch (err) {
+      console.error('Error saving decoration:', err);
+      setImageError('Unable to save decoration. Please check inputs.');
+    }
+  };
+
+  const handleToggleActive = (decoration) => {
+    const nextActive = !decoration.active;
+    saveDecoration({ ...decoration, active: nextActive });
+    setSuccessMessage(`"${decoration.name}" ${nextActive ? 'activated' : 'deactivated'} successfully!`);
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 4000);
   };
 
   return (
@@ -169,7 +205,19 @@ function AdminDecorations() {
           <p>Manage local decoration packages shown in the customer catalog.</p>
         </div>
 
-        <div className="admin-orders__toolbar"><Link to="/admin/categories" className="button button--small button--ghost">Manage Categories</Link><button type="button" className="button button--small" onClick={() => { setForm(emptyDecoration); setImageError(''); }}>Add Decoration</button></div>
+        {successMessage ? (
+          <div className="admin-success-banner" role="alert">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM8 15L3 10L4.41 8.59L8 12.17L15.59 4.58L17 6L8 15Z" fill="#137333"/>
+            </svg>
+            <span>{successMessage}</span>
+          </div>
+        ) : null}
+
+        <div className="admin-orders__toolbar">
+          <Link to="/admin/categories" className="button button--small button--ghost">Manage Categories</Link>
+          <button type="button" className="button button--small" onClick={() => { setForm(emptyDecoration); setImageError(''); setSuccessMessage(''); }}>Add Decoration</button>
+        </div>
         <div className="catalog-toolbar admin-decorations__filters">
           <label className="search-field"><span>Search decorations</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name" /></label>
           <label className="search-field"><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option>All</option><option>Active</option><option>Inactive</option></select></label>
@@ -192,13 +240,15 @@ function AdminDecorations() {
                 <label className="search-field"><span>Description</span><textarea name="description" value={form.description} onChange={handleChange} required /></label>
               </fieldset>
               <fieldset className="admin-decorations__section"><legend>Pricing</legend>
-                <label className="search-field"><span>Base price</span><input name="basePrice" type="number" min="0" value={form.basePrice} onChange={handleChange} required /></label>
-                <label className="search-field"><span>Original price</span><input name="originalPrice" type="number" min="0" value={form.originalPrice} onChange={handleChange} required /></label>
+                <label className="search-field"><span>Price (₹)</span><input name="price" type="number" min="0" value={form.price !== undefined && form.price !== '' ? form.price : (form.basePrice || '')} onChange={(e) => {
+                  const val = e.target.value;
+                  setForm((curr) => ({ ...curr, price: val, basePrice: val, originalPrice: val }));
+                }} required placeholder="e.g. 12999" /></label>
               </fieldset>
               <fieldset className="admin-decorations__section"><legend>Images</legend>
                 <label className="search-field"><span>Hosted image URL</span><input type="url" value={imageUrlInput} onChange={(event) => setImageUrlInput(event.target.value)} placeholder="https://your-hostinger-domain.com/image.jpg" /></label>
                 <button type="button" className="button button--small button--ghost" onClick={handleAddImageUrl}>Add Image URL</button>
-                <label className="search-field"><span>Local image preview</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageFiles} /><small>JPG, PNG, or WebP up to 2 MB each. Local previews are stored only for this mock phase.</small></label>
+                <label className="search-field"><span>Local image preview</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageFiles} /><small>JPG, PNG, or WebP up to 2 MB each.</small></label>
                 {imageError ? <p className="field-error">{imageError}</p> : null}
                 {form.imageAssets?.length ? <div className="admin-decoration-images">{form.imageAssets.map((asset) => <div key={asset.id} className="admin-decoration-images__item"><img src={asset.url} alt={asset.name || form.name || 'Decoration preview'} /><span>{asset.isPrimary ? 'Cover image' : 'Gallery image'}</span><div><button type="button" className="text-link" onClick={() => setPrimaryImage(asset.id)}>Set as cover</button><button type="button" className="text-link" onClick={() => removeImage(asset.id)}>Remove</button></div></div>)}</div> : null}
               </fieldset>
@@ -225,8 +275,8 @@ function AdminDecorations() {
           </div>
         ) : null}
 
-        <div className="card-panel admin-orders__table-wrap"><table className="admin-orders__table"><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Base price</th><th>Featured</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-          {visibleDecorations.map((decoration) => <tr key={decoration.id}><td><img src={decoration.imageUrl} alt="" className="admin-decoration-thumbnail" /></td><td><strong>{decoration.name}</strong></td><td>{decoration.category}</td><td>₹{decoration.basePrice.toLocaleString('en-IN')}</td><td>{decoration.featured ? 'Yes' : 'No'}</td><td>{decoration.displayOrder}</td><td><span className="status-pill">{decoration.active ? 'Active' : 'Inactive'}</span></td><td><div className="admin-decorations__actions"><button type="button" className="button button--small button--ghost" onClick={() => { setForm(toFormDecoration(decoration)); setImageError(''); }}>Edit</button><button type="button" className="button button--small button--ghost" onClick={() => saveDecoration({ ...decoration, active: !decoration.active })}>{decoration.active ? 'Deactivate' : 'Activate'}</button></div></td></tr>)}
+        <div className="card-panel admin-orders__table-wrap"><table className="admin-orders__table"><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Featured</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+          {visibleDecorations.map((decoration) => <tr key={decoration.id}><td><img src={decoration.imageUrl} alt="" className="admin-decoration-thumbnail" /></td><td><strong>{decoration.name}</strong></td><td>{decoration.category}</td><td>₹{Number(decoration.price ?? decoration.basePrice ?? 0).toLocaleString('en-IN')}</td><td>{decoration.featured ? 'Yes' : 'No'}</td><td>{decoration.displayOrder}</td><td><span className="status-pill">{decoration.active ? 'Active' : 'Inactive'}</span></td><td><div className="admin-decorations__actions"><button type="button" className="button button--small button--ghost" onClick={() => { setForm(toFormDecoration(decoration)); setImageError(''); setSuccessMessage(''); }}>Edit</button><button type="button" className="button button--small button--ghost" onClick={() => handleToggleActive(decoration)}>{decoration.active ? 'Deactivate' : 'Activate'}</button></div></td></tr>)}
         </tbody></table></div>
       </section>
     </main>

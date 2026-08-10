@@ -3,7 +3,7 @@ import { getStoredVendors } from './mockVendors';
 import { getStoredServiceAreas } from './mockServiceAreas';
 import { getStoredDecorations } from './mockDecorations';
 
-const PENDING_STATUSES = new Set(['ORDER RECEIVED', 'CREATED', 'PENDING']);
+const _PENDING_STATUSES = new Set(['ORDER RECEIVED', 'CREATED', 'PENDING']);
 const CONFIRMED_STATUSES = new Set(['APPROVED', 'ASSIGNED_TO_VENDOR', 'CONFIRMED', 'CONFIRM']);
 const COMPLETED_STATUSES = new Set(['COMPLETED', 'DELIVERED', 'FULFILLED']);
 const CANCELLED_STATUSES = new Set(['REJECTED', 'CANCELLED', 'CANCELED']);
