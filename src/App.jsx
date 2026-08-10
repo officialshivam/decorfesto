@@ -20,6 +20,7 @@ import AdminVendors from './pages/AdminVendors';
 import AdminServiceAreas from './pages/AdminServiceAreas';
 import AdminDecorations from './pages/AdminDecorations';
 import AdminCategories from './pages/AdminCategories';
+import AdminCustomizations from './pages/AdminCustomizations';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLayout from './components/AdminLayout';
 import { CartProvider } from './context/CartContext';
@@ -61,6 +62,7 @@ function App() {
               <Route path="service-areas" element={<AdminServiceAreas />} />
               <Route path="decorations" element={<AdminDecorations />} />
               <Route path="categories" element={<AdminCategories />} />
+              <Route path="customizations" element={<AdminCustomizations />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Route>
             <Route path="/" element={<CustomerLayout />}>

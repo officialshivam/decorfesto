@@ -2450,42 +2450,448 @@ input {
     flex-direction: column;
     align-items: flex-start;
   }
-
-  .navbar__links {
-    display: none;
-  }
-
-  .navbar__actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .card-grid--categories,
-  .card-grid--products,
-  .steps,
-  .feature-strip,
-  .trust-grid,
-  .footer__grid,
-  .detail-layout,
-  .cart-layout,
-  .checkout-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .hero {
-    padding-top: 32px;
-  }
-
-  .hero__stats {
-    flex-direction: column;
-  }
-
-  .sticky-summary {
-    position: static;
-  }
-
-  .preview-compare,
-  .preview-meta-grid {
-    grid-template-columns: 1fr;
-  }
 }
+
+/* Catalog 3-Level Navigation Flow Styles */
+.catalog-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.catalog-breadcrumb .text-link {
+  color: var(--accent-dark);
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.catalog-breadcrumb strong {
+  color: var(--heading);
+  font-weight: 700;
+}
+
+.section__heading-top {
+  margin-bottom: 12px;
+}
+
+.card-grid--occasions,
+.card-grid--styles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  cursor: pointer;
+  height: 100%;
+}
+
+.category-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent);
+}
+
+.category-card__media {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+
+.category-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.category-card:hover .category-card__media img {
+  transform: scale(1.05);
+}
+
+.category-card__badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.category-card__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 20px;
+}
+
+.category-card__content h2 {
+  font-size: 1.35rem;
+  color: var(--heading);
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.category-card__content p {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 20px;
+  flex: 1;
+}
+
+.category-card__footer {
+  margin-top: auto;
+}
+
+/* --- CUSTOMIZATION PANEL REFINE STYLES --- */
+.customization-section {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.customization-section h3 {
+  font-size: 1.15rem;
+  color: var(--heading);
+  margin-bottom: 14px;
+  font-weight: 700;
+}
+
+/* 1. Theme Color Palettes */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.palette-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.palette-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.palette-card--selected {
+  border: 2px solid var(--accent);
+  background: var(--surface-soft);
+  box-shadow: 0 0 0 2px rgba(224, 76, 120, 0.2);
+}
+
+.palette-card__swatches {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.palette-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.palette-card__title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.2;
+}
+
+.palette-card__price {
+  font-size: 0.8rem;
+  color: var(--accent-dark);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* 2. Floral Arrangements */
+.floral-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.floral-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.floral-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.floral-card--selected {
+  border: 2px solid var(--accent);
+  background: var(--surface-soft);
+}
+
+.floral-card__media {
+  height: 120px;
+  overflow: hidden;
+}
+
+.floral-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.floral-card__content {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.floral-card__content h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  color: var(--heading);
+}
+
+.floral-card__content p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.floral-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.floral-card__price {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+/* 3. Horizontal Carousel for Add-ons (UNIFORM ALIGNMENT & EXACT EQUAL SIZING) */
+.addon-carousel-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.addon-carousel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.addon-carousel__controls {
+  display: flex;
+  gap: 8px;
+}
+
+.carousel-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--heading);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+}
+
+.carousel-btn:hover {
+  background: var(--surface-soft);
+  border-color: var(--accent);
+
+}
+
+.addon-carousel__track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 6px 2px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.addon-carousel__track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.addon-carousel__track::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.addon-card {
+  min-width: 240px;
+  width: 240px;
+  height: 330px;
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.addon-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: var(--accent);
+}
+
+.addon-card--selected {
+  border: 2px solid #2e7d32;
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.15);
+}
+
+.addon-card__media {
+  width: 100%;
+  height: 140px;
+  min-height: 140px;
+  max-height: 140px;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+
+.addon-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.addon-card__category {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.addon-card__content {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.addon-card__title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--heading);
+  min-height: 44px;
+  max-height: 44px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.addon-card__desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  line-height: 1.35;
+  min-height: 40px;
+  max-height: 40px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.addon-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--surface-soft);
+}
+
+.addon-card__price {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--heading);
+}
+
+/* Button Added State */
+.button--selected {
+  background-color: #2e7d32 !important;
+  color: #ffffff !important;
+  border-color: #2e7d32 !important;
+}
+
+.button--selected:hover {
+  background-color: #1b5e20 !important;
+  color: #ffffff !important;
+}
+
+.admin-customizations__form-card {
+  margin-bottom: 24px;
+  border: 2px solid var(--accent);
+}
+

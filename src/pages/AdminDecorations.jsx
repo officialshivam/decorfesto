@@ -2,6 +2,10 @@ import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { getStoredDecorations, saveStoredDecoration } from '../services/mockDecorations';
 import { getStoredCategories } from '../services/mockCategories';
+import {
+  getStoredCustomizations,
+  toggleCustomizationAssignment,
+} from '../services/mockCustomizations';
 
 const emptyDecoration = {
   id: '', decorationId: '', name: '', category: 'Birthday', shortDescription: '', description: '',
@@ -63,6 +67,7 @@ function readImageFile(file) {
 function AdminDecorations() {
   const [decorations, setDecorations] = useState(() => getStoredDecorations());
   const [categories] = useState(() => getStoredCategories());
+  const [customizationsList, setCustomizationsList] = useState(() => getStoredCustomizations());
   const [form, setForm] = useState(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
@@ -196,6 +201,12 @@ function AdminDecorations() {
     }, 4000);
   };
 
+  const handleCustomizationAssignmentToggle = (itemId, isChecked) => {
+    if (!form || !form.id) return;
+    toggleCustomizationAssignment(itemId, form.id, isChecked);
+    setCustomizationsList(getStoredCustomizations());
+  };
+
   return (
     <main className="page">
       <section className="container section section--tight">
@@ -216,6 +227,7 @@ function AdminDecorations() {
 
         <div className="admin-orders__toolbar">
           <Link to="/admin/categories" className="button button--small button--ghost">Manage Categories</Link>
+          <Link to="/admin/customizations" className="button button--small button--ghost">Manage Customizations</Link>
           <button type="button" className="button button--small" onClick={() => { setForm(emptyDecoration); setImageError(''); setSuccessMessage(''); }}>Add Decoration</button>
         </div>
         <div className="catalog-toolbar admin-decorations__filters">
@@ -231,7 +243,7 @@ function AdminDecorations() {
 
         {form ? (
           <div className="card-panel admin-decorations__form">
-            <div className="card-panel__header"><h2>{form.id ? 'Edit Decoration' : 'Add Decoration'}</h2></div>
+            <div className="card-panel__header"><h2>{form.id ? `Edit Decoration: ${form.name}` : 'Add Decoration'}</h2></div>
             <form className="auth-form" onSubmit={handleSubmit}>
               <fieldset className="admin-decorations__section"><legend>Basic Information</legend>
                 <label className="search-field"><span>Name</span><input name="name" value={form.name} onChange={handleChange} required /></label>
@@ -245,6 +257,51 @@ function AdminDecorations() {
                   setForm((curr) => ({ ...curr, price: val, basePrice: val, originalPrice: val }));
                 }} required placeholder="e.g. 12999" /></label>
               </fieldset>
+
+              {/* DESIGN-LEVEL ASSIGNED CUSTOMIZATIONS SECTION */}
+              {form.id ? (
+                <fieldset className="admin-decorations__section">
+                  <legend>Customization Options Assigned to This Design</legend>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 12px' }}>
+                    Select which Theme Color Palettes, Floral Arrangements, and Add-on Cards apply to <strong>{form.name}</strong>.
+                  </p>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {['colorPalette', 'floralArrangement', 'addon'].map((type) => {
+                      const typeLabel = type === 'colorPalette' ? 'Theme Color Palettes' : type === 'floralArrangement' ? 'Floral Arrangements' : 'Add-On Experience Cards';
+                      const items = customizationsList.filter((item) => item.type === type);
+
+                      return (
+                        <div key={type} style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '12px', background: '#fff' }}>
+                          <h4 style={{ margin: '0 0 8px', fontSize: '0.95rem', color: 'var(--heading)' }}>{typeLabel}</h4>
+                          <div style={{ display: 'grid', gap: '6px' }}>
+                            {items.map((item) => {
+                              const isAssigned = Array.isArray(item.assignedDesigns) && item.assignedDesigns.map(String).includes(String(form.id));
+                              return (
+                                <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isAssigned}
+                                    onChange={(e) => handleCustomizationAssignmentToggle(item.id, e.target.checked)}
+                                  />
+                                  <span>
+                                    <strong>{item.name}</strong> ({item.price ? `+₹${item.price}` : 'Included'})
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: '12px' }}>
+                    <Link to="/admin/customizations" className="button button--small button--ghost">
+                      + Manage All Customizations in Admin Panel
+                    </Link>
+                  </div>
+                </fieldset>
+              ) : null}
+
               <fieldset className="admin-decorations__section"><legend>Images</legend>
                 <label className="search-field"><span>Hosted image URL</span><input type="url" value={imageUrlInput} onChange={(event) => setImageUrlInput(event.target.value)} placeholder="https://your-hostinger-domain.com/image.jpg" /></label>
                 <button type="button" className="button button--small button--ghost" onClick={handleAddImageUrl}>Add Image URL</button>
@@ -260,10 +317,6 @@ function AdminDecorations() {
                 <label className="search-field"><span>Excluded items</span><textarea name="excludedItems" value={form.excludedItems} onChange={handleChange} placeholder="Separate items with commas" /></label>
                 <label className="search-field"><span>Duration</span><input name="duration" value={form.duration} onChange={handleChange} placeholder="e.g. 4 hours" /></label>
                 <label className="search-field"><span>Setup requirements</span><textarea name="setupRequirements" value={form.setupRequirements} onChange={handleChange} /></label>
-              </fieldset>
-              <fieldset className="admin-decorations__section"><legend>Customization/Add-ons</legend>
-                <label className="search-field"><span>Customization options (JSON)</span><textarea name="customizationOptions" value={form.customizationOptions} onChange={handleChange} placeholder="[]" /></label>
-                <label className="search-field"><span>Add-ons</span><textarea name="addOns" value={form.addOns} onChange={handleChange} placeholder="Separate items with commas" /></label>
               </fieldset>
               <fieldset className="admin-decorations__section"><legend>Customer Display Settings</legend>
                 <label className="search-field"><span>Display priority</span><input name="displayOrder" type="number" min="0" value={form.displayOrder} onChange={handleChange} /></label>

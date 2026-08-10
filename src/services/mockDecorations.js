@@ -84,6 +84,8 @@ function normalizeDecoration(decoration, index = 0) {
     createdAt: packageData.createdAt || new Date().toISOString(),
     updatedAt: packageData.updatedAt || new Date().toISOString(),
     occasion: categoryFor(packageData),
+    style: packageData.style || 'Signature Theme',
+    styleDescription: packageData.styleDescription || packageData.shortDescription || packageData.description || '',
     price: basePrice,
     image: imageUrl,
     images: galleryUrls,
