@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { findServiceAreaByPincode } from '../services/mockServiceAreas';
-import { checkAvailabilityOnServer } from '../services/serviceAreaApi';
+import { checkPincodeServiceability } from '../services/mockServiceAreas';
 
 function AvailabilityChecker({ value, onChange, onStatusChange, onPincodeChange }) {
   const [pincode, setPincode] = useState(() => value?.pincode || '');
@@ -27,41 +26,11 @@ function AvailabilityChecker({ value, onChange, onStatusChange, onPincodeChange 
     setError('');
     setIsChecking(true);
 
-    let result;
-
-    try {
-      const serverResponse = await checkAvailabilityOnServer(normalized);
-      if (serverResponse && typeof serverResponse.available === 'boolean') {
-        result = {
-          available: serverResponse.available,
-          message: serverResponse.message || (serverResponse.available
-            ? '✓ Decoration service available at your location.'
-            : '✕ Decoration service is currently unavailable at your location.'),
-        };
-      }
-    } catch {
-      // Local fallback repository mode
-    }
-
-    if (!result) {
-      const serviceArea = findServiceAreaByPincode(normalized);
-      if (!serviceArea) {
-        result = {
-          available: false,
-          message: '✕ We currently do not provide decoration services in this pincode.',
-        };
-      } else if (serviceArea.serviceable === true) {
-        result = {
-          available: true,
-          message: '✓ Decoration service available at your location.',
-        };
-      } else {
-        result = {
-          available: false,
-          message: '✕ Decoration service is currently unavailable at your location.',
-        };
-      }
-    }
+    const checkRes = checkPincodeServiceability(normalized);
+    const result = {
+      available: checkRes.isServiceable,
+      message: checkRes.message,
+    };
 
     setStatus(result);
     setIsChecking(false);

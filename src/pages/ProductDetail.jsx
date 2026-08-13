@@ -7,7 +7,7 @@ import DateTimeSelector from '../components/DateTimeSelector';
 import ProductImageGallery from '../components/ProductImageGallery';
 import { useCart } from '../context/CartContext';
 import { getActiveStoredDecorations } from '../services/mockDecorations';
-import { findServiceAreaByPincode } from '../services/mockServiceAreas';
+import { checkPincodeServiceability } from '../services/mockServiceAreas';
 import { calculateAddOnCost } from '../utils/customizationUtils';
 import { isTimeSlotPast } from '../utils/dateTimeUtils';
 
@@ -146,11 +146,9 @@ function ProductDetail() {
       return;
     }
 
-    const liveArea = findServiceAreaByPincode(availability.pincode);
-    const isServiceableLive = liveArea ? liveArea.serviceable === true : availability.available;
-
-    if (!isServiceableLive) {
-      setCartErrorMessage('Sorry, decoration service is not available at this pincode.');
+    const liveCheck = checkPincodeServiceability(availability.pincode);
+    if (!liveCheck.isServiceable) {
+      setCartErrorMessage(liveCheck.message || 'Sorry, decoration service is not available at this pincode.');
       return;
     }
 

@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getStoredOrders } from '../services/mockAuth';
 
 function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState('All');
-  const orders = useMemo(() => getStoredOrders(), []);
+  const orders = getStoredOrders();
   const statuses = ['All', ...new Set(orders.map((order) => order.bookingStatus || 'Order Received'))];
   const visibleOrders = statusFilter === 'All'
     ? orders

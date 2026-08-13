@@ -21,7 +21,7 @@ export const defaultServiceAreas = [
     id: '110032',
     pincode: '110032',
     city: 'Shahdara Bihari Colony, Delhi',
-    serviceable: false,
+    serviceable: true,
     createdAt: '2026-08-10T12:00:00.000Z',
     updatedAt: '2026-08-10T21:21:00.000Z',
   },
@@ -113,4 +113,35 @@ export function deleteStoredServiceArea(idOrPincode) {
   const nextAreas = serviceAreas.filter((a) => a.id !== key && a.pincode !== key);
   writeServiceAreas(nextAreas);
   return { ok: true };
+}
+
+export function checkPincodeServiceability(pincode) {
+  const pc = String(pincode || '').trim();
+  if (!/^[1-9][0-9]{5}$/.test(pc)) {
+    return {
+      isServiceable: false,
+      pincode: pc,
+      message: '✕ Please enter a valid 6-digit Indian pincode.',
+    };
+  }
+
+  const existingArea = findServiceAreaByPincode(pc);
+  if (existingArea) {
+    const ok = existingArea.serviceable === true;
+    return {
+      isServiceable: ok,
+      pincode: pc,
+      city: existingArea.city || 'Delhi NCR',
+      message: ok
+        ? '✓ Decoration service available at your location.'
+        : '✕ Sorry, decoration service is currently unavailable at this pincode.',
+    };
+  }
+
+  return {
+    isServiceable: true,
+    pincode: pc,
+    city: 'Delhi NCR',
+    message: '✓ Decoration service available at your location.',
+  };
 }

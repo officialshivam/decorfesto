@@ -8,6 +8,7 @@ const adminNavItems = [
   { label: 'Service Areas', to: '/admin/service-areas' },
   { label: 'Decorations', to: '/admin/decorations' },
   { label: 'Customizations', to: '/admin/customizations' },
+  { label: 'Users', to: '/admin/users' },
 ];
 
 function AdminNavbar() {
