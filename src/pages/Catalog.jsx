@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { getActiveStoredDecorations } from '../services/mockDecorations';
 import { getStoredCategories } from '../services/mockCategories';
 
 function Catalog() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeOccasion = searchParams.get('occasion') || '';
   const [query, setQuery] = useState('');
@@ -79,7 +80,7 @@ function Catalog() {
   }, [products, activeOccasion, query]);
 
   const handleSelectOccasion = (occasionName) => {
-    setSearchParams({ occasion: occasionName });
+    navigate(`/catalog?occasion=${encodeURIComponent(occasionName)}`);
     setQuery('');
   };
 
@@ -147,7 +148,7 @@ function Catalog() {
     );
   }
 
-  // --- LEVEL 1: Main Catalog Page -> Display ONLY Occasion Cards (NO Prices, NO Ratings, NO Products) ---
+  // --- LEVEL 1: Main Catalog Page -> Display ONLY Occasion Cards ---
   return (
     <main className="page page--catalog">
       <section className="container section section--tight">
@@ -177,6 +178,7 @@ function Catalog() {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && handleSelectOccasion(occ.name)}
+              style={{ cursor: 'pointer' }}
             >
               <div className="category-card__media">
                 <img src={occ.image} alt={occ.name} loading="lazy" />
@@ -188,7 +190,7 @@ function Catalog() {
                 <h2>{occ.name}</h2>
                 <p>Explore all curated {occ.name.toLowerCase()} setups, backdrops, and theme packages.</p>
                 <div className="category-card__footer">
-                  <span className="button button--small button--ghost">Browse {occ.name} →</span>
+                  <span className="button button--small">Select</span>
                 </div>
               </div>
             </div>

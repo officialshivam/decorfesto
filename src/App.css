@@ -688,6 +688,10 @@ input {
   border: 1px solid var(--border);
   border-radius: 24px;
   box-shadow: var(--shadow);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .card-panel__header {
@@ -2711,6 +2715,10 @@ input {
 .addon-carousel-section {
   position: relative;
   overflow: hidden;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .addon-carousel__header {
@@ -2753,6 +2761,10 @@ input {
   padding: 6px 2px 14px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .addon-carousel__track::-webkit-scrollbar {
@@ -3083,6 +3095,378 @@ img, video, iframe {
 }
 
 /* ==================================================
+   FIXED +91 MOBILE INPUT & AUTH CARD STYLES
+   ================================================== */
+
+.mobile-field-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.mobile-input-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mobile-input-group:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(200, 111, 72, 0.15);
+}
+
+.mobile-prefix-badge {
+  padding: 10px 12px;
+  font-weight: 700;
+  color: var(--heading);
+  background: var(--surface-soft);
+  font-size: 0.95rem;
+  user-select: none;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-prefix-divider {
+  color: var(--border);
+  font-weight: 300;
+  padding-right: 8px;
+  user-select: none;
+}
+
+.mobile-input-control {
+  flex: 1;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 10px 12px 10px 4px !important;
+  font-size: 0.95rem !important;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  background: transparent !important;
+  min-width: 0;
+}
+
+.input-error-text {
+  color: #c5221f;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ==================================================
+   AUTH PAGES — Premium, Responsive Design
+   ================================================== */
+
+.page--auth {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-bg-pattern {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255, 130, 70, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 90%, rgba(255, 75, 130, 0.07) 0%, transparent 70%);
+}
+
+.auth-wrapper {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  min-height: calc(100vh - 80px);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 40px 36px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.auth-card__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.brand__logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.auth-card__brand .brand__text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.auth-card__brand .brand__text strong {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--heading);
+  letter-spacing: -0.02em;
+}
+
+.auth-card__brand .brand__text small {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Deprecated: was used in old page--auth .auth-card targeting */
+.page--auth .auth-card {
+  max-width: unset;
+  margin: unset;
+  padding: unset;
+  border-radius: unset;
+  box-shadow: unset;
+  border: unset;
+  background: unset;
+}
+
+.auth-card__header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.auth-card__header h1 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--heading);
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+  line-height: 1.25;
+}
+
+.auth-card__header p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.auth-context-note {
+  display: inline-block;
+  background: rgba(255, 107, 53, 0.08);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 0.875rem !important;
+  color: var(--accent-dark) !important;
+  font-weight: 600;
+  margin-top: 8px !important;
+}
+
+/* Toggle between mobile / email login */
+.auth-toggle {
+  display: flex;
+  background: var(--surface-soft);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.auth-toggle__btn {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 9px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.auth-toggle__btn--active {
+  background: #ffffff;
+  color: var(--accent-dark);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.auth-toggle__btn:hover:not(.auth-toggle__btn--active) {
+  color: var(--text);
+}
+
+/* Auth form */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-actions {
+  margin-top: 4px;
+}
+
+.button--lg {
+  padding: 14px 24px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Password show/hide */
+.input-with-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-action input {
+  flex: 1;
+  padding-right: 44px;
+}
+
+.input-reveal-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px;
+  color: var(--text-muted);
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.input-reveal-btn:hover {
+  opacity: 0.7;
+}
+
+/* Error in auth context */
+.auth-error {
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+}
+
+/* Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin: 4px 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Auth links row */
+.auth-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+/* Optional label */
+.optional-label {
+  font-size: 0.75rem;
+  font-style: normal;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Modal Backdrop & Dialog Styles */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 28px 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  border: none;
+  background: transparent;
+  font-size: 1.6rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.modal-header h2 {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+  color: var(--heading);
+}
+
+.modal-header p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+
+/* ==================================================
    PRODUCT IMAGE GALLERY & SLIDESHOW STYLES
    ================================================== */
 
@@ -3257,6 +3641,240 @@ img, video, iframe {
   .product-gallery__main {
     aspect-ratio: 1 / 1;
     max-height: 300px;
+  }
+}
+
+/* ==================================================
+   PRODUCT DETAIL PAGE — RESPONSIVE LAYOUT & STYLING
+   ================================================== */
+
+.product-detail-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.product-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.product-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.product-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Category & Rating Header Row */
+.product-meta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.product-category-pill {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #a34824;
+  text-transform: capitalize;
+}
+
+.product-rating-pill {
+  background: #fff0e6;
+  color: #a34824;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid rgba(200, 111, 72, 0.2);
+}
+
+.product-title {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+
+/* Price Card */
+.product-price-card {
+  background: #fff5f0;
+  border: 1px solid #fce3d5;
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.price-card-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.product-price {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: -0.02em;
+}
+
+.product-original-price {
+  font-size: 1.05rem;
+  color: #888888;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.product-savings-tag {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #a34824;
+}
+
+/* Customize & Book Card */
+.customize-book-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px 22px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.customize-book-card h3 {
+  margin: 0 0 14px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.steps-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.step-pill {
+  background: #fff0e6;
+  color: #a34824;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 111, 72, 0.2);
+}
+
+/* Flow sections in right column */
+.detail-flow-section {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.product-about-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.detail-info-block h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 10px;
+}
+
+.detail-info-block p {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: #555555;
+  margin: 0;
+}
+
+.detail-list {
+  padding-left: 20px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.92rem;
+  color: #555555;
+}
+
+@media (max-width: 1100px) {
+  .product-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .product-title {
+    font-size: 1.75rem;
+  }
+
+  .steps-pills-row {
+    gap: 8px;
+  }
+
+  .step-pill {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .product-detail-container {
+    padding: 14px 10px 32px;
+  }
+
+  .product-price-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 14px 16px;
+  }
+
+  .product-price {
+    font-size: 1.6rem;
   }
 }
 

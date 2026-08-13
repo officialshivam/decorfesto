@@ -2,11 +2,17 @@ import { useMemo, useState } from 'react';
 import { findServiceAreaByPincode } from '../services/mockServiceAreas';
 import { checkAvailabilityOnServer } from '../services/serviceAreaApi';
 
-function AvailabilityChecker({ onStatusChange, onPincodeChange }) {
-  const [pincode, setPincode] = useState('');
-  const [status, setStatus] = useState(null);
+function AvailabilityChecker({ value, onChange, onStatusChange, onPincodeChange }) {
+  const [pincode, setPincode] = useState(() => value?.pincode || '');
+  const [status, setStatus] = useState(() => (value?.pincode ? value : null));
   const [error, setError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
+
+  const notify = (available, message, code) => {
+    if (onChange) onChange({ available, pincode: code, message });
+    if (onStatusChange) onStatusChange({ available, message });
+    if (onPincodeChange) onPincodeChange(code);
+  };
 
   const checkAvailability = async () => {
     const normalized = pincode.trim();
@@ -14,8 +20,7 @@ function AvailabilityChecker({ onStatusChange, onPincodeChange }) {
       const errMessage = 'Please enter a valid 6-digit Indian pincode.';
       setError(errMessage);
       setStatus(null);
-      if (onStatusChange) onStatusChange({ available: false, message: errMessage });
-      if (onPincodeChange) onPincodeChange(normalized);
+      notify(false, errMessage, normalized);
       return;
     }
 
@@ -60,8 +65,7 @@ function AvailabilityChecker({ onStatusChange, onPincodeChange }) {
 
     setStatus(result);
     setIsChecking(false);
-    if (onStatusChange) onStatusChange({ available: result.available, message: result.message });
-    if (onPincodeChange) onPincodeChange(normalized);
+    notify(result.available, result.message, normalized);
   };
 
   const feedback = useMemo(() => {

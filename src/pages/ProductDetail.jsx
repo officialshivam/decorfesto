@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
 import AvailabilityChecker from '../components/AvailabilityChecker';
 import BookingSummary from '../components/BookingSummary';
 import CustomizationPanel from '../components/CustomizationPanel';
 import DateTimeSelector from '../components/DateTimeSelector';
 import ProductImageGallery from '../components/ProductImageGallery';
+import { useCart } from '../context/CartContext';
 import { getActiveStoredDecorations } from '../services/mockDecorations';
 import { findServiceAreaByPincode } from '../services/mockServiceAreas';
+import { calculateAddOnCost } from '../utils/customizationUtils';
+import { isTimeSlotPast } from '../utils/dateTimeUtils';
 
 function getInitialSelections(product) {
   if (!product) return {};
@@ -51,6 +53,15 @@ function ProductDetail() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
+  const [cartSuccessMessage, setCartSuccessMessage] = useState('');
+  const [cartErrorMessage, setCartErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Scroll to top when navigating to a new product
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
   useEffect(() => {
     if (product) {
       setSelections(getInitialSelections(product));
@@ -58,24 +69,24 @@ function ProductDetail() {
   }, [product]);
 
   const addOnCost = useMemo(() => {
-    if (!product || !product.customizationOptions) return 0;
-    return product.customizationOptions.reduce((total, group) => {
-      const selectedValue = selections[group.id];
-      if (!selectedValue || !group.options) return total;
-      const selectedOption = group.options.find((opt) => opt.id === selectedValue || opt.name === selectedValue);
-      return total + (selectedOption?.price || 0);
-    }, 0);
-  }, [product, selections]);
+    return calculateAddOnCost(selections);
+  }, [selections]);
 
   const totalPrice = useMemo(() => {
     if (!product) return 0;
     return product.price + addOnCost;
   }, [product, addOnCost]);
 
-  const savings = useMemo(() => {
-    if (!product || !product.originalPrice) return 0;
-    return Math.max(0, product.originalPrice - product.price);
+  // Discount / Savings calculation (Only positive if originalPrice > price)
+  const hasDiscount = useMemo(() => {
+    if (!product || !product.originalPrice) return false;
+    return product.originalPrice > product.price;
   }, [product]);
+
+  const savings = useMemo(() => {
+    if (!hasDiscount) return 0;
+    return product.originalPrice - product.price;
+  }, [product, hasDiscount]);
 
   const validationMessages = useMemo(() => {
     const messages = [];
@@ -87,6 +98,8 @@ function ProductDetail() {
 
     if (!date) {
       messages.push('Please select a date.');
+    } else if (time && isTimeSlotPast(date, time)) {
+      messages.push('This time slot is no longer available. Please select another slot.');
     }
 
     if (!time) {
@@ -122,23 +135,52 @@ function ProductDetail() {
   };
 
   const handleAddToCart = () => {
-    // Live serviceability double-check before adding to cart
-    const liveArea = findServiceAreaByPincode(availability.pincode);
-    const isServiceableLive = liveArea ? liveArea.serviceable === true : availability.available;
+    setCartSuccessMessage('');
+    setCartErrorMessage('');
 
-    if (!isServiceableLive || !date || !time) {
+    if (isSubmitting) return;
+
+    // Validation
+    if (!availability.pincode) {
+      setCartErrorMessage('Please check service availability first.');
       return;
     }
 
-    const finalCustomization = {
-      ...selections,
-    };
+    const liveArea = findServiceAreaByPincode(availability.pincode);
+    const isServiceableLive = liveArea ? liveArea.serviceable === true : availability.available;
+
+    if (!isServiceableLive) {
+      setCartErrorMessage('Sorry, decoration service is not available at this pincode.');
+      return;
+    }
+
+    if (!date) {
+      setCartErrorMessage('Please select a celebration date.');
+      return;
+    }
+
+    if (!time) {
+      setCartErrorMessage('Please select a time slot.');
+      return;
+    }
+
+    if (isTimeSlotPast(date, time)) {
+      setCartErrorMessage('This time slot is no longer available. Please select another slot.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // Add to cart directly — no auth check required here
+    const finalCustomization = { ...selections };
     if (remarks.trim()) {
       finalCustomization.remarks = remarks.trim();
     }
 
+    const itemKey = `${product.id}-${date}-${time}-${availability.pincode}-${Date.now()}`;
+
     addItem({
-      key: `${product.id}-${date}-${time}-${availability.pincode}`,
+      key: itemKey,
       productId: product.id,
       productName: product.name,
       occasion: product.occasion,
@@ -149,162 +191,180 @@ function ProductDetail() {
       date,
       time,
       basePrice: product.price,
+      originalPrice: product.originalPrice || null,
       addOnPrice: addOnCost,
       totalPrice,
     });
 
+    setCartSuccessMessage('Added to cart!');
+    setIsSubmitting(false);
+
+    // Navigate to cart
     navigate('/cart');
   };
 
   return (
     <main className="page page--detail">
-      <section className="container section section--tight">
-        <Link to="/catalog" className="text-link" style={{ display: 'inline-block', marginBottom: '16px' }}>
+      <div className="product-detail-container">
+        <Link to="/catalog" className="text-link" style={{ display: 'inline-block', marginBottom: '20px' }}>
           ← Back to catalog
         </Link>
 
-        <div className="detail-layout">
-          {/* LEFT COLUMN: PROMINENT GALLERY + DESCRIPTION & INCLUDED ITEMS */}
-          <div className="detail-layout__left">
-            <ProductImageGallery
-              images={product.images && product.images.length > 0 ? product.images : [product.image]}
-              productName={product.name}
-            />
+        <div className="product-detail-grid">
+          {/* LEFT COLUMN: GALLERY + ABOUT DECORATION + WHAT'S INCLUDED */}
+          <div className="product-left-col">
+            <ProductImageGallery images={product.images} productName={product.name} />
 
-            <div className="detail-section desktop-only-info" style={{ marginTop: '24px' }}>
-              <h2>About this decoration</h2>
-              <p className="detail-description">{product.description}</p>
+            <div className="product-about-section">
+              {product.description && (
+                <div className="detail-info-block">
+                  <h2>About this decoration</h2>
+                  <p>{product.description}</p>
+                </div>
+              )}
+
+              {product.highlights && product.highlights.length > 0 && (
+                <div className="detail-info-block">
+                  <h2>What's included</h2>
+                  <ul className="detail-list">
+                    {product.highlights.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: HEADER, PRICING, STEPS, CUSTOMIZATION, PINCODE, DATE/TIME, SUMMARY */}
+          <div className="product-right-col">
+            {/* CATEGORY & RATING HEADER ROW */}
+            <div className="product-meta-header">
+              {product.occasion && (
+                <span className="product-category-pill">{product.occasion}</span>
+              )}
+              {product.rating != null && (
+                <span className="product-rating-pill">
+                  ★ {product.rating} ({product.reviewCount != null ? product.reviewCount.toLocaleString('en-IN') : 0} reviews)
+                </span>
+              )}
             </div>
 
-            <div className="detail-section desktop-only-info">
-              <h2>What’s included</h2>
-              <ul className="detail-list">
-                {product.includedItems.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+            {/* TITLE */}
+            <h1 className="product-title">{product.name}</h1>
+
+            {/* PRICE CARD */}
+            <div className="product-price-card">
+              <div className="price-card-left">
+                <span className="product-price">
+                  ₹{(product.price + addOnCost).toLocaleString('en-IN')}
+                </span>
+                {hasDiscount && (
+                  <span className="product-original-price">
+                    ₹{product.originalPrice.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+              <div className="price-card-right">
+                <span className="product-savings-tag">
+                  You save ₹{savings.toLocaleString('en-IN')}
+                </span>
+              </div>
             </div>
 
-            <div className="detail-section desktop-only-info">
-              <h2>Highlights</h2>
-              <ul className="detail-list">
-                {product.highlights.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+            {/* CUSTOMIZE & BOOK CARD */}
+            <div className="customize-book-card">
+              <h3>Customize & Book</h3>
+              <div className="steps-pills-row">
+                <span className="step-pill">1. Customize</span>
+                <span className="step-pill">2. Check pincode</span>
+                <span className="step-pill">3. Pick date & time</span>
+                <span className="step-pill">4. Add to cart</span>
+              </div>
             </div>
 
-            <div className="optional-feature-callout desktop-only-info" style={{ marginTop: '16px' }}>
+            {/* CUSTOMIZATION PANEL */}
+            <div className="detail-flow-section">
+              <CustomizationPanel
+                product={product}
+                selections={selections}
+                onSelectionChange={handleSelectionChange}
+                remarks={remarks}
+                onRemarksChange={setRemarks}
+                priceBreakdown={{ addOns: addOnCost, total: totalPrice }}
+              />
+            </div>
+
+            {/* PINCODE AVAILABILITY CHECKER */}
+            <div className="detail-flow-section">
+              <AvailabilityChecker
+                value={availability}
+                onChange={setAvailability}
+              />
+            </div>
+
+            {/* DATE & TIME SELECTOR */}
+            {availability.available && (
+              <div className="detail-flow-section">
+                <DateTimeSelector
+                  date={date}
+                  time={time}
+                  onDateChange={setDate}
+                  onTimeChange={setTime}
+                  pincode={availability.pincode}
+                />
+              </div>
+            )}
+
+            {/* REMARKS */}
+            <div className="detail-flow-section card-panel">
+              <div className="card-panel__header">
+                <h2>Special Instructions / Remarks</h2>
+                <p>Any special requirements, theme notes, accessibility needs…</p>
+              </div>
+              <label className="search-field" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span>Custom Requests & Notes (Optional)</span>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="Any special requirement, color preference, name, message, or other instructions..."
+                  rows={3}
+                  style={{ resize: 'vertical', width: '100%', boxSizing: 'border-box' }}
+                />
+              </label>
+            </div>
+
+            {/* BOOKING SUMMARY & ADD TO CART */}
+            <div className="detail-flow-section">
+              <BookingSummary
+                product={product}
+                totalPrice={totalPrice}
+                selections={selections}
+                availability={availability}
+                pincode={availability.pincode}
+                date={date}
+                time={time}
+                onAddToCart={handleAddToCart}
+                isReady={validationMessages.length === 0}
+                validationMessages={validationMessages}
+                cartSuccessMessage={cartSuccessMessage}
+                cartErrorMessage={cartErrorMessage}
+                isSubmitting={isSubmitting}
+              />
+            </div>
+
+            {/* OPTIONAL EXPERIENCES CALLOUT */}
+            <div className="optional-feature-callout" style={{ marginTop: '24px' }}>
               <h3>Optional experiences</h3>
-              <p>AI decoration assistance and designer consultation remain optional and do not block your booking.</p>
+              <p>AI decoration assistance and designer consultation remain optional.</p>
               <div className="detail-actions">
                 <Link to="/ai-assistant" className="button button--small button--ghost">Try AI assistant</Link>
                 <Link to="/consultation" className="button button--small">Book consultation</Link>
               </div>
             </div>
           </div>
-
-          {/* RIGHT COLUMN: PRODUCT META, TITLE, PRICE, CUSTOMIZATION & BOOKING PANEL */}
-          <div className="detail-layout__right">
-            <div className="detail-meta">
-              <span className="product-card__occasion">{product.occasion}</span>
-              <span className="rating-pill">★ {product.rating} ({product.reviewCount} reviews)</span>
-            </div>
-
-            <h1>{product.name}</h1>
-
-            <div className="price-block">
-              <div>
-                <strong>₹{product.price.toLocaleString('en-IN')}</strong>
-                <span className="product-card__strike">₹{product.originalPrice.toLocaleString('en-IN')}</span>
-              </div>
-              <span className="product-card__savings">You save ₹{savings.toLocaleString('en-IN')}</span>
-            </div>
-
-            <div className="booking-flow-card">
-              <h2>Customize & Book</h2>
-              <div className="booking-flow-steps">
-                <span>1. Customize</span>
-                <span>2. Check pincode</span>
-                <span>3. Pick date & time</span>
-                <span>4. Add to cart</span>
-              </div>
-            </div>
-
-            <CustomizationPanel
-              product={product}
-              selections={selections}
-              onSelectionChange={handleSelectionChange}
-              remarks={remarks}
-              onRemarksChange={setRemarks}
-              priceBreakdown={{ addOns: addOnCost, total: totalPrice }}
-              customizationGroups={product.customizationOptions}
-            />
-
-            <AvailabilityChecker
-              onStatusChange={(status) =>
-                setAvailability((current) => ({ ...current, available: status.available, message: status.message }))
-              }
-              onPincodeChange={(pincode) => setAvailability((current) => ({ ...current, pincode }))}
-            />
-
-            <DateTimeSelector
-              dateValue={date}
-              onDateChange={setDate}
-              selectedTime={time}
-              onTimeChange={setTime}
-              disabled={!availability.available}
-            />
-
-            <BookingSummary
-              product={product}
-              total={totalPrice}
-              selections={selections}
-              availability={availability}
-              date={date}
-              time={time}
-              onAddToCart={handleAddToCart}
-              isReady={Boolean(availability.available && date && time)}
-              validationMessages={validationMessages}
-            />
-
-            {/* MOBILE ONLY DESCRIPTION & INCLUDED ITEMS */}
-            <div className="mobile-only-info" style={{ marginTop: '24px' }}>
-              <div className="detail-section">
-                <h2>About this decoration</h2>
-                <p className="detail-description">{product.description}</p>
-              </div>
-
-              <div className="detail-section">
-                <h2>What’s included</h2>
-                <ul className="detail-list">
-                  {product.includedItems.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="detail-section">
-                <h2>Highlights</h2>
-                <ul className="detail-list">
-                  {product.highlights.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="optional-feature-callout" style={{ marginTop: '16px' }}>
-                <h3>Optional experiences</h3>
-                <p>AI decoration assistance and designer consultation remain optional.</p>
-                <div className="detail-actions">
-                  <Link to="/ai-assistant" className="button button--small button--ghost">Try AI assistant</Link>
-                  <Link to="/consultation" className="button button--small">Book consultation</Link>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-      </section>
+      </div>
     </main>
   );
 }

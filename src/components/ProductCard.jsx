@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 function ProductCard({ product }) {
-  const savings = product.originalPrice - product.price;
+  const savings = (product.originalPrice || 0) > product.price ? product.originalPrice - product.price : 0;
 
   return (
     <article className="product-card">
@@ -18,15 +18,17 @@ function ProductCard({ product }) {
         <div className="product-card__price-row">
           <div>
             <strong>₹{product.price.toLocaleString('en-IN')}</strong>
-            <span className="product-card__strike">₹{product.originalPrice.toLocaleString('en-IN')}</span>
+            {product.originalPrice && product.originalPrice > product.price && (
+              <span className="product-card__strike">₹{product.originalPrice.toLocaleString('en-IN')}</span>
+            )}
           </div>
-          <span className="product-card__savings">Save ₹{savings.toLocaleString('en-IN')}</span>
+          {savings > 0 && <span className="product-card__savings">Save ₹{savings.toLocaleString('en-IN')}</span>}
         </div>
 
         <div className="product-card__footer">
           <span>{product.reviewCount} reviews</span>
           <Link to={`/product/${product.id}`} className="button button--small">
-            View Details
+            🎉 Let's Go
           </Link>
         </div>
       </div>

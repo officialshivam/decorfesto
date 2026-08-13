@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchAdminDashboard } from '../services/adminDashboardApi';
 import { deriveDashboard } from '../services/dashboardMetrics';
 import { formatDateTime, formatINR, formatUptime } from '../services/format';
+import { addCharge, deleteCharge, getStoredCharges, updateCharge } from '../services/mockSettings';
 
 function StatusDot({ tone }) {
   return <span className={`dash-dot dash-dot--${tone || 'neutral'}`} aria-hidden="true" />;
@@ -620,6 +621,387 @@ function DashboardError({ message, onRetry }) {
   );
 }
 
+function ChargesManagementCard() {
+  const [charges, setCharges] = useState(() => getStoredCharges());
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
+  // New Charge form string state
+  const [newName, setNewName] = useState('');
+  const [newAmountStr, setNewAmountStr] = useState('100');
+  const [newEnabled, setNewEnabled] = useState(true);
+
+  // Edit Charge form string state
+  const [editName, setEditName] = useState('');
+  const [editAmountStr, setEditAmountStr] = useState('');
+  const [editEnabled, setEditEnabled] = useState(true);
+
+  const [message, setMessage] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const refresh = useCallback(() => {
+    setCharges(getStoredCharges());
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const handleUpdated = () => refresh();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('decorfesto-settings-updated', handleUpdated);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('decorfesto-settings-updated', handleUpdated);
+      }
+    };
+  }, [refresh]);
+
+  const handleStartEdit = (charge) => {
+    setEditingId(charge.id);
+    setEditName(charge.name);
+    setEditAmountStr(String(charge.amount));
+    setEditEnabled(charge.enabled);
+    setErrorMsg('');
+  };
+
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    if (!editName.trim()) {
+      setErrorMsg('Please enter a valid charge name.');
+      return;
+    }
+
+    const trimmedAmount = editAmountStr.trim();
+    if (!trimmedAmount || isNaN(trimmedAmount)) {
+      setErrorMsg('Please enter a valid amount.');
+      return;
+    }
+
+    const parsed = parseInt(trimmedAmount, 10);
+    if (isNaN(parsed) || parsed < 0) {
+      setErrorMsg('Amount must be a non-negative number.');
+      return;
+    }
+
+    updateCharge(editingId, {
+      name: editName.trim(),
+      amount: parsed,
+      enabled: editEnabled,
+    });
+
+    setEditingId(null);
+    refresh();
+    setMessage('✓ Charge updated successfully!');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleQuickToggle = (id, currentEnabled) => {
+    updateCharge(id, { enabled: !currentEnabled });
+    refresh();
+    setMessage('✓ Status updated!');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    if (!newName.trim()) {
+      setErrorMsg('Please enter a charge name.');
+      return;
+    }
+
+    const trimmedAmount = newAmountStr.trim();
+    if (!trimmedAmount || isNaN(trimmedAmount)) {
+      setErrorMsg('Please enter a valid amount.');
+      return;
+    }
+
+    const parsed = parseInt(trimmedAmount, 10);
+    if (isNaN(parsed) || parsed < 0) {
+      setErrorMsg('Amount must be a non-negative number.');
+      return;
+    }
+
+    addCharge({
+      name: newName.trim(),
+      amount: parsed,
+      enabled: newEnabled,
+      description: 'Configured checkout charge.',
+    });
+
+    setNewName('');
+    setNewAmountStr('100');
+    setNewEnabled(true);
+    setShowAddForm(false);
+    refresh();
+    setMessage('✓ New charge added successfully!');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleDelete = (id, name) => {
+    if (window.confirm(`Are you sure you want to permanently delete "${name}"? It will immediately stop appearing on customer checkouts.`)) {
+      deleteCharge(id);
+      refresh();
+      setMessage(`✓ Charge "${name}" deleted.`);
+      setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
+  return (
+    <section className="dash-card" style={{ marginTop: '16px', marginBottom: '16px' }}>
+      <div className="dash-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 className="dash-card__title">Charges & Fees</h2>
+          <p className="dash-card__subtitle">Manage customer checkout fees, service charges, platform fees, and optional surcharges.</p>
+        </div>
+        <button
+          type="button"
+          className="button button--small button--ghost"
+          onClick={() => {
+            setShowAddForm((v) => !v);
+            setErrorMsg('');
+          }}
+        >
+          {showAddForm ? '✕ Close Form' : '+ Add Charge'}
+        </button>
+      </div>
+
+      {message ? (
+        <p style={{ color: '#16a34a', fontWeight: '700', fontSize: '0.88rem', margin: '8px 0' }}>{message}</p>
+      ) : null}
+
+      {errorMsg ? (
+        <p style={{ color: '#dc2626', fontWeight: '700', fontSize: '0.88rem', margin: '8px 0' }}>✕ {errorMsg}</p>
+      ) : null}
+
+      {/* ADD CHARGE FORM */}
+      {showAddForm && (
+        <form onSubmit={handleAddSubmit} style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', margin: '12px 0', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 style={{ fontSize: '1rem', margin: 0, color: '#0f172a' }}>Add New Charge</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', fontWeight: '600', flex: '1 1 200px' }}>
+              <span>Charge Name *</span>
+              <input
+                type="text"
+                placeholder="e.g. Platform Fee, Travel Charge"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', fontWeight: '600', width: '120px' }}>
+              <span>Amount (₹) *</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={newAmountStr}
+                onChange={(e) => setNewAmountStr(e.target.value.replace(/[^0-9]/g, ''))}
+                required
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontWeight: '700', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+              />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', fontWeight: '600' }}>
+              <span>Status</span>
+              <button
+                type="button"
+                onClick={() => setNewEnabled((v) => !v)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: 'none',
+                  background: newEnabled ? '#16a34a' : '#cbd5e1',
+                  color: '#ffffff',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                {newEnabled ? 'ON' : 'OFF'}
+              </button>
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+            <button type="submit" className="button button--small">
+              Save Charge
+            </button>
+            <button type="button" className="button button--small button--ghost" onClick={() => setShowAddForm(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* CHARGES LIST */}
+      <div className="charges-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+        {charges.map((charge) => {
+          const isEditing = editingId === charge.id;
+
+          if (isEditing) {
+            return (
+              <form
+                key={charge.id}
+                onSubmit={handleSaveEdit}
+                style={{
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '2px solid var(--accent, #e11d48)',
+                  background: '#ffffff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>Edit Charge: {charge.name}</strong>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', fontWeight: '600', flex: '1 1 200px' }}>
+                    <span>Charge Name *</span>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      required
+                      style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+                    />
+                  </label>
+
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', fontWeight: '600', width: '120px' }}>
+                    <span>Amount (₹) *</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={editAmountStr}
+                      onChange={(e) => setEditAmountStr(e.target.value.replace(/[^0-9]/g, ''))}
+                      required
+                      style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontWeight: '700', WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                    />
+                  </label>
+
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem', fontWeight: '600' }}>
+                    <span>Status</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditEnabled((v) => !v)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        border: 'none',
+                        background: editEnabled ? '#16a34a' : '#cbd5e1',
+                        color: '#ffffff',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {editEnabled ? 'ON' : 'OFF'}
+                    </button>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                  <button type="submit" className="button button--small">
+                    Save Changes
+                  </button>
+                  <button type="button" className="button button--small button--ghost" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            );
+          }
+
+          return (
+            <div
+              key={charge.id}
+              style={{
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                background: charge.enabled ? '#ffffff' : '#f8fafc',
+                display: 'flex',
+                justify: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+                opacity: charge.enabled ? 1 : 0.75,
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{charge.name}</strong>
+                  <span
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: '700',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      background: charge.enabled ? '#e6f4ea' : '#f1f5f9',
+                      color: charge.enabled ? '#137333' : '#64748b',
+                    }}
+                  >
+                    {charge.enabled ? '✓ Active' : '✕ Disabled'}
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                  {charge.description || 'Configured checkout charge.'}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: '600', color: '#64748b' }}>Amount:</span>
+                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>₹{charge.amount.toLocaleString('en-IN')}</strong>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickToggle(charge.id, charge.enabled)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      background: charge.enabled ? '#16a34a' : '#cbd5e1',
+                      color: '#ffffff',
+                      fontWeight: '700',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {charge.enabled ? 'ON' : 'OFF'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button button--small button--ghost"
+                    onClick={() => handleStartEdit(charge)}
+                    style={{ padding: '6px 12px', fontSize: '0.82rem' }}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => handleDelete(charge.id, charge.name)}
+                    style={{ color: '#dc2626', fontSize: '0.85rem' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function AdminDashboard() {
   const [payload, setPayload] = useState(null);
   const [error, setError] = useState('');
@@ -737,6 +1119,7 @@ function AdminDashboard() {
         <ServiceAreaPanel dashboard={dashboard} />
         <VendorPanel dashboard={dashboard} />
         <DecorationPanel dashboard={dashboard} />
+        <ChargesManagementCard />
         <SystemHealthPanel dashboard={dashboard} />
 
         <div className="dash-grid dash-grid--footer">

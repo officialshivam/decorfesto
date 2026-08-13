@@ -19,12 +19,13 @@ const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
 const supportedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 function toFormDecoration(decoration) {
-  const priceVal = decoration.price ?? decoration.basePrice ?? decoration.originalPrice ?? '';
+  const priceVal = decoration.price ?? decoration.basePrice ?? '';
+  const origVal = decoration.originalPrice !== undefined && decoration.originalPrice !== null ? decoration.originalPrice : priceVal;
   return {
     ...decoration,
     price: priceVal,
     basePrice: priceVal,
-    originalPrice: priceVal,
+    originalPrice: origVal,
     ...Object.fromEntries(listFields.map((field) => [field, (decoration[field] || []).join(', ')])),
     imageAssets: decoration.imageAssets || [],
     customizationOptions: JSON.stringify(decoration.customizationOptions || [], null, 2),
@@ -213,11 +214,17 @@ function AdminDecorations() {
 
   const saveDecoration = (decoration) => {
     const numPrice = Number(decoration.price ?? decoration.basePrice ?? 0);
+    const numOriginalPrice = (decoration.originalPrice !== '' && decoration.originalPrice !== null && decoration.originalPrice !== undefined)
+      ? Number(decoration.originalPrice)
+      : numPrice;
+
+    const finalOriginalPrice = numOriginalPrice >= numPrice ? numOriginalPrice : numPrice;
+
     const savedDecoration = saveStoredDecoration({
       ...decoration,
       price: numPrice,
       basePrice: numPrice,
-      originalPrice: numPrice,
+      originalPrice: finalOriginalPrice,
       ...Object.fromEntries(listFields.map((field) => [field, parseList(decoration[field])])),
       imageAssets: decoration.imageAssets || [],
       customizationOptions: parseCustomizationOptions(decoration.customizationOptions),
@@ -343,11 +350,67 @@ function AdminDecorations() {
                 <label className="search-field"><span>Short description</span><textarea name="shortDescription" value={form.shortDescription} onChange={handleChange} required /></label>
                 <label className="search-field"><span>Description</span><textarea name="description" value={form.description} onChange={handleChange} required /></label>
               </fieldset>
-              <fieldset className="admin-decorations__section"><legend>Pricing</legend>
-                <label className="search-field"><span>Price (₹)</span><input name="price" type="number" min="0" value={form.price !== undefined && form.price !== '' ? form.price : (form.basePrice || '')} onChange={(e) => {
-                  const val = e.target.value;
-                  setForm((curr) => ({ ...curr, price: val, basePrice: val, originalPrice: val }));
-                }} required placeholder="e.g. 12999" /></label>
+              <fieldset className="admin-decorations__section">
+                <legend>Pricing</legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <label className="search-field">
+                    <span>Selling Price (₹) *</span>
+                    <input
+                      name="price"
+                      type="number"
+                      min="0"
+                      value={form.price !== undefined ? form.price : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((curr) => ({ ...curr, price: val, basePrice: val }));
+                      }}
+                      required
+                      placeholder="e.g. 17999"
+                    />
+                  </label>
+
+                  <label className="search-field">
+                    <span>Original Price / MRP (₹)</span>
+                    <input
+                      name="originalPrice"
+                      type="number"
+                      min="0"
+                      value={form.originalPrice !== undefined ? form.originalPrice : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((curr) => ({ ...curr, originalPrice: val }));
+                      }}
+                      placeholder="e.g. 21999 (Leave blank if no discount)"
+                    />
+                  </label>
+                </div>
+
+                {/* LIVE SAVINGS & DISCOUNT PREVIEW */}
+                {(() => {
+                  const p = Number(form.price || 0);
+                  const op = Number(form.originalPrice || 0);
+
+                  if (op > p && p > 0) {
+                    const diff = op - p;
+                    return (
+                      <div style={{ marginTop: '10px', padding: '10px 14px', background: '#e6f4ea', color: '#137333', borderRadius: '8px', fontSize: '0.88rem', fontWeight: '600' }}>
+                        ✓ Discount Preview: Selling at ₹{p.toLocaleString('en-IN')}, Original MRP ₹{op.toLocaleString('en-IN')}. Customer saves ₹{diff.toLocaleString('en-IN')} (Crossed-out price will be displayed).
+                      </div>
+                    );
+                  }
+                  if (op > 0 && op < p) {
+                    return (
+                      <div style={{ marginTop: '10px', padding: '10px 14px', background: '#fce8e6', color: '#c5221f', borderRadius: '8px', fontSize: '0.88rem', fontWeight: '600' }}>
+                        ⚠️ Warning: Original Price (MRP) cannot be less than Selling Price.
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={{ marginTop: '10px', padding: '10px 14px', background: 'var(--surface-soft)', color: 'var(--text-muted)', borderRadius: '8px', fontSize: '0.85rem' }}>
+                      ℹ No discount preview: Selling price ₹{p ? p.toLocaleString('en-IN') : '0'} will be displayed without a crossed-out price.
+                    </div>
+                  );
+                })()}
               </fieldset>
 
               {/* DESIGN-LEVEL ASSIGNED CUSTOMIZATIONS SECTION */}

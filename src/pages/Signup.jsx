@@ -1,136 +1,245 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-const initialForm = {
-  fullName: '',
-  mobile: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-  acceptedTerms: false,
-};
+import MobileNumberInput, { validate10DigitMobile } from '../components/MobileNumberInput';
 
 function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signup } = useAuth();
-  const [form, setForm] = useState(initialForm);
+
+  const [fullName, setFullName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (event) => {
-    const { name, value, type, checked } = event.target;
-    setForm((current) => ({
-      ...current,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-    setErrors((current) => ({ ...current, [name]: '' }));
-    setSubmitError('');
-  };
+  const from = location.state?.from?.pathname || '/';
+  const isCheckoutFlow = from === '/checkout';
 
   const validate = () => {
     const nextErrors = {};
-    if (!form.fullName.trim()) {
+
+    if (!fullName.trim()) {
       nextErrors.fullName = 'Please enter your full name.';
     }
-    if (!/^\+91\d{10}$/.test(form.mobile.trim())) {
-      nextErrors.mobile = 'Enter a valid mobile number with +91 prefix.';
+
+    const mobileValidation = validate10DigitMobile(mobile);
+    if (!mobileValidation.isValid) {
+      nextErrors.mobile = mobileValidation.error;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       nextErrors.email = 'Please enter a valid email address.';
     }
-    if (form.password.length < 6) {
-      nextErrors.password = 'Password should be at least 6 characters.';
+
+    if (password.length < 6) {
+      nextErrors.password = 'Password must be at least 6 characters.';
     }
-    if (form.confirmPassword !== form.password) {
+
+    if (!confirmPassword) {
+      nextErrors.confirmPassword = 'Please confirm your password.';
+    } else if (confirmPassword !== password) {
       nextErrors.confirmPassword = 'Passwords do not match.';
     }
-    if (!form.acceptedTerms) {
-      nextErrors.acceptedTerms = 'Please accept the terms and conditions.';
-    }
+
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    setSubmitError('');
+
     if (!validate()) {
+      setSubmitError('Please fix the validation errors above (e.g. enter a full 10-digit mobile number).');
       return;
     }
 
+    setIsSubmitting(true);
+
+    const mobileValidation = validate10DigitMobile(mobile);
     const result = signup({
-      fullName: form.fullName,
-      mobile: form.mobile,
-      email: form.email,
-      password: form.password,
+      fullName: fullName.trim(),
+      mobile: mobileValidation.clean,
+      email: email ? email.trim().toLowerCase() : '',
+      password,
       savedAddress: '',
     });
 
+    setIsSubmitting(false);
+
     if (!result.ok) {
-      setSubmitError(result.error);
+      setSubmitError(result.error || 'Account creation failed. Please try again.');
       return;
     }
 
-    navigate(location.state?.from?.pathname || '/profile', { replace: true });
+    navigate(from, { replace: true });
   };
 
   return (
-    <main className="page">
-      <section className="container section section--tight">
+    <main className="page page--auth">
+      <div className="auth-bg-pattern" aria-hidden="true" />
+      <section className="auth-wrapper">
         <div className="auth-card">
-          <div className="auth-card__header">
-            <span className="eyebrow">Create account</span>
-            <h1>Join DecorFesto</h1>
-            <p>Create a simple account so your bookings and profile are saved for later.</p>
+
+          {/* Brand */}
+          <div className="auth-card__brand">
+            <div className="brand__logo">
+              <span>🎉</span>
+            </div>
+            <div className="brand__text">
+              <strong>DecorFesto</strong>
+              <small>Premium celebrations</small>
+            </div>
           </div>
 
-          <form className="auth-form" onSubmit={handleSubmit}>
+          {/* Header */}
+          <div className="auth-card__header">
+            <h1>Create your DecorFesto account</h1>
+            {isCheckoutFlow ? (
+              <p className="auth-context-note">
+                🛒 Your cart is saved. Create an account to place your order.
+              </p>
+            ) : (
+              <p>Join thousands celebrating with DecorFesto.</p>
+            )}
+          </div>
+
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+
             <label className="search-field">
-              <span>Full name</span>
-              <input name="fullName" value={form.fullName} onChange={handleChange} placeholder="Enter your full name" />
+              <span>Full Name *</span>
+              <input
+                name="fullName"
+                type="text"
+                value={fullName}
+                autoComplete="name"
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  setErrors((curr) => ({ ...curr, fullName: '' }));
+                }}
+                placeholder="e.g. Shivam Gupta"
+                required
+              />
               {errors.fullName ? <p className="field-error">{errors.fullName}</p> : null}
             </label>
 
-            <label className="search-field">
-              <span>Mobile number</span>
-              <input name="mobile" value={form.mobile} onChange={handleChange} placeholder="+919876543210" />
-              {errors.mobile ? <p className="field-error">{errors.mobile}</p> : null}
-            </label>
+            <MobileNumberInput
+              value={mobile}
+              onChange={(val) => {
+                setMobile(val);
+                setErrors((curr) => ({ ...curr, mobile: '' }));
+                setSubmitError('');
+              }}
+              label="Mobile Number"
+              placeholder="9876543210"
+              required
+              error={errors.mobile}
+            />
 
             <label className="search-field">
-              <span>Email</span>
-              <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="you@example.com" />
+              <span>Email Address <em className="optional-label">(optional)</em></span>
+              <input
+                name="email"
+                type="email"
+                value={email}
+                autoComplete="email"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setErrors((curr) => ({ ...curr, email: '' }));
+                }}
+                placeholder="name@example.com"
+              />
               {errors.email ? <p className="field-error">{errors.email}</p> : null}
             </label>
 
             <label className="search-field">
-              <span>Password</span>
-              <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Create a password" />
+              <span>Password *</span>
+              <div className="input-with-action">
+                <input
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  autoComplete="new-password"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setErrors((curr) => ({ ...curr, password: '' }));
+                  }}
+                  placeholder="Create a password (min 6 chars)"
+                  required
+                />
+                <button
+                  type="button"
+                  className="input-reveal-btn"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁'}
+                </button>
+              </div>
               {errors.password ? <p className="field-error">{errors.password}</p> : null}
             </label>
 
             <label className="search-field">
-              <span>Confirm password</span>
-              <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Confirm your password" />
+              <span>Confirm Password *</span>
+              <div className="input-with-action">
+                <input
+                  name="confirmPassword"
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirmPassword}
+                  autoComplete="new-password"
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setErrors((curr) => ({ ...curr, confirmPassword: '' }));
+                  }}
+                  placeholder="Re-enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="input-reveal-btn"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirm ? '🙈' : '👁'}
+                </button>
+              </div>
               {errors.confirmPassword ? <p className="field-error">{errors.confirmPassword}</p> : null}
             </label>
 
-            <label className="checkbox-row">
-              <input name="acceptedTerms" type="checkbox" checked={form.acceptedTerms} onChange={handleChange} />
-              <span>I accept the terms and conditions.</span>
-            </label>
-            {errors.acceptedTerms ? <p className="field-error">{errors.acceptedTerms}</p> : null}
+            {submitError ? (
+              <div className="admin-error-banner auth-error" role="alert">
+                <span>⚠ {submitError}</span>
+              </div>
+            ) : null}
 
             <div className="auth-actions">
-              <button type="submit" className="button button--full">Sign up</button>
+              <button
+                type="submit"
+                className="button button--full button--lg"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Creating account…' : 'Create Account'}
+              </button>
             </div>
 
-            {submitError ? <p className="field-error field-error--summary">{submitError}</p> : null}
+            <div className="auth-divider"><span>Already have an account?</span></div>
 
-            <div className="auth-links">
-              <Link to="/login" state={{ from: location.state?.from }} className="text-link">Already have an account? Login</Link>
-            </div>
+            <Link
+              to="/login"
+              state={{ from: location.state?.from }}
+              className="button button--ghost button--full"
+            >
+              Sign In
+            </Link>
           </form>
         </div>
       </section>

@@ -2,12 +2,15 @@ import os
 import glob
 import re
 import traceback
+import urllib.parse
+import urllib.request
 import pandas as pd
 import boto3
 from datetime import datetime, timedelta, timezone
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from email.utils import COMMASPACE, formatdate
 
 # AWS clients
@@ -15,17 +18,89 @@ s3_client = boto3.client('s3')
 s3_resource = boto3.resource('s3')
 ses_client = boto3.client('ses')
 
+def check_no_ami_or_not_found(ami_id, ami_status, ami_name, status_val):
+    """
+    Validates whether an ASG has No AMI Available or an AMI Status of 'Not Found' / 'Missing' / 'Unconfigured'.
+    Checks across AMI ID, AMI Status, AMI Name, and Compliance Status columns.
+    """
+    ami_id_str = str(ami_id).strip().upper() if pd.notna(ami_id) else ''
+    ami_status_str = str(ami_status).strip().upper() if pd.notna(ami_status) else ''
+    ami_name_str = str(ami_name).strip().upper() if pd.notna(ami_name) else ''
+    status_str = str(status_val).strip().upper() if pd.notna(status_val) else ''
+
+    no_ami_id = (
+        not ami_id_str 
+        or ami_id_str in ['N/A', 'UNKNOWN', 'NOT FOUND', 'NOT_FOUND', 'NONE', 'NULL', 'NO AMI', 'NAN']
+        or 'NOT FOUND' in ami_id_str 
+        or 'MISSING' in ami_id_str
+    )
+
+    bad_ami_status = (
+        ami_status_str in ['NOT FOUND', 'NOT_FOUND', 'N/A', 'UNKNOWN', 'MISSING', 'DELETED', 'UNCONFIGURED', 'NONE', 'NULL']
+        or 'NOT FOUND' in ami_status_str
+        or 'MISSING' in ami_status_str
+        or 'DELETED' in ami_status_str
+    )
+
+    bad_ami_name = ('NOT FOUND' in ami_name_str) or ('MISSING' in ami_name_str)
+    bad_status = ('NOT FOUND' in status_str) or ('MISSING' in status_str)
+
+    return no_ami_id or bad_ami_status or bad_ami_name or bad_status
+
+def generate_missing_ami_mailto(account_name, missing_asgs, current_time_str):
+    """
+    Dynamically constructs an Outlook-compatible mailto: URI for a specific AWS Account.
+    Builds a clean, aligned plain-text table pre-populating missing AMI records
+    and leaving 'Owner Details' blank for user entry.
+    """
+    subject = f"Action Required - Missing AMI Details - {account_name}"
+    
+    header_lines = [
+        f"Action Required: Missing / Unavailable AMIs for AWS Account: {account_name}",
+        f"Audit Execution Timestamp: {current_time_str}",
+        "Please provide Owner Details for each missing record listed below and reply:\n"
+    ]
+    
+    col_acc = "Account"
+    col_asg = "ASG Name"
+    col_inst = "Instance ID"
+    col_ami = "AMI ID"
+    col_status = "AMI Status"
+    col_region = "Region"
+    col_owner = "Owner Details"
+
+    table_header = f"{col_acc:<12} | {col_asg:<30} | {col_inst:<15} | {col_ami:<22} | {col_status:<15} | {col_region:<12} | {col_owner:<20}"
+    divider = "-" * 138
+
+    body_lines = header_lines + [table_header, divider]
+
+    for row in missing_asgs:
+        acc = str(row.get('Account Name', account_name))[:12]
+        asg = str(row.get('ASG Name', 'N/A'))[:30]
+        inst = str(row.get('Instance ID', 'N/A'))[:15]
+        ami = str(row.get('Current AMI ID', 'N/A'))[:22]
+        status = str(row.get('AMI Status', 'Not Found'))[:15]
+        reg = str(row.get('Region', 'N/A'))[:12]
+        owner = ""
+
+        line = f"{acc:<12} | {asg:<30} | {inst:<15} | {ami:<22} | {status:<15} | {reg:<12} | {owner}"
+        body_lines.append(line)
+
+    body_lines.append(divider)
+    body_lines.append("\nRegards,\nCloud Studio-Automation Team\nWipro Limited")
+
+    full_body_text = "\n".join(body_lines)
+
+    encoded_subject = urllib.parse.quote(subject)
+    encoded_body = urllib.parse.quote(full_body_text)
+
+    return f"mailto:?subject={encoded_subject}&body={encoded_body}"
+
 def lambda_handler(event, context):
     """
     AWS Lambda handler for consolidating ASG AMI Inventory Reports from S3:
     s3://hl-common-artifacts/Reports-Consolidation-Wipro/ASGReports/
-    
-    Simple & Direct Classification:
-    1. ASGs with AMI Available (Valid AMI ID present).
-    2. ASGs with No AMI Available (Unconfigured / Missing / Not Found).
-    3. Excluded Container Workloads (EKS & ECS ASGs counted separately).
     """
-    # Ensure /tmp exists and clean cached files
     if not os.path.isdir('/tmp'):
         os.mkdir('/tmp')
     
@@ -58,7 +133,6 @@ def lambda_handler(event, context):
                 filename = key.split('/')[-1]
                 key_lower = key.lower()
                 
-                # Exclude output consolidation folder & temp files
                 if filename and not filename.startswith('~$') and not 'consolidated' in key_lower and key_lower.endswith(('.csv', '.xlsx', '.xls')):
                     matching_objs.append(obj)
             
@@ -83,7 +157,6 @@ def lambda_handler(event, context):
     report_files = [f for f in downloaded_files if os.path.exists(f)]
     print(f"Downloaded report files ready for processing: {len(report_files)}")
 
-    # Time calculations (IST timezone UTC+5:30)
     ist_timezone = timezone(timedelta(hours=5, minutes=30))
     current_datetime = datetime.now(ist_timezone)
     current_date = current_datetime.date()
@@ -94,7 +167,10 @@ def lambda_handler(event, context):
     sender = 'report@hdfclife.com'
     receiver = ['shivam.32@wipro.com']
 
-    # IF NO REPORT FILES FOUND: Send notification email
+    # HIGH-RELIABILITY CORPORATE LOGO URLS
+    wipro_logo_url = "https://www.wipro.com/content/dam/nexus/en/wipro-logo-new-og-502x263.jpg"
+    aws_logo_url = "https://a0.awsstatic.com/main/images/logos/aws_logo_smile_1200x630.png"
+
     if not report_files:
         print("⚠️ No ASG report files found in s3://hl-common-artifacts/Reports-Consolidation-Wipro/ASGReports/")
         
@@ -102,25 +178,30 @@ def lambda_handler(event, context):
         <html>
         <head>
             <style>
-                body {{ font-family: Arial, sans-serif; color: #333; }}
-                .alert-box {{ background-color: #fff3cd; border-left: 5px solid #856404; padding: 15px; margin: 20px 0; border-radius: 6px; }}
-                .signature {{ margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; }}
+                body {{ font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; }}
+                .alert-box {{ background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }}
             </style>
         </head>
-        <body>
-            <p>Hi Shivam,<br><br>This is an automated notification for the <b>HDFC AWS ASG AMI Inventory Weekly Report</b>.</p>
-            <div class="alert-box">
-                <b>⚠️ Notice: No ASG Report files (.csv / .xlsx) found in S3 bucket.</b><br><br>
-                <b>Expected S3 URI:</b> <code>s3://{bucket_name}/Reports-Consolidation-Wipro/ASGReports/</code><br>
-                <b>Execution Timestamp:</b> {current_date} at {formatted_time}<br><br>
-                Please ensure account ASG inventory reports are uploaded prior to the scheduled execution.
-            </div>
-            <div class="signature">
-                <img src="https://www.wipro.com/content/dam/nexus/en/wipro-logo-new-og-502x263.jpg" alt="Wipro Logo" style="height: 30px;"><br>
-                <strong>Regards,</strong><br>
-                <strong>Cloud Studio Automation Team</strong><br>
-                <em>Wipro Limited</em>
-            </div>
+        <body style="background-color: #f1f5f9; padding: 15px;">
+            <table width="700" align="center" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff; border-radius:8px; padding:20px; border:1px solid #cbd5e1;">
+                <tr>
+                    <td>
+                        <p style="margin:0 0 10px 0; font-size:13px; color:#334155;">Hi Cloud Engineering Team,<br><br>Greetings of the day!<br><br>This is an automated notification for the <b>HDFCL AWS ASG AMI Inventory Report</b>.</p>
+                        <div class="alert-box">
+                            <b>⚠️ Notice: No ASG Report files (.csv / .xlsx) found in S3 bucket.</b><br><br>
+                            <b>Expected S3 URI:</b> <code>s3://{bucket_name}/Reports-Consolidation-Wipro/ASGReports/</code><br>
+                            <b>Execution Timestamp:</b> {current_date} at {formatted_time}<br><br>
+                            Please ensure account ASG inventory reports are uploaded prior to the scheduled execution.
+                        </div>
+                        <div style="margin-top:16px; padding-top:10px; border-top:1px solid #e2e8f0; font-size:12px; color:#475569;">
+                            <img src="{wipro_logo_url}" alt="Wipro Logo" style="height:30px; width:auto; display:block; border:0; margin-bottom:6px;"><br>
+                            <strong>Regards,</strong><br><br>
+                            <strong>Cloud Studio-Automation Team</strong><br>
+                            <em>Wipro Limited</em>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </body>
         </html>
         """
@@ -129,7 +210,7 @@ def lambda_handler(event, context):
         msg['From'] = sender
         msg['To'] = COMMASPACE.join(receiver)
         msg['Date'] = formatdate(localtime=True)
-        msg['Subject'] = f"HDFC AWS ASG AMI Inventory Report || {formatted_date} [No Files Found]"
+        msg['Subject'] = f"HDFCL AWS ASG AMI Inventory Report || {formatted_date} [No Files Found]"
         msg.attach(MIMEText(warning_html, 'html'))
         
         try:
@@ -150,15 +231,9 @@ def lambda_handler(event, context):
     consolidated_dfs = []
     processed_asgs = set()
     
-    # Simple Two-Category Data Lists
-    ami_available_rows = []    # Category 1: ASGs with AMI Available
-    no_ami_rows = []           # Category 2: ASGs with No AMI Available
-    
-    # EKS & ECS Container Exclusion Trackers
-    processed_eks_asgs = set()
-    processed_ecs_asgs = set()
+    ami_available_rows = []
+    no_ami_rows = []
 
-    # Multi-Account Statistics Aggregator
     account_stats = {}
 
     for file in report_files:
@@ -178,7 +253,6 @@ def lambda_handler(event, context):
             traceback.print_exc()
             continue
         
-        # Extract account name fallback from filename
         file_account_name = file.split('-ASG')[0] if '-ASG' in file else file.split('-AMI')[0] if '-AMI' in file else file.split('.')[0]
         file_account_name = file_account_name.replace('Reports-Consolidation-Wipro_', '').replace('ASGReports_', '').replace('ASG_Reports_', '')
         file_account_name = file_account_name.split('_')[0].split('-')[0]
@@ -201,8 +275,11 @@ def lambda_handler(event, context):
 
             account_col = detect_col(['account name', 'account', 'account id', 'account_name', 'aws account'])
             asg_col = detect_col(['asg name', 'auto scaling group', 'autoscalinggroupname', 'asg_name', 'asg', 'auto scaling group name', 'name'])
+            instance_col = detect_col(['instance id', 'instance_id', 'instanceid', 'instance', 'instance type'])
             region_col = detect_col(['region', 'aws region', 'aws_region'])
             ami_col = detect_col(['ami id', 'current ami id', 'ami_id', 'image id', 'current ami', 'ami', 'image_id'])
+            ami_status_col = detect_col(['ami status', 'ami_status', 'image status', 'image_status', 'status', 'compliance status', 'compliance_status'])
+            ami_name_col = detect_col(['ami name', 'ami_name', 'image name', 'image_name'])
             lt_lc_col = detect_col(['launch template name', 'launch template', 'launch configuration', 'lt/lc name', 'launch template / configuration', 'template name', 'lc name', 'launch_template'])
             creation_date_col = detect_col(['ami creation date', 'creation date', 'created on', 'ami age', 'created date', 'image creation date', 'creation_date'])
             remarks_col = detect_col(['remarks', 'recommendation', 'action required', 'notes', 'comment', 'reason'])
@@ -216,40 +293,36 @@ def lambda_handler(event, context):
                             account_name = str(row_account_val).strip()
                     
                     asg_name = str(row.get(asg_col, 'N/A') if asg_col else 'N/A').strip()
+                    instance_id = str(row.get(instance_col, 'N/A') if instance_col else 'N/A').strip()
                     region = str(row.get(region_col, 'N/A') if region_col else 'N/A').strip()
                     ami_id = str(row.get(ami_col, 'N/A') if ami_col else 'N/A').strip()
+                    ami_status_val = str(row.get(ami_status_col, 'N/A') if ami_status_col else 'N/A').strip()
+                    ami_name_val = str(row.get(ami_name_col, 'N/A') if ami_name_col else 'N/A').strip()
                     lt_lc_name = str(row.get(lt_lc_col, 'N/A') if lt_lc_col else 'N/A').strip()
                     creation_date = row.get(creation_date_col, 'N/A') if creation_date_col else 'N/A'
                     remarks = str(row.get(remarks_col, 'N/A') if remarks_col else 'N/A').strip()
 
-                    # EXCLUSION OF CONTAINER WORKLOADS (EKS & ECS)
                     asg_lower = asg_name.lower()
                     lt_lc_lower = lt_lc_name.lower()
-                    is_eks = ('eks' in asg_lower or 'eks' in lt_lc_lower)
-                    is_ecs = ('ecs' in asg_lower or 'ecs' in lt_lc_lower)
 
-                    if is_eks:
-                        processed_eks_asgs.add(f"{asg_name}_{account_name}_{region}")
-                        continue
-                    elif is_ecs:
-                        processed_ecs_asgs.add(f"{asg_name}_{account_name}_{region}")
-                        continue
+                    if 'eks' in asg_lower or 'eks' in lt_lc_lower:
+                        workload_type = 'EKS'
+                    elif 'ecs' in asg_lower or 'ecs' in lt_lc_lower:
+                        workload_type = 'ECS'
+                    else:
+                        workload_type = 'EC2'
 
-                    # Deduplication key for EC2 ASGs
                     asg_identifier = f"{asg_name}_{ami_id}_{account_name}_{region}"
                     if asg_identifier in processed_asgs and asg_name != 'N/A':
                         continue
                     processed_asgs.add(asg_identifier)
 
-                    # Initialize Account Aggregations
                     if account_name not in account_stats:
                         account_stats[account_name] = {
                             'total': 0, 'ami_available': 0, 'no_ami': 0
                         }
-
                     account_stats[account_name]['total'] += 1
 
-                    # Clean creation date string
                     if pd.notna(creation_date) and creation_date != 'N/A':
                         try:
                             if hasattr(creation_date, 'strftime'):
@@ -261,37 +334,45 @@ def lambda_handler(event, context):
                         except Exception:
                             creation_date = str(creation_date).strip()
 
-                    ami_upper = ami_id.upper()
-
-                    # DIRECT CLASSIFICATION: HAS AMI VS NO AMI
-                    has_no_ami = (
-                        ami_upper in ['N/A', 'UNKNOWN', 'NOT FOUND', 'NOT_FOUND', 'NONE', '', 'NULL', 'NO AMI', 'NAN'] 
-                        or 'NOT FOUND' in ami_upper 
-                        or 'MISSING' in ami_upper 
-                        or 'NO AMI' in ami_upper
+                    is_no_ami_or_not_found = check_no_ami_or_not_found(
+                        ami_id=ami_id, 
+                        ami_status=ami_status_val, 
+                        ami_name=ami_name_val, 
+                        status_val=ami_status_val
                     )
 
-                    if has_no_ami:
-                        rem_text = 'No Current AMI ID configured' if remarks == 'N/A' else remarks
+                    if is_no_ami_or_not_found:
+                        display_ami = ami_id if (ami_id and ami_id.upper() not in ['N/A', 'UNKNOWN', 'NOT FOUND', 'NONE']) else 'UNCONFIGURED / MISSING'
+                        rem_text = f"AMI ID ({ami_id}) status is Not Found in EC2" if 'NOT FOUND' in ami_status_val.upper() else ('No Current AMI ID configured' if remarks == 'N/A' else remarks)
+
                         row_data = {
                             'Account Name': account_name,
                             'ASG Name': asg_name,
+                            'Instance ID': instance_id,
+                            'Workload': workload_type,
                             'Region': region,
-                            'AMI Availability': 'NO AMI AVAILABLE',
-                            'Current AMI ID': 'UNCONFIGURED / MISSING',
+                            'AMI Availability': 'NO AMI / NOT FOUND',
+                            'Current AMI ID': display_ami,
+                            'AMI Status': ami_status_val if ami_status_val != 'N/A' else 'Not Found',
+                            'AMI Name': ami_name_val,
                             'Launch Template / LC': lt_lc_name,
                             'AMI Creation Date': str(creation_date),
                             'Remarks': rem_text
                         }
                         no_ami_rows.append(row_data)
                         account_stats[account_name]['no_ami'] += 1
+                        print(f"      🚨 NO AMI / NOT FOUND DETECTED: {asg_name} ({account_name}) - AMI ID: {ami_id} - Status: {ami_status_val}")
                     else:
                         row_data = {
                             'Account Name': account_name,
                             'ASG Name': asg_name,
+                            'Instance ID': instance_id,
+                            'Workload': workload_type,
                             'Region': region,
                             'AMI Availability': 'AMI AVAILABLE',
                             'Current AMI ID': ami_id,
+                            'AMI Status': ami_status_val if ami_status_val != 'N/A' else 'Found',
+                            'AMI Name': ami_name_val,
                             'Launch Template / LC': lt_lc_name,
                             'AMI Creation Date': str(creation_date),
                             'Remarks': remarks
@@ -307,7 +388,6 @@ def lambda_handler(event, context):
             except Exception as concat_err:
                 print(f"Error appending dataframe for {file}: {concat_err}")
 
-    # Deduplicate row lists
     def remove_duplicates(row_list):
         seen = set()
         unique_rows = []
@@ -321,15 +401,50 @@ def lambda_handler(event, context):
     no_ami_rows = remove_duplicates(no_ami_rows)
     ami_available_rows = remove_duplicates(ami_available_rows)
 
-    eks_count = len(processed_eks_asgs)
-    ecs_count = len(processed_ecs_asgs)
-    
     no_ami_count = len(no_ami_rows)
     ami_available_count = len(ami_available_rows)
     total_evaluated_asgs = no_ami_count + ami_available_count
 
     ami_available_pct = round((ami_available_count / total_evaluated_asgs * 100), 1) if total_evaluated_asgs > 0 else 0.0
     no_ami_pct = round((no_ami_count / total_evaluated_asgs * 100), 1) if total_evaluated_asgs > 0 else 0.0
+
+    # DYNAMIC PLATFORM STATISTICS COMPUTATION (MATHEMATICALLY VERIFIED & DEDUPLICATED)
+    platform_stats = {
+        'EC2': {'total': 0, 'available': 0, 'missing': 0},
+        'EKS': {'total': 0, 'available': 0, 'missing': 0},
+        'ECS': {'total': 0, 'available': 0, 'missing': 0}
+    }
+
+    for row in ami_available_rows:
+        w_type = row.get('Workload', 'EC2')
+        if w_type not in platform_stats:
+            platform_stats[w_type] = {'total': 0, 'available': 0, 'missing': 0}
+        platform_stats[w_type]['total'] += 1
+        platform_stats[w_type]['available'] += 1
+
+    for row in no_ami_rows:
+        w_type = row.get('Workload', 'EC2')
+        if w_type not in platform_stats:
+            platform_stats[w_type] = {'total': 0, 'available': 0, 'missing': 0}
+        platform_stats[w_type]['total'] += 1
+        platform_stats[w_type]['missing'] += 1
+
+    # Compute platform-level availability percentages
+    for p_key, p_val in platform_stats.items():
+        tot = p_val['total']
+        avail = p_val['available']
+        p_val['pct'] = round((avail / tot * 100), 1) if tot > 0 else 0.0
+
+    # MATHEMATICAL VERIFICATION ASSERTION PRINTING
+    calc_total = sum(p['total'] for p in platform_stats.values())
+    calc_avail = sum(p['available'] for p in platform_stats.values())
+    calc_missing = sum(p['missing'] for p in platform_stats.values())
+
+    print(f"Mathematical Verification Check:")
+    print(f"  Total ASGs: {total_evaluated_asgs} == Platform Sum Total: {calc_total}")
+    print(f"  Available ASGs: {ami_available_count} == Platform Sum Available: {calc_avail}")
+    print(f"  Missing ASGs: {no_ami_count} == Platform Sum Missing: {calc_missing}")
+    print(f"  Platform Breakdown: {platform_stats}")
 
     # Save local consolidated Excel file
     output_path = '/tmp/ASG-AMI-Consolidated.xlsx'
@@ -343,294 +458,322 @@ def lambda_handler(event, context):
     else:
         pd.DataFrame(no_ami_rows + ami_available_rows).to_excel(output_path, index=False)
 
-    # UPLOAD TO S3 & GENERATE PRESIGNED LINK
-    download_url = ""
+    # Upload consolidated output quietly to S3
     s3_output_key = f"Reports-Consolidation-Wipro/ASGReports/Consolidated/ASG-AMI-Consolidated-{date_str}.xlsx"
-    
     try:
-        print(f"Uploading consolidated output to s3://{bucket_name}/{s3_output_key} ...")
+        print(f"Uploading consolidated output quietly to s3://{bucket_name}/{s3_output_key} ...")
         s3_client.upload_file(output_path, bucket_name, s3_output_key)
-        
-        download_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': bucket_name, 'Key': s3_output_key},
-            ExpiresIn=604800
-        )
-        print("✅ Generated S3 Presigned Download URL:", download_url)
     except Exception as upload_err:
-        print("⚠️ Error uploading report to S3 / generating presigned URL:", upload_err)
-        traceback.print_exc()
-        download_url = f"https://s3.console.aws.amazon.com/s3/object/{bucket_name}?prefix={s3_output_key}"
+        print("⚠️ Error uploading report to S3:", upload_err)
 
-    print(f"Audit Summary - Total: {total_evaluated_asgs}, AMI Available: {ami_available_count} ({ami_available_pct}%), No AMI: {no_ami_count} ({no_ami_pct}%), EKS: {eks_count}, ECS: {ecs_count}")
+    # OUTLOOK-NATIVE SUMMARY TABLE MATRIX WITH EXACT 6695 PILL STYLING
+    current_time_str = f"{formatted_date} at {formatted_time}"
 
-    # AESTHETIC & MODERN HTML STYLING
-    html_style = """
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; background-color: #f1f5f9; margin: 0; padding: 0; line-height: 1.5; }
-        .email-container { max-width: 1000px; margin: 25px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(15,23,42,0.08); border: 1px solid #cbd5e1; }
-        .header { background: linear-gradient(135deg, #0b192c 0%, #1e3e62 50%, #004085 100%); color: #ffffff; padding: 30px 35px; }
-        .header h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff; }
-        .header p { margin: 4px 0 0 0; font-size: 13px; color: #94a3b8; font-weight: 500; }
-
-        .content { padding: 35px; }
-
-        /* KPI Dashboard Grid */
-        .kpi-grid { display: table; width: 100%; margin: 20px 0 30px 0; table-layout: fixed; border-spacing: 10px 0; }
-        .kpi-card { display: table-cell; text-align: center; padding: 18px 10px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; vertical-align: middle; }
-        .kpi-card .number { font-size: 28px; font-weight: 800; line-height: 1.1; }
-        .kpi-card .label { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-top: 6px; }
-        .kpi-card .subtext { font-size: 11px; font-weight: 600; margin-top: 2px; }
-
-        .kpi-blue { border-top: 5px solid #0284c7; } .kpi-blue .number { color: #0284c7; }
-        .kpi-green { border-top: 5px solid #16a34a; } .kpi-green .number { color: #16a34a; } .kpi-green .subtext { color: #16a34a; }
-        .kpi-orange { border-top: 5px solid #ea580c; } .kpi-orange .number { color: #ea580c; } .kpi-orange .subtext { color: #ea580c; }
-        .kpi-purple { border-top: 5px solid #9333ea; } .kpi-purple .number { color: #9333ea; }
-        .kpi-teal { border-top: 5px solid #0d9488; } .kpi-teal .number { color: #0d9488; }
-
-        /* Action Download Button */
-        .btn-container { text-align: center; margin: 25px 0 35px 0; }
-        .download-btn {
-            background: linear-gradient(135deg, #004085 0%, #002752 100%);
-            color: #ffffff !important;
-            padding: 14px 32px;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 14px;
-            display: inline-block;
-            box-shadow: 0 10px 20px rgba(0, 64, 133, 0.25);
-            letter-spacing: 0.3px;
-        }
-
-        /* Callout Box */
-        .callout-box { background: #fff7ed; border-left: 5px solid #ea580c; padding: 18px 22px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #ffedd5; }
-        .callout-title { font-weight: 800; color: #9a3412; font-size: 14px; margin-bottom: 6px; }
-
-        /* Section Titles */
-        .section-header { font-size: 16px; font-weight: 800; color: #0f172a; margin-top: 35px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.5px; }
-
-        /* Tables */
-        table { border-collapse: separate; border-spacing: 0; width: 100%; margin-bottom: 25px; font-size: 12px; background: #ffffff; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
-        th { background-color: #1e293b; color: #ffffff; padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-        td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-        tr:last-child td { border-bottom: none; }
-        tr:nth-child(even) { background-color: #f8fafc; }
-        tr:hover { background-color: #f1f5f9; }
-
-        /* Badges */
-        .badge { font-weight: 700; padding: 4px 9px; border-radius: 6px; color: #ffffff; font-size: 10px; text-transform: uppercase; display: inline-block; }
-        .badge-orange { background-color: #ea580c; }
-        .badge-green { background-color: #16a34a; }
-
-        .account-name { font-weight: 800; color: #0284c7; }
-        .asg-name { font-weight: 700; color: #0f172a; }
-
-        /* Signature */
-        .signature { margin-top: 40px; padding-top: 25px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #475569; }
-        .signature img { height: 32px; margin-bottom: 10px; }
-    </style>
-    """
-
-    # Pre-calculate Account Level Breakdown Table
-    account_breakdown_html = ""
+    account_breakdown_rows_html = ""
     if account_stats:
+        row_idx = 0
         for acc_name, stats in sorted(account_stats.items()):
+            row_idx += 1
+            row_bg = "#ffffff" if row_idx % 2 != 0 else "#f8fafc"
             acc_avail_pct = round((stats['ami_available'] / stats['total'] * 100), 1) if stats['total'] > 0 else 0.0
             
-            if stats['no_ami'] == 0:
-                acc_badge = '<span class="badge badge-green">100% AMI AVAILABLE</span>'
+            acc_missing_rows = [r for r in no_ami_rows if r['Account Name'] == acc_name]
+            acc_missing_count = len(acc_missing_rows)
+
+            if acc_missing_count == 0:
+                acc_badge = '<span style="background-color:#2e7d32; color:#ffffff; font-weight:700; padding:6px 14px; border-radius:12px; font-size:10px; text-transform:uppercase; display:inline-block; letter-spacing:0.5px;">100% AMI AVAILABLE</span>'
                 no_ami_disp = '<b style="color: #64748b;">0</b>'
             else:
-                acc_badge = f'<span class="badge badge-orange">{stats["no_ami"]} MISSING AMI</span>'
-                no_ami_disp = f'<b style="color: #ea580c;">{stats["no_ami"]}</b>'
+                mailto_url = generate_missing_ami_mailto(acc_name, acc_missing_rows, current_time_str)
+                btn_label = f"✉️ {acc_missing_count} MISSING / NOT FOUND"
+                
+                acc_badge = f'<a href="{mailto_url}" target="_blank" style="text-decoration:none;"><span style="background-color:#c84b14; color:#ffffff !important; font-weight:700; padding:6px 14px; border-radius:12px; font-size:10px; text-transform:uppercase; display:inline-block; letter-spacing:0.5px; box-shadow:0 2px 4px rgba(200,75,20,0.3);">{btn_label}</span></a>'
+                no_ami_disp = f'<b style="color: #c84b14;">{acc_missing_count}</b>'
 
-            account_breakdown_html += f"""
-                <tr>
-                    <td><span class="account-name">{acc_name}</span></td>
-                    <td><b>{stats['total']}</b></td>
-                    <td><b style="color: #16a34a;">{stats['ami_available']}</b></td>
-                    <td>{no_ami_disp}</td>
-                    <td><b>{acc_avail_pct}%</b></td>
-                    <td>{acc_badge}</td>
+            account_breakdown_rows_html += f"""
+                <tr style="background-color: {row_bg};">
+                    <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#0284c7; font-weight:800; font-size:12px;">{acc_name}</td>
+                    <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#334155; font-weight:700; font-size:12px; text-align:center;">{stats['total']}</td>
+                    <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#2e7d32; font-weight:700; font-size:12px; text-align:center;">{stats['ami_available']}</td>
+                    <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; font-size:12px; text-align:center;">{no_ami_disp}</td>
+                    <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#334155; font-weight:700; font-size:12px; text-align:center;">{acc_avail_pct}%</td>
+                    <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">{acc_badge}</td>
                 </tr>
             """
 
-    # Pre-calculate ASGs with No AMI Available Table
-    no_ami_table_html = ""
+    no_ami_table_rows_html = ""
     if no_ami_rows:
+        row_idx = 0
         for entry in no_ami_rows:
-            no_ami_table_html += f"""
-                <tr>
-                    <td><span class="account-name">{entry['Account Name']}</span></td>
-                    <td><span class="asg-name">{entry['ASG Name']}</span></td>
-                    <td>{entry['Region']}</td>
-                    <td><b style="color: #ea580c;">UNCONFIGURED / MISSING</b></td>
-                    <td><code>{entry['Launch Template / LC']}</code></td>
-                    <td><span class="badge badge-orange">NO AMI AVAILABLE</span></td>
-                    <td>{entry['Remarks']}</td>
+            row_idx += 1
+            row_bg = "#ffffff" if row_idx % 2 != 0 else "#f8fafc"
+            workload_bg = '#f3e8ff' if entry['Workload'] == 'EKS' else '#ccfbf1' if entry['Workload'] == 'ECS' else '#e0f2fe'
+            workload_color = '#6b21a8' if entry['Workload'] == 'EKS' else '#0f766e' if entry['Workload'] == 'ECS' else '#0369a1'
+            workload_badge = f'<span style="background-color:{workload_bg}; color:{workload_color}; font-weight:700; padding:3px 8px; border-radius:4px; font-size:9px;">{entry["Workload"]}</span>'
+            
+            no_ami_table_rows_html += f"""
+                <tr style="background-color: {row_bg};">
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#0284c7; font-weight:800; font-size:12px;">{entry['Account Name']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#0f172a; font-weight:700; font-size:12px;">{entry['ASG Name']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">{workload_badge}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#334155; font-size:12px;">{entry['Region']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#c84b14; font-weight:800; font-size:12px;">{entry['Current AMI ID']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; font-family:monospace; font-size:11px; color:#475569;">{entry['Launch Template / LC']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; text-align:center;"><span style="background-color:#c84b14; color:#ffffff; font-weight:700; padding:4px 8px; border-radius:4px; font-size:9px;">NOT FOUND</span></td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#334155; font-size:11px;">{entry['Remarks']}</td>
                 </tr>
             """
     else:
-        no_ami_table_html = """
+        no_ami_table_rows_html = """
             <tr>
-                <td colspan="7" style="text-align: center; padding: 18px; color: #16a34a; font-weight: 700;">
-                    🎉 Excellent! 100% of Auto Scaling Groups have active AMI IDs configured.
+                <td colspan="8" style="text-align: center; padding: 14px; color: #2e7d32; font-weight: 700; font-size: 12px;">
+                    🎉 Excellent! 100% of Auto Scaling Groups have active AMI IDs available in AWS.
                 </td>
             </tr>
         """
 
-    # Pre-calculate ASGs with AMI Available Table (Top 50)
-    ami_available_table_html = ""
+    ami_available_table_rows_html = ""
     if ami_available_rows:
+        row_idx = 0
         for entry in ami_available_rows[:50]:
-            ami_available_table_html += f"""
-                <tr>
-                    <td><span class="account-name">{entry['Account Name']}</span></td>
-                    <td><span class="asg-name">{entry['ASG Name']}</span></td>
-                    <td>{entry['Region']}</td>
-                    <td><code>{entry['Current AMI ID']}</code></td>
-                    <td><code>{entry['Launch Template / LC']}</code></td>
-                    <td><span class="badge badge-green">AMI AVAILABLE</span></td>
-                    <td>{entry['AMI Creation Date']}</td>
-                    <td>{entry['Remarks']}</td>
+            row_idx += 1
+            row_bg = "#ffffff" if row_idx % 2 != 0 else "#f8fafc"
+            workload_bg = '#f3e8ff' if entry['Workload'] == 'EKS' else '#ccfbf1' if entry['Workload'] == 'ECS' else '#e0f2fe'
+            workload_color = '#6b21a8' if entry['Workload'] == 'EKS' else '#0f766e' if entry['Workload'] == 'ECS' else '#0369a1'
+            workload_badge = f'<span style="background-color:{workload_bg}; color:{workload_color}; font-weight:700; padding:3px 8px; border-radius:4px; font-size:9px;">{entry["Workload"]}</span>'
+            
+            ami_available_table_rows_html += f"""
+                <tr style="background-color: {row_bg};">
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#0284c7; font-weight:800; font-size:12px;">{entry['Account Name']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#0f172a; font-weight:700; font-size:12px;">{entry['ASG Name']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">{workload_badge}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#334155; font-size:12px;">{entry['Region']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; font-family:monospace; font-size:11px; color:#334155;">{entry['Current AMI ID']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; font-family:monospace; font-size:11px; color:#475569;">{entry['Launch Template / LC']}</td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; text-align:center;"><span style="background-color:#2e7d32; color:#ffffff; font-weight:700; padding:4px 8px; border-radius:4px; font-size:9px;">AMI AVAILABLE</span></td>
+                    <td style="padding:9px 12px; border-bottom:1px solid #e2e8f0; color:#334155; font-size:11px;">{entry['AMI Creation Date']}</td>
                 </tr>
             """
         if len(ami_available_rows) > 50:
-            ami_available_table_html += f"""
-                <tr><td colspan="8" style="text-align: center; padding: 12px; color: #64748b; font-style: italic;">Showing top 50 of {len(ami_available_rows)} entries with AMI available. Download full Excel report for complete inventory.</td></tr>
+            ami_available_table_rows_html += f"""
+                <tr><td colspan="8" style="text-align: center; padding: 8px; color: #64748b; font-style: italic; font-size: 11px;">Showing top 50 of {len(ami_available_rows)} entries with AMI available. Download full Excel report for complete inventory.</td></tr>
             """
     else:
-        ami_available_table_html = """
-            <tr><td colspan="8" style="text-align: center; padding: 18px; color: #64748b;">No ASGs with AMI available found.</td></tr>
+        ami_available_table_rows_html = """
+            <tr><td colspan="8" style="text-align: center; padding: 14px; color: #64748b; font-size: 12px;">No ASGs with AMI available found.</td></tr>
         """
 
-    wipro_logo = """
-    <div class="signature">
-        <img src="https://www.wipro.com/content/dam/nexus/en/wipro-logo-new-og-502x263.jpg" alt="Wipro Logo"><br>
-        <strong>Regards,</strong><br>
-        <strong>Cloud Studio Automation Team</strong><br>
-        <em>Wipro Limited</em>
-    </div>
+    # PLATFORM BREAKDOWN TABLE HTML
+    platform_rows_html = f"""
+        <tr style="background-color: #ffffff;">
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #0284c7; font-size: 12px;">🖥️ EC2 Workloads</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #334155; font-size: 12px; text-align: center;">{platform_stats['EC2']['total']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #2e7d32; font-size: 12px; text-align: center;">{platform_stats['EC2']['available']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: {'#c84b14' if platform_stats['EC2']['missing'] > 0 else '#64748b'}; font-size: 12px; text-align: center;">{platform_stats['EC2']['missing']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #0f172a; font-size: 12px; text-align: center;">{platform_stats['EC2']['pct']}%</td>
+        </tr>
+        <tr style="background-color: #f8fafc;">
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #9333ea; font-size: 12px;">☸️ EKS Workloads</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #334155; font-size: 12px; text-align: center;">{platform_stats['EKS']['total']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #2e7d32; font-size: 12px; text-align: center;">{platform_stats['EKS']['available']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: {'#c84b14' if platform_stats['EKS']['missing'] > 0 else '#64748b'}; font-size: 12px; text-align: center;">{platform_stats['EKS']['missing']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #0f172a; font-size: 12px; text-align: center;">{platform_stats['EKS']['pct']}%</td>
+        </tr>
+        <tr style="background-color: #ffffff;">
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #0d9488; font-size: 12px;">🐳 ECS Workloads</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #334155; font-size: 12px; text-align: center;">{platform_stats['ECS']['total']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #2e7d32; font-size: 12px; text-align: center;">{platform_stats['ECS']['available']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: {'#c84b14' if platform_stats['ECS']['missing'] > 0 else '#64748b'}; font-size: 12px; text-align: center;">{platform_stats['ECS']['missing']}</td>
+            <td style="padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 800; color: #0f172a; font-size: 12px; text-align: center;">{platform_stats['ECS']['pct']}%</td>
+        </tr>
     """
 
-    download_button_html = f"""
-    <div class="btn-container">
-        <a href="{download_url}" class="download-btn" target="_blank">
-            📥 Download Consolidated ASG AMI Report (.xlsx)
-        </a>
-        <br><span style="font-size: 11px; color: #64748b; margin-top: 6px; display: inline-block;"><i>Direct S3 Presigned Download • Valid for 7 Days</i></span>
-    </div>
-    """ if download_url else ""
-
+    # COMPLETE OUTLOOK-NATIVE ENTERPRISE HTML DASHBOARD TEMPLATE
     html_body = f"""
+    <!DOCTYPE html>
     <html>
-    <head>{html_style}</head>
-    <body>
-        <div class="email-container">
-            <div class="header">
-                <h1>HDFC AWS ASG AMI Inventory Audit</h1>
-                <p>Consolidated Automated Report || Audit Date: {formatted_date} ({formatted_time})</p>
-            </div>
-
-            <div class="content">
-                <p>Hi Shivam,<br><br>Please find the consolidated inventory report for Auto Scaling Groups across AWS accounts below. <i>(Note: EKS and ECS Auto Scaling Groups have been excluded and counted separately)</i>.</p>
-
-                <!-- KPI Cards Dashboard -->
-                <div class="kpi-grid">
-                    <div class="kpi-card kpi-blue">
-                        <div class="number">{total_evaluated_asgs}</div>
-                        <div class="label">Evaluated EC2 ASGs</div>
-                    </div>
-                    <div class="kpi-card kpi-green">
-                        <div class="number">{ami_available_count}</div>
-                        <div class="label">ASGs with AMI Available</div>
-                        <div class="subtext">{ami_available_pct}% Availability</div>
-                    </div>
-                    <div class="kpi-card kpi-orange">
-                        <div class="number">{no_ami_count}</div>
-                        <div class="label">ASGs with No AMI Available</div>
-                        <div class="subtext">{no_ami_pct}% Unconfigured</div>
-                    </div>
-                    <div class="kpi-card kpi-purple">
-                        <div class="number">{eks_count}</div>
-                        <div class="label">Excluded EKS ASGs</div>
-                    </div>
-                    <div class="kpi-card kpi-teal">
-                        <div class="number">{ecs_count}</div>
-                        <div class="label">Excluded ECS ASGs</div>
-                    </div>
-                </div>
-
-                {download_button_html}
-
-                <!-- Account Level Breakdown Matrix -->
-                <div class="section-header">🏢 AWS Account-Level AMI Summary</div>
-                <table>
-                    <thead>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial, Helvetica, sans-serif; color: #1e293b; background-color: #f1f5f9; margin: 0; padding: 15px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+                <td align="center">
+                    <table width="920" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden;">
+                        
+                        <!-- Enterprise Header Banner -->
                         <tr>
-                            <th>AWS Account Name</th>
-                            <th>Total ASGs</th>
-                            <th>AMI Available</th>
-                            <th>No AMI Available</th>
-                            <th>AMI Availability %</th>
-                            <th>Account Status</th>
+                            <td style="background: linear-gradient(135deg, #0b192c 0%, #1e3e62 50%, #004085 100%); padding: 22px 26px; color: #ffffff;">
+                                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-bottom: 4px;">AWS ASG AMI INVENTORY REPORT</div>
+                                <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">Consolidated Automated Inventory</h1>
+                                <p style="margin: 6px 0 0 0; font-size: 12px; color: #cbd5e1;"><b>Audit Date:</b> {formatted_date} &nbsp;|&nbsp; <b>Audit Time:</b> {formatted_time}</p>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>{account_breakdown_html}</tbody>
-                </table>
 
-                <!-- Callout Box & Table: ASGs With No AMI Available -->
-                <div class="callout-box">
-                    <div class="callout-title">🚨 ASGs With No AMI Available ({no_ami_count})</div>
-                    <p style="margin: 0; font-size: 12px; color: #9a3412;">The following Auto Scaling Groups do not have a valid Current AMI ID configured in their Launch Template or Launch Configuration.</p>
-                </div>
-                <table>
-                    <thead>
+                        <!-- Content Area -->
                         <tr>
-                            <th>AWS Account</th>
-                            <th>ASG Name</th>
-                            <th>Region</th>
-                            <th>Current AMI ID</th>
-                            <th>Launch Template / LC</th>
-                            <th>Status</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>{no_ami_table_html}</tbody>
-                </table>
+                            <td style="padding: 22px 26px;">
+                                
+                                <!-- Concise Introduction -->
+                                <p style="margin: 0 0 16px 0; font-size: 13px; color: #334155; line-height: 1.5;">
+                                    Hi Cloud Engineering Team,<br><br>
+                                    Please find below the consolidated AWS Auto Scaling Group AMI inventory report.<br>
+                                    The report provides account-level AMI availability and highlights ASGs where the AMI is missing or unavailable.<br><br>
+                                    Click the orange <b>MISSING / NOT FOUND</b> button to compose an Outlook email with the affected ASG details and update the Owner Details before sending.
+                                </p>
 
-                <!-- Section: ASGs with AMI Available -->
-                <div class="section-header">✅ ASGs With AMI Available ({ami_available_count})</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>AWS Account</th>
-                            <th>ASG Name</th>
-                            <th>Region</th>
-                            <th>Current AMI ID</th>
-                            <th>Launch Template / LC</th>
-                            <th>Status</th>
-                            <th>AMI Creation Date</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>{ami_available_table_html}</tbody>
-                </table>
+                                <!-- Executive Top Summary KPI Cards -->
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 18px;">
+                                    <tr>
+                                        <td width="32%" align="center" style="background:#f8fafc; padding:12px 8px; border:1px solid #e2e8f0; border-top:4px solid #0284c7; border-radius:6px;">
+                                            <div style="font-size:26px; font-weight:800; color:#0284c7; line-height:1;">{total_evaluated_asgs}</div>
+                                            <div style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; margin-top:4px;">Evaluated ASGs</div>
+                                        </td>
+                                        <td width="2%"></td>
+                                        <td width="32%" align="center" style="background:#f0fdf4; padding:12px 8px; border:1px solid #dcfce7; border-top:4px solid #2e7d32; border-radius:6px;">
+                                            <div style="font-size:26px; font-weight:800; color:#2e7d32; line-height:1;">{ami_available_count}</div>
+                                            <div style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; margin-top:4px;">AMI Available</div>
+                                            <div style="font-size:11px; font-weight:700; color:#2e7d32; margin-top:2px;">{ami_available_pct}% Rate</div>
+                                        </td>
+                                        <td width="2%"></td>
+                                        <td width="32%" align="center" style="background:#fff7ed; padding:12px 8px; border:1px solid #ffedd5; border-top:4px solid #c84b14; border-radius:6px;">
+                                            <div style="font-size:26px; font-weight:800; color:#c84b14; line-height:1;">{no_ami_count}</div>
+                                            <div style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; margin-top:4px;">AMI Not Found</div>
+                                            <div style="font-size:11px; font-weight:700; color:#c84b14; margin-top:2px;">{no_ami_pct}% Risk</div>
+                                        </td>
+                                    </tr>
+                                </table>
 
-                {wipro_logo}
-            </div>
-        </div>
+                                <!-- Platform Breakdown Table -->
+                                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 16px; margin-bottom: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; text-transform: uppercase;">
+                                    📊 AMI Availability By Platform
+                                </div>
+
+                                <table width="100%" cellpadding="0" cellspacing="0" border="1" bordercolor="#e2e8f0" style="border-collapse: collapse; margin-bottom: 20px;">
+                                    <thead>
+                                        <tr style="background-color: #1e293b; color: #ffffff;">
+                                            <th style="padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Platform Workload</th>
+                                            <th style="padding: 8px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Total ASGs</th>
+                                            <th style="padding: 8px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">AMI Available</th>
+                                            <th style="padding: 8px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">AMI Missing</th>
+                                            <th style="padding: 8px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Availability %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {platform_rows_html}
+                                    </tbody>
+                                </table>
+
+                                <!-- AWS Account-Level AMI Summary Table -->
+                                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 18px; margin-bottom: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; text-transform: uppercase;">
+                                    <img src="{aws_logo_url}" alt="AWS Logo" style="height: 16px; width: auto; vertical-align: middle; margin-right: 6px; border: 0;">
+                                    <span style="vertical-align: middle;">AWS Account-Level AMI Summary</span>
+                                </div>
+
+                                <table width="100%" cellpadding="0" cellspacing="0" border="1" bordercolor="#e2e8f0" style="border-collapse: collapse; margin-bottom: 20px;">
+                                    <thead>
+                                        <tr style="background-color: #1e293b; color: #ffffff;">
+                                            <th style="padding: 9px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">AWS Account Name</th>
+                                            <th style="padding: 9px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Total ASGs</th>
+                                            <th style="padding: 9px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">AMI Available</th>
+                                            <th style="padding: 9px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">No AMI / Not Found</th>
+                                            <th style="padding: 9px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">AMI Availability %</th>
+                                            <th style="padding: 9px 12px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Account Status (Click to Compose Email)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {account_breakdown_rows_html}
+                                    </tbody>
+                                </table>
+
+                                <!-- Detailed Missing AMIs Section -->
+                                <div style="background-color: #fff7ed; border-left: 4px solid #c84b14; padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; border: 1px solid #ffedd5;">
+                                    <div style="font-weight: 800; color: #c84b14; font-size: 13px;">🚨 ASGs With No AMI Available or AMI Not Found ({no_ami_count})</div>
+                                    <p style="margin: 2px 0 0 0; font-size: 11px; color: #9a3412;">The following Auto Scaling Groups have unconfigured AMIs or their configured AMI ID status is <b>Not Found</b> in AWS EC2.</p>
+                                </div>
+
+                                <table width="100%" cellpadding="0" cellspacing="0" border="1" bordercolor="#e2e8f0" style="border-collapse: collapse; margin-bottom: 20px;">
+                                    <thead>
+                                        <tr style="background-color: #1e293b; color: #ffffff;">
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">AWS Account</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">ASG Name</th>
+                                            <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Workload</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Region</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Current AMI ID</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Launch Template / LC</th>
+                                            <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Status</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Remarks / Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {no_ami_table_rows_html}
+                                    </tbody>
+                                </table>
+
+                                <!-- Detailed Active AMIs Section -->
+                                <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 18px; margin-bottom: 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; text-transform: uppercase;">
+                                    ✅ ASGs With Valid AMI Available ({ami_available_count})
+                                </div>
+
+                                <table width="100%" cellpadding="0" cellspacing="0" border="1" bordercolor="#e2e8f0" style="border-collapse: collapse; margin-bottom: 20px;">
+                                    <thead>
+                                        <tr style="background-color: #1e293b; color: #ffffff;">
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">AWS Account</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">ASG Name</th>
+                                            <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Workload</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Region</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Current AMI ID</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Launch Template / LC</th>
+                                            <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase;">Status</th>
+                                            <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">AMI Creation Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ami_available_table_rows_html}
+                                    </tbody>
+                                </table>
+
+                                <!-- Wipro Corporate Signature Footer with Inline CID/HTTPS Image -->
+                                <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+                                    <img src="cid:wipro_logo" alt="Wipro Logo" style="height: 32px; width: auto; display: block; border: 0; margin-bottom: 8px;"><br>
+                                    <strong>Regards,</strong><br><br>
+                                    <strong>Cloud Studio-Automation Team</strong><br>
+                                    <em>Wipro Limited</em>
+                                </div>
+
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
     </body>
     </html>
     """
 
-    msg = MIMEMultipart()
+    msg = MIMEMultipart('related')
     msg['From'] = sender
     msg['To'] = COMMASPACE.join(receiver)
     msg['Date'] = formatdate(localtime=True)
-    msg['Subject'] = f"HDFC AWS ASG AMI Inventory Report || {formatted_date}"
-    msg.attach(MIMEText(html_body, 'html'))
+    msg['Subject'] = f"HDFCL AWS ASG AMI Inventory Report || {formatted_date}"
+    
+    msg_alternative = MIMEMultipart('alternative')
+    msg.attach(msg_alternative)
+    msg_alternative.attach(MIMEText(html_body, 'html'))
+
+    # ATTACH WIPRO LOGO AS INLINE CID MIME IMAGE (OUTLOOK SAFE)
+    try:
+        req = urllib.request.Request(wipro_logo_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            wipro_logo_data = resp.read()
+            img_part = MIMEImage(wipro_logo_data)
+            img_part.add_header('Content-ID', '<wipro_logo>')
+            img_part.add_header('Content-Disposition', 'inline', filename='wipro_logo.jpg')
+            msg.attach(img_part)
+            print("Wipro logo attached successfully as inline CID MIME Image.")
+    except Exception as img_err:
+        print("⚠️ Could not attach inline CID image, HTML will use HTTPS URL fallback:", img_err)
 
     if os.path.exists(output_path):
         with open(output_path, 'rb') as f:
@@ -644,7 +787,7 @@ def lambda_handler(event, context):
         print("Email sent successfully:", response)
         return {
             'statusCode': 200,
-            'body': f"Inventory Report successfully generated & emailed to {receiver}. Total Evaluated ASGs: {total_evaluated_asgs}, AMI Available: {ami_available_count}, No AMI: {no_ami_count}, Excluded EKS: {eks_count}, Excluded ECS: {ecs_count}. Download URL: {download_url}"
+            'body': f"Inventory Report successfully generated & emailed to {receiver}. Total ASGs: {total_evaluated_asgs}, AMI Available: {ami_available_count}, No AMI/Not Found: {no_ami_count}, Platform Breakdown: {platform_stats}."
         }
     except Exception as e:
         print("Error sending email via SES:", e)

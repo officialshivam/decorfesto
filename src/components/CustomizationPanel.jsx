@@ -291,33 +291,73 @@ function CustomizationPanel({
         </div>
       )}
 
-      {/* 5. SPECIAL INSTRUCTIONS / REMARKS FIELD */}
-      <div className="customization-section remarks-section">
-        <h3>Special Instructions / Remarks</h3>
-        <label className="search-field">
-          <span>Custom Requests & Notes (Optional)</span>
-          <textarea
-            value={remarks || ''}
-            onChange={(e) => onRemarksChange && onRemarksChange(e.target.value)}
-            placeholder="Any special request, color preference, name, message, or other instructions..."
-            rows={3}
-          />
-        </label>
-      </div>
-
       {/* PRICING BREAKDOWN CARD */}
-      <div className="pricing-card">
+      <div className="pricing-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div className="pricing-row">
           <span>Base price</span>
           <strong>₹{product.price.toLocaleString('en-IN')}</strong>
         </div>
+
+        {/* INDIVIDUAL SELECTED ADD-ONS BREAKDOWN */}
+        {(() => {
+          const list = [];
+          Object.values(selections || {}).forEach((val) => {
+            if (!val || typeof val !== 'string') return;
+            const strVal = val.trim();
+            if (strVal.toLowerCase() === 'no' || strVal.toLowerCase() === 'none') return;
+
+            const match = strVal.match(/^(.*?)\s*\+\s*₹\s*([\d,]+)$/);
+            if (match) {
+              const name = match[1].trim();
+              const amount = parseInt(match[2].replace(/,/g, ''), 10);
+              if (!isNaN(amount) && amount > 0) {
+                list.push({ name, priceText: `+₹${amount.toLocaleString('en-IN')}` });
+              }
+            } else {
+              list.push({ name: strVal, priceText: 'Included' });
+            }
+          });
+
+          if (list.length === 0) return null;
+
+          return (
+            <div
+              className="selected-customizations-breakdown"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                margin: '6px 0',
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderRadius: '10px',
+                borderLeft: '3px solid var(--accent, #e11d48)',
+              }}
+            >
+              <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Selected Customizations
+              </span>
+              {list.map((item, idx) => (
+                <div key={`${item.name}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#334155' }}>
+                  <span>{item.name}</span>
+                  {item.priceText === 'Included' ? (
+                    <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Included</span>
+                  ) : (
+                    <strong style={{ color: '#0284c7' }}>{item.priceText}</strong>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         <div className="pricing-row">
-          <span>Customization / add-ons</span>
+          <span>Customization / add-ons total</span>
           <strong>₹{priceBreakdown.addOns.toLocaleString('en-IN')}</strong>
         </div>
-        <div className="pricing-row pricing-row--total">
+        <div className="pricing-row pricing-row--total" style={{ borderTop: '2px solid #e2e8f0', paddingTop: '8px', marginTop: '4px' }}>
           <span>Total</span>
-          <strong>₹{priceBreakdown.total.toLocaleString('en-IN')}</strong>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--accent, #e11d48)' }}>₹{priceBreakdown.total.toLocaleString('en-IN')}</strong>
         </div>
       </div>
     </div>

@@ -1,5 +1,22 @@
 const STORAGE_KEY = 'decorfesto-users';
 const CURRENT_USER_KEY = 'decorfesto-current-user';
+const LAST_ORDER_KEY = 'decorfesto-last-order';
+
+export function getStoredLastOrder() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = window.localStorage.getItem(LAST_ORDER_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastOrder(order) {
+  if (typeof window !== 'undefined' && order) {
+    window.localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(order));
+  }
+}
 
 export const defaultUsers = [
   {
@@ -206,18 +223,29 @@ export function signupWithDetails(payload) {
   const normalizedMobile = normalizeMobile(payload.mobile);
 
   const existingUser = users.find((entry) => {
-    return normalizeIdentifier(entry.email) === normalizedEmail || normalizeMobile(entry.mobile) === normalizedMobile;
+    const matchesEmail = Boolean(normalizedEmail) && Boolean(entry.email) && normalizeIdentifier(entry.email) === normalizedEmail;
+    const matchesMobile = Boolean(normalizedMobile) && Boolean(entry.mobile) && normalizeMobile(entry.mobile) === normalizedMobile;
+    return matchesEmail || matchesMobile;
   });
 
   if (existingUser) {
-    return { ok: false, error: 'An account already exists with this email or mobile number.' };
+    const matchesMobile = Boolean(normalizedMobile) && normalizeMobile(existingUser.mobile) === normalizedMobile;
+    const matchesEmail = Boolean(normalizedEmail) && normalizeIdentifier(existingUser.email) === normalizedEmail;
+    if (matchesMobile) {
+      return { ok: false, error: 'An account already exists with this mobile number. Please Sign In instead.' };
+    }
+    if (matchesEmail) {
+      return { ok: false, error: 'An account already exists with this email address. Please Sign In instead.' };
+    }
+    return { ok: false, error: 'An account already exists with these details.' };
   }
 
+  const cleanMobile = normalizedMobile.length === 10 ? `+91${normalizedMobile}` : payload.mobile.trim();
   const user = sanitizeUser({
     id: `customer-${Date.now()}`,
     fullName: payload.fullName.trim(),
-    mobile: payload.mobile.trim(),
-    email: payload.email.trim().toLowerCase(),
+    mobile: cleanMobile,
+    email: payload.email ? payload.email.trim().toLowerCase() : '',
     password: payload.password,
     savedAddress: payload.savedAddress || '',
     orders: [],
@@ -246,13 +274,18 @@ export function addOrderToUser(user, order) {
   });
 
   const users = readUsers();
-  const nextUsers = users.map((entry) => (entry.id === safeUser.id ? safeUser : entry));
+  const exists = users.some((entry) => entry.id === safeUser.id);
+  const nextUsers = exists
+    ? users.map((entry) => (entry.id === safeUser.id ? safeUser : entry))
+    : [...users, safeUser];
+
   writeUsers(nextUsers);
   persistUser(safeUser);
   return safeUser;
 }
 
 export function addOrder(order, userFields = {}) {
+  saveLastOrder(order);
   const activeUser = getStoredUser();
 
   if (activeUser) {
@@ -284,4 +317,35 @@ export function addOrder(order, userFields = {}) {
 
 export function clearStoredSession() {
   clearUser();
+}
+
+export function findOrCreateCustomerByMobile({ fullName, mobile, email }) {
+  const users = readUsers();
+  const normalizedMobile = normalizeMobile(mobile);
+
+  // Check if a user with this mobile already exists
+  const existing = users.find((u) => normalizeMobile(u.mobile) === normalizedMobile);
+  if (existing) {
+    const safeUser = sanitizeUser(existing);
+    persistUser(safeUser);
+    return { ok: true, user: safeUser, isNew: false };
+  }
+
+  // Create a new user
+  const tempPassword = `df-${Date.now()}`;
+  const newUser = sanitizeUser({
+    id: `customer-${Date.now()}`,
+    fullName: String(fullName || '').trim() || 'Customer',
+    mobile: normalizedMobile.length === 10 ? `+91${normalizedMobile}` : mobile,
+    email: String(email || '').trim().toLowerCase(),
+    password: tempPassword,
+    savedAddress: '',
+    orders: [],
+    createdAt: new Date().toISOString(),
+  });
+
+  users.push(newUser);
+  writeUsers(users);
+  persistUser(newUser);
+  return { ok: true, user: newUser, isNew: true };
 }
