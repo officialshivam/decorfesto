@@ -28,10 +28,12 @@ const __dirname = path.dirname(__filename);
  * - Local backend/server.js -> ../dist
  * - Hostinger dist/backend/server.js -> ..
  */
-const distRoot =
-  path.basename(path.dirname(__dirname)) === 'dist'
-    ? path.resolve(__dirname, '..')
-    : path.resolve(__dirname, '..', 'dist');
+import syncFs from 'node:fs';
+
+const distCandidate = path.resolve(__dirname, '..', 'dist');
+const distRoot = syncFs.existsSync(path.join(distCandidate, 'index.html'))
+  ? distCandidate
+  : path.resolve(__dirname, '..');
 
 const apiPrefixes = [
   '/health',
@@ -42,13 +44,12 @@ const apiPrefixes = [
   '/orders',
   '/availability',
   '/auth',
+  '/charges',
+  '/payments',
+  '/admin',
 ];
 
 function isApiRequest(pathname) {
-  if (pathname === '/admin/dashboard') {
-    return true;
-  }
-
   return (
     pathname === '/health' ||
     apiPrefixes.some(
