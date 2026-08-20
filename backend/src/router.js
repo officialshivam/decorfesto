@@ -11,6 +11,7 @@ import { getCorsHeaders } from './config.js';
 import { listEnabledCharges, listAdminCharges, createAdminCharge, updateAdminCharge, deleteAdminCharge } from './handlers/charges.js';
 import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdminUserPassword } from './handlers/users.js';
 import { createRepository } from './dataAccess/repository.js';
+import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
 
 async function healthCheck() {
   const resourceNames = ['orders', 'customers', 'vendors', 'service-areas', 'service-area-vendors', 'decorations', 'availability-checks'];
@@ -96,7 +97,11 @@ function matchRoute(pathname, method, routes) {
 }
 
 export async function initializeBackend() {
-  await seedBackendData();
+  try {
+    await seedBackendData();
+  } catch (error) {
+    console.warn('Backend data seed warning (using fallback repository):', error.message);
+  }
 }
 
 async function parseRequestBody(req) {

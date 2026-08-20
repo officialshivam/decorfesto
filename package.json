@@ -3,9 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "backend/server.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build && cp -R backend dist/backend && mkdir -p dist/src/data && cp -R src/data/* dist/src/data/",
+    "start": "node backend/server.js",
     "lint": "oxlint",
     "preview": "vite preview",
     "backend": "node backend/server.js"
