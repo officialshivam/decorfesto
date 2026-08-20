@@ -213,17 +213,10 @@ async function main() {
   const rawPort = process.env.PORT || localPort;
   const port = isNaN(Number(rawPort)) ? rawPort : Number(rawPort);
 
-  if (typeof port === 'string') {
-    server.listen(port, () => {
-      console.log(`DecorFesto server listening on socket ${port}`);
-      console.log(`Serving React app from ${distRoot}`);
-    });
-  } else {
-    server.listen(port, '0.0.0.0', () => {
-      console.log(`DecorFesto server listening on port ${port}`);
-      console.log(`Serving React app from ${distRoot}`);
-    });
-  }
+  server.listen(port, () => {
+    console.log(`DecorFesto server listening on ${port}`);
+    console.log(`Serving React app from ${distRoot}`);
+  });
 }
 
 main().catch((error) => {
