@@ -65,6 +65,11 @@ export const adminPasswordHash =
   process.env.DECORFESTO_ADMIN_PASSWORD_HASH ||
   'fb5f7c4ab886e7abb83dc2acb2196814a18cc93abc3f58228478678c9fb6e9bffd28d20d0510169a540100bd26709fe462655c80f6ee35103fe64473743e1915';
 
+// --- Razorpay Test Mode Credentials --------------------------------------
+export const razorpayKeyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TS3odldZqJkQQa';
+export const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || 'decorfesto_test_secret_key';
+export const razorpayWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || 'decorfesto_webhook_secret';
+
 // --- CORS Security Configuration -----------------------------------------
 export const allowedOrigins = new Set([
   'https://decorfesto.com',

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
 import { getEnabledCharges, calculateTotalCharges, calculateItemSubtotal } from '../services/mockSettings';
+import { initiateRazorpayPayment } from '../services/paymentService';
 
 function Checkout() {
   const navigate = useNavigate();
@@ -115,8 +116,11 @@ function Checkout() {
       const chargesTotal = calculateTotalCharges();
       const finalTotal = calculatedSubtotal + chargesTotal;
 
+      const orderId = `DFC-${Date.now().toString().slice(-6)}`;
       const order = {
-        id: `DFC-${Date.now().toString().slice(-6)}`,
+        id: orderId,
+        orderId,
+        customerId: user?.id || `customer-${Date.now()}`,
         customerName: form.fullName.trim(),
         customerMobile: mobileVal.fullMobile,
         customerEmail: form.email.trim(),
@@ -127,7 +131,7 @@ function Checkout() {
         total: finalTotal,
         serviceCharges: chargesTotal,
         charges: [...activeChargesList],
-        paymentStatus: 'Paid via UPI / Mock',
+        paymentStatus: 'PAID (Razorpay Test Mode)',
         bookingStatus: 'Order Received',
         remarks: orderRemarks,
         reviewMessage: 'DecorFesto will review your booking shortly and confirm the next step with you.',
@@ -136,6 +140,7 @@ function Checkout() {
 
       console.log('BOOKING PAYLOAD', order);
 
+      // Save initial order
       saveLastOrder(order);
 
       if (typeof authAddOrder === 'function') {
@@ -154,17 +159,37 @@ function Checkout() {
         });
       }
 
-      isNavigatingRef.current = true;
-
-      // 1. Clear cart
-      clearCart();
-
-      // 2. Navigate immediately to confirmation page with order state
-      navigate('/confirmation', { state: { order }, replace: true });
+      initiateRazorpayPayment({
+        order,
+        customer: {
+          fullName: form.fullName.trim(),
+          email: form.email.trim(),
+          mobile: mobileVal.fullMobile,
+        },
+        onSuccess: (verifyRes) => {
+          const paidOrder = {
+            ...order,
+            paymentStatus: 'PAID',
+            razorpayPaymentId: verifyRes.razorpayPaymentId || `pay_test_${Date.now()}`,
+            razorpayOrderId: verifyRes.razorpayOrderId,
+          };
+          saveLastOrder(paidOrder);
+          isNavigatingRef.current = true;
+          clearCart();
+          navigate('/confirmation', { state: { order: paidOrder }, replace: true });
+        },
+        onError: (errMessage) => {
+          setIsSubmitting(false);
+          setSubmitError(errMessage || 'Razorpay payment was not completed. You can click Place Booking Request to try again.');
+        },
+        onDismiss: () => {
+          setIsSubmitting(false);
+          setSubmitError('Payment modal was closed before completion. Click Place Booking Request to retry.');
+        },
+      });
     } catch (error) {
       console.error('Error placing booking:', error);
       setSubmitError(error?.message || 'Failed to place booking. Please try again.');
-    } finally {
       setIsSubmitting(false);
     }
   };

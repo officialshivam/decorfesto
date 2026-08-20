@@ -1,4 +1,3 @@
-import { createRepository } from './dataAccess/repository.js';
 import { listDecorations, getDecoration } from './handlers/decorations.js';
 import { createCustomer, getCustomer } from './handlers/customers.js';
 import { listVendors, getVendor, createVendor } from './handlers/vendors.js';
@@ -9,6 +8,9 @@ import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
 import { adminLogin } from './auth.js';
 import { getCorsHeaders } from './config.js';
+import { listEnabledCharges, listAdminCharges, createAdminCharge, updateAdminCharge, deleteAdminCharge } from './handlers/charges.js';
+import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdminUserPassword } from './handlers/users.js';
+import { createRepository } from './dataAccess/repository.js';
 
 async function healthCheck() {
   const resourceNames = ['orders', 'customers', 'vendors', 'service-areas', 'service-area-vendors', 'decorations', 'availability-checks'];
@@ -43,6 +45,9 @@ const routeHandlers = {
   GET: {
     '/health': healthCheck,
     '/admin/dashboard': getDashboard,
+    '/admin/charges': listAdminCharges,
+    '/admin/users': listAdminUsers,
+    '/charges/enabled': listEnabledCharges,
     '/decorations': listDecorations,
     '/decorations/:id': getDecoration,
     '/customers/:id': getCustomer,
@@ -55,14 +60,25 @@ const routeHandlers = {
   },
   POST: {
     '/auth/admin-login': adminLogin,
+    '/admin/charges': createAdminCharge,
+    '/admin/users': createAdminUserRecord,
     '/customers': createCustomer,
     '/vendors': createVendor,
     '/service-areas': createServiceArea,
     '/availability/check': checkAvailability,
     '/orders': createOrder,
+    '/payments/create-razorpay-order': createRazorpayOrder,
+    '/payments/verify-razorpay-payment': verifyRazorpayPayment,
+    '/payments/razorpay-webhook': razorpayWebhook,
   },
   PATCH: {
+    '/admin/charges/:id': updateAdminCharge,
+    '/admin/users/:id/status': toggleAdminUserStatus,
+    '/admin/users/:id/password': resetAdminUserPassword,
     '/orders/:id/status': updateOrderStatus,
+  },
+  DELETE: {
+    '/admin/charges/:id': deleteAdminCharge,
   },
 };
 

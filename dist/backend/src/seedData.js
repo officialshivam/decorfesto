@@ -137,5 +137,18 @@ export async function seedBackendData() {
     await serviceAreaVendorRepo.create(mapping);
   }
 
-
+  const chargeRepo = createRepository('charges');
+  const existingCharges = await chargeRepo.list();
+  if (existingCharges.length === 0) {
+    await chargeRepo.create({
+      id: 'booking_service_fee',
+      name: 'Booking Service Fee',
+      amount: 1,
+      enabled: true,
+      description: 'Booking/service charge applied to customer checkouts.',
+      type: 'FIXED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
 }

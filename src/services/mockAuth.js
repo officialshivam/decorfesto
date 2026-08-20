@@ -1,81 +1,59 @@
-const STORAGE_KEY = 'decorfesto-users';
-const CURRENT_USER_KEY = 'decorfesto-current-user';
-const LAST_ORDER_KEY = 'decorfesto-last-order';
-const ALL_ORDERS_KEY = 'decorfesto-all-orders';
+import {
+  assignOrderVendor,
+  createOrder,
+  createOrderApi,
+  getLastOrder,
+  getOrderByIdApi,
+  getOrders,
+  getOrdersApi,
+  readAllOrders,
+  saveLastOrder as saveLastOrderService,
+  updateOrderStatus,
+  writeAllOrders,
+} from './orderService';
+import {
+  createAdminUser as createAdminUserService,
+  getAllUsersForAdmin as getAllUsersForAdminService,
+  getAllUsersForAdminApi,
+  getCurrentUser,
+  getUsers,
+  persistCurrentUser,
+  readUsers,
+  resetUserPassword as resetUserPasswordService,
+  toggleUserStatus as toggleUserStatusService,
+  verifyAdminReauthPassword as verifyAdminReauthPasswordService,
+  verifyAdminReauthPasswordApi,
+  writeUsers,
+} from './userService';
 
-export function readAllOrders() {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = window.localStorage.getItem(ALL_ORDERS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function writeAllOrders(orders) {
-  if (typeof window !== 'undefined' && Array.isArray(orders)) {
-    window.localStorage.setItem(ALL_ORDERS_KEY, JSON.stringify(orders));
-  }
-}
-
-export function getStoredLastOrder() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const stored = window.localStorage.getItem(LAST_ORDER_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveLastOrder(order) {
-  if (typeof window !== 'undefined' && order) {
-    window.localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(order));
-  }
-}
-
-export const defaultUsers = [
-  {
-    id: 'customer-1',
-    fullName: 'Shivam Gupta',
-    mobile: '+919876543210',
-    email: 'shivam@decorfesto.com',
-    password: 'password123',
-    savedAddress: 'B-402, Green Park Apartments, Hauz Khas, New Delhi',
-    orders: [
-      {
-        id: 'DFC-104921',
-        customerName: 'Shivam Gupta',
-        decorationId: '1',
-        decorationName: 'Romantic Birthday Balloon Decoration',
-        customization: {
-          balloonTheme: 'Metallic +₹400',
-          balloonColors: 'Red & Gold +₹350',
-          nameCustomization: 'Custom Name Neon Sign +₹500',
-          ledLights: 'Add LED Lights +₹299',
-          cakeTable: 'Premium Table +₹399',
-        },
-        remarks: 'Please use pastel pink flowers and write Happy Birthday Shivam on the backdrop.',
-        pincode: '110016',
-        scheduledDate: '2026-03-20',
-        scheduledTime: '18:00 - 20:00',
-        date: '2026-03-20',
-        time: '18:00 - 20:00',
-        address: 'B-402, Green Park Apartments, Hauz Khas, New Delhi',
-        subtotal: 14947,
-        serviceCharge: 299,
-        totalAmount: 15246,
-        total: 15246,
-        paymentStatus: 'Paid via UPI',
-        bookingStatus: 'Order Received',
-        adminReviewStatus: 'Pending Review',
-        createdAt: '2026-03-01T10:00:00.000Z',
-      },
-    ],
-    createdAt: '2026-01-15T00:00:00.000Z',
-  },
-];
+export { defaultUsers } from './userService';
+export {
+  readAllOrders,
+  writeAllOrders,
+  getLastOrder as getStoredLastOrder,
+  saveLastOrderService as saveLastOrder,
+  getOrders as getStoredOrders,
+  createOrder as addOrder,
+  updateOrderStatus as updateStoredOrderStatus,
+  assignOrderVendor as assignStoredOrderVendor,
+  createOrderApi,
+  getOrdersApi,
+  getOrderByIdApi,
+};
+export {
+  readUsers,
+  writeUsers,
+  getCurrentUser as getStoredUser,
+  persistCurrentUser as persistUser,
+  getUsers,
+  getAllUsersForAdminService as getAllUsersForAdmin,
+  verifyAdminReauthPasswordService as verifyAdminReauthPassword,
+  createAdminUserService as createAdminUser,
+  toggleUserStatusService as toggleUserStatus,
+  resetUserPasswordService as resetUserPassword,
+  getAllUsersForAdminApi,
+  verifyAdminReauthPasswordApi,
+};
 
 function normalizeIdentifier(value) {
   return String(value || '').trim().toLowerCase();
@@ -86,208 +64,79 @@ function normalizeMobile(value) {
 }
 
 function sanitizeUser(user) {
+  if (!user) return null;
   return {
     id: user.id,
     fullName: user.fullName || user.name || 'Customer',
     name: user.fullName || user.name || 'Customer',
-    mobile: user.mobile || '',
+    mobile: user.mobile || user.phone || '',
+    phone: user.mobile || user.phone || '',
     email: user.email || '',
     savedAddress: user.savedAddress || user.address || '',
     address: user.savedAddress || user.address || '',
     password: user.password || '',
+    role: user.role || 'CUSTOMER',
     orders: Array.isArray(user.orders) ? user.orders : [],
     createdAt: user.createdAt || new Date().toISOString(),
   };
 }
 
-function readUsers() {
-  if (typeof window === 'undefined') return defaultUsers.map(sanitizeUser);
-
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultUsers));
-      return defaultUsers.map(sanitizeUser);
-    }
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed.map(sanitizeUser) : defaultUsers.map(sanitizeUser);
-  } catch (error) {
-    console.warn('Unable to read saved users, falling back to default.', error);
-    return defaultUsers.map(sanitizeUser);
-  }
-}
-
-function writeUsers(users) {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(users.map(sanitizeUser)));
-  }
-}
-
-function persistUser(user) {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(sanitizeUser(user)));
-  }
-}
-
-function clearUser() {
-  if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(CURRENT_USER_KEY);
-  }
-}
-
-export function getStoredUser() {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const stored = window.localStorage.getItem(CURRENT_USER_KEY);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored);
-    const users = readUsers();
-    const freshUser = users.find((entry) => entry.id === parsed.id);
-    return freshUser ? sanitizeUser(freshUser) : sanitizeUser(parsed);
-  } catch (error) {
-    console.warn('Unable to read active user from storage.', error);
-    return null;
-  }
-}
-
-export function getStoredOrders() {
-  const standaloneOrders = readAllOrders();
-  const userOrders = readUsers().flatMap((user) =>
-    sanitizeUser(user).orders.map((order) => ({
-      ...order,
-      customerName: order.customerName || user.fullName || 'Customer',
-      customerEmail: order.customerEmail || order.email || user.email || '',
-      customerMobile: order.customerMobile || order.mobile || user.mobile || '',
-    })),
-  );
-
-  const map = new Map();
-  for (const order of [...standaloneOrders, ...userOrders]) {
-    if (order && order.id) {
-      map.set(order.id, {
-        ...order,
-        customerName: order.customerName || 'Customer',
-        customerEmail: order.customerEmail || order.email || '',
-        customerMobile: order.customerMobile || order.mobile || '',
-        createdAt: order.createdAt || new Date().toISOString(),
-      });
-    }
-  }
-
-  return Array.from(map.values()).sort(
-    (first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0),
-  );
-}
-
-function updateStoredOrder(orderId, updates) {
-  const users = readUsers();
-  let updatedOrder = null;
-  const nextUsers = users.map((user) => {
-    const safeUser = sanitizeUser(user);
-    const orders = safeUser.orders.map((order) => {
-      if (order.id !== orderId) {
-        return order;
-      }
-
-      updatedOrder = { ...order, ...updates };
-      return updatedOrder;
-    });
-
-    return { ...safeUser, orders };
-  });
-
-  if (!updatedOrder) {
-    return null;
-  }
-
-  writeUsers(nextUsers);
-
-  const activeUser = getStoredUser();
-  if (activeUser?.orders.some((order) => order.id === orderId)) {
-    persistUser({
-      ...activeUser,
-      orders: activeUser.orders.map((order) => (order.id === orderId ? { ...order, ...updates } : order)),
-    });
-  }
-
-  return getStoredOrders().find((order) => order.id === orderId) || null;
-}
-
-export function updateStoredOrderStatus(orderId, bookingStatus) {
-  return updateStoredOrder(orderId, { bookingStatus });
-}
-
-export function assignStoredOrderVendor(orderId, vendor) {
-  return updateStoredOrder(orderId, {
-    vendorId: vendor.id,
-    vendorName: vendor.name,
-    vendorAssignedAt: new Date().toISOString(),
-    bookingStatus: 'ASSIGNED_TO_VENDOR',
-  });
+export function clearUser() {
+  persistCurrentUser(null);
 }
 
 export function loginWithCredentials({ identifier, password }) {
   const users = readUsers();
-  const normalizedIdentifier = normalizeIdentifier(identifier);
+  const cleanId = normalizeIdentifier(identifier);
+  const cleanMobile = normalizeMobile(identifier);
 
-  const user = users.find((entry) => {
-    const matchesEmail = normalizeIdentifier(entry.email) === normalizedIdentifier;
-    const matchesMobile = normalizeMobile(entry.mobile) === normalizeMobile(identifier);
-    return matchesEmail || matchesMobile;
+  const matched = users.find((user) => {
+    const userEmail = normalizeIdentifier(user.email);
+    const userMobile = normalizeMobile(user.mobile);
+    return (userEmail && userEmail === cleanId) || (userMobile && userMobile === cleanMobile);
   });
 
-  if (!user) {
-    return { ok: false, error: 'We could not find an account with that email or mobile number.' };
+  if (!matched) {
+    return { ok: false, error: 'User account not found. Please check your credentials or sign up.' };
   }
 
-  if (user.password !== String(password)) {
-    return { ok: false, error: 'The password you entered is incorrect.' };
+  if (matched.disabled) {
+    return { ok: false, error: 'This account has been disabled. Please contact DecorFesto support.' };
   }
 
-  const safeUser = sanitizeUser(user);
-  persistUser(safeUser);
+  if (matched.password && matched.password !== password) {
+    return { ok: false, error: 'Incorrect password. Please try again.' };
+  }
+
+  const safeUser = sanitizeUser(matched);
+  persistCurrentUser(safeUser);
   return { ok: true, user: safeUser };
 }
 
 export function signupWithDetails(payload) {
   const users = readUsers();
-  const normalizedEmail = normalizeIdentifier(payload.email);
-  const normalizedMobile = normalizeMobile(payload.mobile);
+  const cleanEmail = normalizeIdentifier(payload.email);
+  const cleanMobile = normalizeMobile(payload.mobile);
 
-  const existingUser = users.find((entry) => {
-    const matchesEmail = Boolean(normalizedEmail) && Boolean(entry.email) && normalizeIdentifier(entry.email) === normalizedEmail;
-    const matchesMobile = Boolean(normalizedMobile) && Boolean(entry.mobile) && normalizeMobile(entry.mobile) === normalizedMobile;
-    return matchesEmail || matchesMobile;
-  });
-
-  if (existingUser) {
-    const matchesMobile = Boolean(normalizedMobile) && normalizeMobile(existingUser.mobile) === normalizedMobile;
-    const matchesEmail = Boolean(normalizedEmail) && normalizeIdentifier(existingUser.email) === normalizedEmail;
-    if (matchesMobile) {
-      return { ok: false, error: 'An account already exists with this mobile number. Please Sign In instead.' };
-    }
-    if (matchesEmail) {
-      return { ok: false, error: 'An account already exists with this email address. Please Sign In instead.' };
-    }
-    return { ok: false, error: 'An account already exists with these details.' };
+  if (cleanEmail && users.some((user) => normalizeIdentifier(user.email) === cleanEmail)) {
+    return { ok: false, error: 'An account with this email address already exists.' };
   }
 
-  const cleanMobile = normalizedMobile.length === 10 ? `+91${normalizedMobile}` : payload.mobile.trim();
   const user = sanitizeUser({
     id: `customer-${Date.now()}`,
-    fullName: payload.fullName.trim(),
-    mobile: cleanMobile,
-    email: payload.email ? payload.email.trim().toLowerCase() : '',
+    fullName: String(payload.fullName || payload.name || '').trim(),
+    mobile: cleanMobile.length === 10 ? `+91${cleanMobile}` : payload.mobile,
+    email: cleanEmail,
     password: payload.password,
     savedAddress: payload.savedAddress || '',
+    role: 'CUSTOMER',
     orders: [],
     createdAt: new Date().toISOString(),
   });
 
   users.push(user);
   writeUsers(users);
-  persistUser(user);
+  persistCurrentUser(user);
   return { ok: true, user };
 }
 
@@ -296,7 +145,7 @@ export function updateStoredUser(user) {
   const users = readUsers();
   const nextUsers = users.map((entry) => (entry.id === safeUser.id ? safeUser : entry));
   writeUsers(nextUsers);
-  persistUser(safeUser);
+  persistCurrentUser(safeUser);
   return safeUser;
 }
 
@@ -313,44 +162,8 @@ export function addOrderToUser(user, order) {
     : [...users, safeUser];
 
   writeUsers(nextUsers);
-  persistUser(safeUser);
+  persistCurrentUser(safeUser);
   return safeUser;
-}
-
-export function addOrder(order, userFields = {}) {
-  saveLastOrder(order);
-
-  const existingAll = readAllOrders();
-  const nextAll = [order, ...existingAll.filter((o) => o.id !== order.id)];
-  writeAllOrders(nextAll);
-
-  const activeUser = getStoredUser();
-
-  if (activeUser) {
-    addOrderToUser(activeUser, order);
-    return order;
-  }
-
-  const users = readUsers();
-  let guestUser = users.find((u) => u.id === 'guest-user');
-
-  if (!guestUser) {
-    guestUser = sanitizeUser({
-      id: 'guest-user',
-      fullName: userFields.fullName || order.customerName || 'Guest Customer',
-      mobile: userFields.mobile || order.customerMobile || '',
-      email: userFields.email || order.customerEmail || '',
-      password: '',
-      savedAddress: userFields.savedAddress || order.address || '',
-      orders: [],
-      createdAt: new Date().toISOString(),
-    });
-    users.push(guestUser);
-  }
-
-  guestUser.orders.unshift(order);
-  writeUsers(users);
-  return order;
 }
 
 export function clearStoredSession() {
@@ -361,15 +174,13 @@ export function findOrCreateCustomerByMobile({ fullName, mobile, email }) {
   const users = readUsers();
   const normalizedMobile = normalizeMobile(mobile);
 
-  // Check if a user with this mobile already exists
   const existing = users.find((u) => normalizeMobile(u.mobile) === normalizedMobile);
   if (existing) {
     const safeUser = sanitizeUser(existing);
-    persistUser(safeUser);
+    persistCurrentUser(safeUser);
     return { ok: true, user: safeUser, isNew: false };
   }
 
-  // Create a new user
   const tempPassword = `df-${Date.now()}`;
   const newUser = sanitizeUser({
     id: `customer-${Date.now()}`,
@@ -378,84 +189,13 @@ export function findOrCreateCustomerByMobile({ fullName, mobile, email }) {
     email: String(email || '').trim().toLowerCase(),
     password: tempPassword,
     savedAddress: '',
+    role: 'CUSTOMER',
     orders: [],
     createdAt: new Date().toISOString(),
   });
 
   users.push(newUser);
   writeUsers(users);
-  persistUser(newUser);
+  persistCurrentUser(newUser);
   return { ok: true, user: newUser, isNew: true };
-}
-
-export function getAllUsersForAdmin() {
-  const users = readUsers();
-  return users.map((u) => ({
-    id: u.id,
-    fullName: u.fullName || u.name || 'User',
-    email: u.email || '',
-    mobile: u.mobile || '',
-    role: u.id.includes('admin') || u.email?.includes('admin') ? 'Admin' : 'Customer',
-    status: u.disabled ? 'Disabled' : 'Active',
-    createdAt: u.createdAt || new Date().toISOString(),
-    lastLogin: u.lastLogin || u.createdAt || new Date().toISOString(),
-  }));
-}
-
-export function verifyAdminReauthPassword(inputPassword) {
-  const cleanPass = String(inputPassword || '').trim();
-  if (!cleanPass) return false;
-
-  const demoPasses = ['password123', 'admin123', 'admin', '123456'];
-  if (demoPasses.includes(cleanPass)) {
-    return true;
-  }
-
-  const activeUser = getStoredUser();
-  if (activeUser && activeUser.password && activeUser.password === cleanPass) {
-    return true;
-  }
-
-  return false;
-}
-
-export function createAdminUser({ fullName, mobile, email, password, role = 'Admin' }) {
-  const users = readUsers();
-  const cleanEmail = String(email || '').trim().toLowerCase();
-  if (users.some((u) => u.email?.toLowerCase() === cleanEmail)) {
-    return { ok: false, error: 'A user with this email already exists.' };
-  }
-
-  const newId = `${role.toLowerCase()}-${Date.now().toString().slice(-6)}`;
-  const newUser = {
-    id: newId,
-    fullName: String(fullName || '').trim(),
-    name: String(fullName || '').trim(),
-    mobile: String(mobile || '').trim(),
-    email: cleanEmail,
-    password: String(password || '').trim(),
-    role,
-    disabled: false,
-    orders: [],
-    createdAt: new Date().toISOString(),
-    lastLogin: new Date().toISOString(),
-  };
-
-  users.push(newUser);
-  writeUsers(users);
-  return { ok: true, user: newUser };
-}
-
-export function toggleUserStatus(userId) {
-  const users = readUsers();
-  const nextUsers = users.map((u) => (u.id === userId ? { ...u, disabled: !u.disabled } : u));
-  writeUsers(nextUsers);
-  return { ok: true };
-}
-
-export function resetUserPassword(userId, newPassword) {
-  const users = readUsers();
-  const nextUsers = users.map((u) => (u.id === userId ? { ...u, password: String(newPassword).trim() } : u));
-  writeUsers(nextUsers);
-  return { ok: true };
 }
