@@ -28,10 +28,12 @@ const __dirname = path.dirname(__filename);
  * - Local backend/server.js -> ../dist
  * - Hostinger dist/backend/server.js -> ..
  */
-const distRoot =
-  path.basename(path.dirname(__dirname)) === 'dist'
-    ? path.resolve(__dirname, '..')
-    : path.resolve(__dirname, '..', 'dist');
+import syncFs from 'node:fs';
+
+const distCandidate = path.resolve(__dirname, '..', 'dist');
+const distRoot = syncFs.existsSync(path.join(distCandidate, 'index.html'))
+  ? distCandidate
+  : path.resolve(__dirname, '..');
 
 const apiPrefixes = [
   '/health',
@@ -42,13 +44,12 @@ const apiPrefixes = [
   '/orders',
   '/availability',
   '/auth',
+  '/charges',
+  '/payments',
+  '/admin',
 ];
 
 function isApiRequest(pathname) {
-  if (pathname === '/admin/dashboard') {
-    return true;
-  }
-
   return (
     pathname === '/health' ||
     apiPrefixes.some(
@@ -209,18 +210,20 @@ async function main() {
     }
   });
 
-  const port = Number(
-    process.env.PORT || localPort
-  );
+  const rawPort = process.env.PORT || localPort;
+  const port = isNaN(Number(rawPort)) ? rawPort : Number(rawPort);
 
-  server.listen(port, '0.0.0.0', () => {
-    console.log(
-      `DecorFesto server listening on port ${port}`
-    );
-    console.log(
-      `Serving React app from ${distRoot}`
-    );
-  });
+  if (typeof port === 'string') {
+    server.listen(port, () => {
+      console.log(`DecorFesto server listening on socket ${port}`);
+      console.log(`Serving React app from ${distRoot}`);
+    });
+  } else {
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`DecorFesto server listening on port ${port}`);
+      console.log(`Serving React app from ${distRoot}`);
+    });
+  }
 }
 
 main().catch((error) => {
