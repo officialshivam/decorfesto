@@ -29,9 +29,9 @@ async function healthCheck() {
   }
 
   return {
-    statusCode: degraded ? 503 : 200,
+    statusCode: 200,
     body: {
-      status: degraded ? 'degraded' : 'ok',
+      status: 'ok',
       api: 'healthy',
       backend: degraded ? 'degraded' : 'healthy',
       repositories: resourceStatuses,
