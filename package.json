@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp -R backend dist/backend && mkdir -p dist/src/data && cp -R src/data/* dist/src/data/",
+    "build": "vite build && cp -R backend dist/backend && mkdir -p dist/src/data && cp -R src/data/* dist/src/data/ && cp dist/index.html index.html",
     "lint": "oxlint",
     "preview": "vite preview",
     "backend": "node backend/server.js"
