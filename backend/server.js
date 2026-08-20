@@ -209,18 +209,20 @@ async function main() {
     }
   });
 
-  const port = Number(
-    process.env.PORT || localPort
-  );
+  const rawPort = process.env.PORT || localPort;
+  const port = isNaN(Number(rawPort)) ? rawPort : Number(rawPort);
 
-  server.listen(port, '0.0.0.0', () => {
-    console.log(
-      `DecorFesto server listening on port ${port}`
-    );
-    console.log(
-      `Serving React app from ${distRoot}`
-    );
-  });
+  if (typeof port === 'string') {
+    server.listen(port, () => {
+      console.log(`DecorFesto server listening on socket ${port}`);
+      console.log(`Serving React app from ${distRoot}`);
+    });
+  } else {
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`DecorFesto server listening on port ${port}`);
+      console.log(`Serving React app from ${distRoot}`);
+    });
+  }
 }
 
 main().catch((error) => {
