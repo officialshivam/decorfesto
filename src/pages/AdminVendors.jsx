@@ -7,6 +7,7 @@ const emptyVendor = {
   contactName: '',
   phone: '',
   email: '',
+  passwordHash: '',
   servicePincodes: '',
   specialties: '',
   status: 'active',
@@ -15,6 +16,7 @@ const emptyVendor = {
 function toFormVendor(vendor) {
   return {
     ...vendor,
+    passwordHash: vendor.passwordHash || vendor.password || '',
     servicePincodes: (vendor.servicePincodes || []).join(', '),
     specialties: (vendor.specialties || []).join(', '),
   };
@@ -48,35 +50,36 @@ function AdminVendors() {
       <section className="container section section--tight">
         <div className="section__heading section__heading--left">
           <span className="eyebrow">Admin</span>
-          <h1>Vendors</h1>
-          <p>Manage local mock vendor details and availability.</p>
+          <h1>Vendor Partner Directory & Portal Accounts</h1>
+          <p>Manage vendor partner details, service areas, and portal login credentials.</p>
         </div>
 
         <div className="admin-orders__toolbar">
-          <button type="button" className="button button--small" onClick={() => setForm(emptyVendor)}>Add Vendor</button>
+          <button type="button" className="button button--small" onClick={() => setForm(emptyVendor)}>Add New Vendor Partner</button>
         </div>
 
         {form ? (
           <div className="card-panel admin-vendors__form">
             <div className="card-panel__header">
-              <h2>{form.id ? 'Edit Vendor' : 'Add Vendor'}</h2>
+              <h2>{form.id ? `Edit Vendor: ${form.name}` : 'Add New Vendor Partner'}</h2>
             </div>
             <form className="auth-form" onSubmit={handleSubmit}>
-              <label className="search-field"><span>Vendor name</span><input name="name" value={form.name} onChange={handleChange} required /></label>
+              <label className="search-field"><span>Vendor / Studio name *</span><input name="name" value={form.name} onChange={handleChange} required /></label>
               <label className="search-field"><span>Contact person</span><input name="contactName" value={form.contactName} onChange={handleChange} /></label>
               <label className="search-field"><span>Phone</span><input name="phone" value={form.phone} onChange={handleChange} /></label>
-              <label className="search-field"><span>Email</span><input name="email" type="email" value={form.email} onChange={handleChange} /></label>
-              <label className="search-field"><span>Service pincodes</span><input name="servicePincodes" value={form.servicePincodes} onChange={handleChange} placeholder="110001, 400001" /></label>
-              <label className="search-field"><span>Speciality</span><input name="specialties" value={form.specialties} onChange={handleChange} placeholder="Balloon, Floral" /></label>
+              <label className="search-field"><span>Email (Portal Login ID)</span><input name="email" type="email" value={form.email} onChange={handleChange} required /></label>
+              <label className="search-field"><span>Portal Password</span><input name="passwordHash" type="password" value={form.passwordHash} onChange={handleChange} placeholder="Default: VendorPassword123!" /></label>
+              <label className="search-field"><span>Service pincodes</span><input name="servicePincodes" value={form.servicePincodes} onChange={handleChange} placeholder="110001, 110032, 400001" /></label>
+              <label className="search-field"><span>Speciality</span><input name="specialties" value={form.specialties} onChange={handleChange} placeholder="Balloon, Floral, Birthday" /></label>
               <label className="search-field">
-                <span>Status</span>
+                <span>Account Status</span>
                 <select name="status" value={form.status} onChange={handleChange}>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="active">Active (Login Allowed)</option>
+                  <option value="disabled">Disabled (Login Blocked)</option>
                 </select>
               </label>
               <div className="confirmation-actions">
-                <button type="submit" className="button">Save Vendor</button>
+                <button type="submit" className="button">Save Vendor Partner</button>
                 <button type="button" className="button button--ghost" onClick={() => setForm(null)}>Cancel</button>
               </div>
             </form>
@@ -90,7 +93,7 @@ function AdminVendors() {
                 <th>Vendor name</th>
                 <th>Contact person</th>
                 <th>Phone</th>
-                <th>Email</th>
+                <th>Portal Email</th>
                 <th>Service pincodes</th>
                 <th>Speciality</th>
                 <th>Status</th>
@@ -106,8 +109,12 @@ function AdminVendors() {
                   <td>{vendor.email || '—'}</td>
                   <td>{vendor.servicePincodes?.join(', ') || '—'}</td>
                   <td>{vendor.specialties?.join(', ') || '—'}</td>
-                  <td><span className="status-pill">{vendor.status === 'inactive' ? 'Inactive' : 'Active'}</span></td>
-                  <td><button type="button" className="button button--small button--ghost" onClick={() => setForm(toFormVendor(vendor))}>Edit</button></td>
+                  <td>
+                    <span className="status-pill" style={{ background: vendor.status === 'disabled' || vendor.status === 'inactive' ? '#fee2e2' : '#dcfce7', color: vendor.status === 'disabled' || vendor.status === 'inactive' ? '#b91c1c' : '#15803d' }}>
+                      {vendor.status === 'disabled' || vendor.status === 'inactive' ? 'Disabled' : 'Active'}
+                    </span>
+                  </td>
+                  <td><button type="button" className="button button--small button--ghost" onClick={() => setForm(toFormVendor(vendor))}>Edit & Security</button></td>
                 </tr>
               ))}
             </tbody>

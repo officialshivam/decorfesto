@@ -1,103 +1,108 @@
-import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { getOrderById } from '../services/orderService';
-import { assignStoredOrderVendor, updateStoredOrderStatus } from '../services/mockAuth';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { getStoredCharges } from '../services/mockCharges';
+import { assignOrderVendor, getOrderById, updateOrderStatus } from '../services/orderService';
 import { getStoredVendors } from '../services/mockVendors';
 
 function AdminOrderDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(() => getOrderById(id));
-  const activeVendors = useMemo(() => getStoredVendors().filter((vendor) => vendor.status === 'active'), []);
-  const [vendorId, setVendorId] = useState(() => order?.vendorId || '');
-
-  const updateStatus = (bookingStatus) => {
-    const updatedOrder = updateStoredOrderStatus(id, bookingStatus);
-    if (updatedOrder) {
-      setOrder(updatedOrder);
-    }
-  };
-
-  const handleReject = () => {
-    if (window.confirm('Reject this order? This status will be saved locally.')) {
-      updateStatus('REJECTED');
-    }
-  };
-
-  const selectedVendor = activeVendors.find((vendor) => vendor.id === vendorId);
-
-  const handleVendorAssignment = () => {
-    if (!selectedVendor) {
-      return;
-    }
-
-    const updatedOrder = assignStoredOrderVendor(id, selectedVendor);
-    if (updatedOrder) {
-      setOrder(updatedOrder);
-    }
-  };
+  const vendors = getStoredVendors();
+  const activeVendors = vendors.filter((v) => v.status === 'active' && v.accountStatus !== 'disabled');
+  const [vendorId, setVendorId] = useState(order?.vendorId || '');
 
   if (!order) {
     return (
       <main className="page">
-        <section className="container section section--tight">
-          <div className="card-panel empty-state">
-            <h1>Order not found</h1>
-            <Link to="/admin/orders" className="button">Back to orders</Link>
-          </div>
+        <section className="container section">
+          <h1>Order not found</h1>
+          <p>The requested order could not be located.</p>
+          <Link to="/admin/orders" className="button button--small">Back to orders</Link>
         </section>
       </main>
     );
   }
 
-  const primaryItem = order.items?.[0] || {};
-  const decoration = order.decorationName || primaryItem.productName || 'DecorFesto package';
-  const remarks = order.remarks || primaryItem.remarks || primaryItem.customization?.remarks;
-  const activeCharges = Array.isArray(order.charges) ? order.charges.filter((c) => c.enabled !== false) : [];
+  const activeCharges = getStoredCharges().filter((c) => c.enabled);
+  const selectedVendor = activeVendors.find((v) => v.id === vendorId);
+  const customization = order.customization || {};
+  const remarks = order.remarks || customization.remarks || '';
+
+  const updateStatus = (bookingStatus, adminReviewStatus = 'REVIEWED') => {
+    const now = new Date().toISOString();
+    const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+
+    const updated = updateOrderStatus(order.id, {
+      bookingStatus,
+      adminReviewStatus,
+      updatedAt: now,
+      statusHistory: [
+        ...history,
+        {
+          status: bookingStatus,
+          updatedByRole: 'ADMIN',
+          updatedByName: 'DecorFesto Admin',
+          timestamp: now,
+        },
+      ],
+    });
+
+    setOrder(updated);
+  };
+
+  const handleVendorAssignment = () => {
+    if (!selectedVendor) return;
+    const now = new Date().toISOString();
+    const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+
+    const updated = assignOrderVendor(order.id, selectedVendor.id, selectedVendor.name);
+    const withWorkflowStatus = updateOrderStatus(order.id, {
+      bookingStatus: 'VENDOR_ASSIGNED',
+      vendorAssignedAt: now,
+      updatedAt: now,
+      statusHistory: [
+        ...history,
+        {
+          status: 'VENDOR_ASSIGNED',
+          updatedByRole: 'ADMIN',
+          updatedByName: 'DecorFesto Admin',
+          timestamp: now,
+          note: `Assigned to ${selectedVendor.name}`,
+        },
+      ],
+    });
+
+    setOrder(withWorkflowStatus);
+  };
+
+  const handleReject = () => {
+    updateStatus('CANCELLED', 'REJECTED');
+  };
 
   return (
     <main className="page">
       <section className="container section section--tight">
         <div className="section__heading section__heading--left">
-          <span className="eyebrow">Admin order details</span>
-          <h1>{order.orderId || order.id}</h1>
-          <p>{decoration}</p>
+          <span className="eyebrow">Admin</span>
+          <h1>Order #{order.id}</h1>
+          <p>Review customer decoration requirements, vendor workflow progress, and assignment history.</p>
         </div>
 
         <div className="card-panel">
           <div className="summary-box">
-            <div className="summary-box__row"><span>Order ID</span><strong>{order.orderId || order.id}</strong></div>
-            <div className="summary-box__row"><span>Customer Name</span><strong>{order.customerName}</strong></div>
+            <div className="summary-box__row"><span>Customer Name</span><strong>{order.customerName || 'Guest Customer'}</strong></div>
+            <div className="summary-box__row"><span>Phone Number</span><strong>{order.customerPhone || 'Not provided'}</strong></div>
             <div className="summary-box__row"><span>Email</span><strong>{order.customerEmail || 'Not provided'}</strong></div>
-            <div className="summary-box__row"><span>Phone</span><strong>{order.customerMobile || 'Not provided'}</strong></div>
-            <div className="summary-box__row"><span>Decoration Package</span><strong>{decoration}</strong></div>
-            <div className="summary-box__row"><span>Date</span><strong>{order.eventDate || order.scheduledDate || order.date || 'Pending'}</strong></div>
-            <div className="summary-box__row"><span>Time Slot</span><strong>{order.timeSlot || order.scheduledTime || order.time || 'Pending'}</strong></div>
-            <div className="summary-box__row"><span>Full Address</span><strong>{order.address || 'Not provided'}</strong></div>
-            <div className="summary-box__row"><span>Pincode</span><strong>{order.pincode || 'Not provided'}</strong></div>
+            <div className="summary-box__row"><span>Decoration Package</span><strong>{order.decorationName || 'Decoration Setup'}</strong></div>
+            <div className="summary-box__row"><span>Scheduled Date</span><strong>{order.scheduledDate || order.date || 'TBD'}</strong></div>
+            <div className="summary-box__row"><span>Time Slot</span><strong>{order.scheduledTime || order.time || 'TBD'}</strong></div>
+            <div className="summary-box__row"><span>Delivery Address</span><strong>{order.deliveryAddress || order.address || 'Address provided'}</strong></div>
+            <div className="summary-box__row"><span>Pincode</span><strong>{order.pincode || 'N/A'}</strong></div>
 
-            {primaryItem.customization && (
-              <div className="summary-box__row">
-                <span>Customization Options</span>
-                <strong>
-                  {Object.entries(primaryItem.customization)
-                    .filter(([k, v]) => k !== 'remarks' && Boolean(v))
-                    .map(([, v]) => `${v}`)
-                    .join(' • ') || 'Standard Setup'}
-                </strong>
-              </div>
-            )}
-
-            {Array.isArray(order.addons) && order.addons.length > 0 && (
-              <div className="summary-box__row">
-                <span>Individual Add-ons</span>
-                <strong>{order.addons.join(' • ')}</strong>
-              </div>
-            )}
-
-            <div className="summary-box__row"><span>Subtotal</span><strong>₹{Number(order.subtotal || 0).toLocaleString('en-IN')}</strong></div>
-            {order.discount > 0 && (
-              <div className="summary-box__row"><span>Discount</span><strong>-₹{Number(order.discount).toLocaleString('en-IN')}</strong></div>
-            )}
+            <div className="summary-box__row"><span>Theme Palette</span><strong>{customization.themePalette || 'Standard Theme'}</strong></div>
+            <div className="summary-box__row"><span>Floral Arrangement</span><strong>{customization.floralArrangement || 'None'}</strong></div>
+            <div className="summary-box__row"><span>No. of Packages</span><strong>{customization.packageQuantity || 1}</strong></div>
 
             {activeCharges.length > 0 ? (
               activeCharges.map((c) => (
@@ -112,8 +117,16 @@ function AdminOrderDetails() {
 
             <div className="summary-box__row pricing-row--total"><span>Total Amount</span><strong>₹{Number(order.total || 0).toLocaleString('en-IN')}</strong></div>
             <div className="summary-box__row"><span>Payment Status</span><strong>{order.paymentStatus || 'Pending'}</strong></div>
-            <div className="summary-box__row"><span>Booking Status</span><strong>{order.bookingStatus || 'Order Received'}</strong></div>
+            <div className="summary-box__row"><span>Booking Status</span><strong style={{ color: '#e11d48' }}>{order.bookingStatus || 'CREATED'}</strong></div>
             <div className="summary-box__row"><span>Assigned Vendor</span><strong>{order.vendorName || 'Not assigned'}</strong></div>
+
+            {order.vendorDeclineReason && (
+              <div className="summary-box__row" style={{ color: '#b91c1c', fontWeight: '700' }}>
+                <span>Vendor Decline Reason</span>
+                <strong>"{order.vendorDeclineReason}"</strong>
+              </div>
+            )}
+
             <div className="summary-box__row"><span>Created At</span><strong>{new Date(order.createdAt).toLocaleString('en-IN')}</strong></div>
 
             {remarks && (
@@ -124,16 +137,17 @@ function AdminOrderDetails() {
             )}
           </div>
 
+          {/* VENDOR ASSIGNMENT CARD */}
           <div className="payment-card" style={{ marginTop: '24px' }}>
-            <h3>Assign Vendor</h3>
+            <h3>Vendor Partner Assignment</h3>
             {activeVendors.length === 0 ? (
               <p>No active vendors are available.</p>
             ) : (
               <>
                 <label className="search-field">
-                  <span>Active vendors</span>
+                  <span>Active vendor partners</span>
                   <select value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
-                    <option value="">Select a vendor</option>
+                    <option value="">Select a vendor partner</option>
                     {activeVendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
                   </select>
                 </label>
@@ -145,11 +159,26 @@ function AdminOrderDetails() {
                   </div>
                 ) : null}
                 <button type="button" className="button" onClick={handleVendorAssignment} disabled={!selectedVendor} style={{ marginTop: '12px' }}>
-                  {order.vendorId ? 'Change Assigned Vendor' : 'Assign Vendor'}
+                  {order.vendorId ? 'Reassign / Change Vendor Partner' : 'Assign Vendor Partner'}
                 </button>
               </>
             )}
           </div>
+
+          {/* AUDIT TIMELINE */}
+          {Array.isArray(order.statusHistory) && order.statusHistory.length > 0 && (
+            <div style={{ marginTop: '24px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: '800', color: '#0f172a' }}>Order Status Timeline</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {order.statusHistory.map((item, idx) => (
+                  <div key={idx} style={{ fontSize: '0.88rem' }}>
+                    <strong>{item.status?.replace('_', ' ')}</strong> — {item.updatedByName || item.updatedByRole} ({new Date(item.timestamp).toLocaleString()})
+                    {item.note && <span style={{ color: '#b91c1c', fontStyle: 'italic' }}> — "{item.note}"</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="confirmation-actions" style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button type="button" className="button" onClick={() => updateStatus('APPROVED')}>Approve Order</button>

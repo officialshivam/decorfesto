@@ -61,6 +61,10 @@ function isApiRequest(pathname, req) {
     return true;
   }
 
+  if (pathname === '/vendor/me' || pathname.startsWith('/vendor/orders') || pathname.startsWith('/vendor/profile')) {
+    return true;
+  }
+
   if (pathname === '/orders' || pathname.startsWith('/orders/')) {
     return true;
   }
