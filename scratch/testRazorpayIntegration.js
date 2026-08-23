@@ -27,7 +27,7 @@ const createdOrder = createOrder(testOrderData);
 console.log('1. Created Canonical Order:', createdOrder.id, 'Total:', createdOrder.total);
 
 // 2. Server-Side Razorpay Order Creation
-const orderReq = { body: { orderId: createdOrder.id } };
+const orderReq = { body: { orderId: createdOrder.id, total: createdOrder.total } };
 const razorpayOrderRes = await createRazorpayOrder({ req: orderReq });
 console.log('2. Server Razorpay Order Response:', razorpayOrderRes.statusCode, razorpayOrderRes.body);
 

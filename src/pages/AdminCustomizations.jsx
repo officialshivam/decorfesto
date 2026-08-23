@@ -750,13 +750,13 @@ function AdminCustomizations() {
             <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ textAlign: 'left', padding: '14px 16px', width: '30%', fontSize: '0.85rem', color: '#64748b' }}>Preview / Name</th>
+                  <th style={{ textAlign: 'left', padding: '14px 16px', width: '28%', fontSize: '0.85rem', color: '#64748b' }}>Preview / Name</th>
                   <th style={{ textAlign: 'left', padding: '14px 16px', width: '14%', fontSize: '0.85rem', color: '#64748b' }}>Category</th>
                   <th style={{ textAlign: 'right', padding: '14px 16px', width: '10%', fontSize: '0.85rem', color: '#64748b' }}>Price</th>
                   <th style={{ textAlign: 'center', padding: '14px 16px', width: '12%', fontSize: '0.85rem', color: '#64748b' }}>Status</th>
                   <th style={{ textAlign: 'center', padding: '14px 16px', width: '10%', fontSize: '0.85rem', color: '#64748b' }}>Display Order</th>
-                  <th style={{ textAlign: 'center', padding: '14px 16px', width: '12%', fontSize: '0.85rem', color: '#64748b' }}>Assigned Designs</th>
-                  <th style={{ textAlign: 'right', padding: '14px 16px', width: '12%', fontSize: '0.85rem', color: '#64748b' }}>Actions</th>
+                  <th style={{ textAlign: 'center', padding: '14px 16px', width: '14%', fontSize: '0.85rem', color: '#64748b' }}>Assigned Designs</th>
+                  <th style={{ textAlign: 'right', padding: '14px 16px', width: '16%', fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -775,71 +775,68 @@ function AdminCustomizations() {
                       <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         {/* 1. PREVIEW / NAME + PENCIL QUICK RENAME ICON */}
                         <td style={{ verticalAlign: 'middle', padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {item.image && (
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
-                              />
-                            )}
-                            {Array.isArray(item.colors) && item.colors.length > 0 && (
-                              <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
-                                {item.colors.map((hex, i) => (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {/* TOP LINE: NAME + PENCIL BUTTON */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{item.name}</strong>
+
+                              {/* PENCIL QUICK EDIT ICON - IN ALL 3 TABS */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setQuickRenameItem(item);
+                                  setQuickRenameValue(item.name);
+                                }}
+                                aria-label="Edit name"
+                                title="Edit name"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: '2px 4px',
+                                  cursor: 'pointer',
+                                  color: '#64748b',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                              </button>
+
+                              {(item.featured || item.recommended) && (
+                                <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#d97706', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                  ⭐ Featured
+                                </span>
+                              )}
+                            </div>
+
+                            {/* BOTTOM LINE: SWATCHES OR COMPACT IMAGE (NO LONG DESCRIPTIONS) */}
+                            {Array.isArray(item.colors) && item.colors.length > 0 ? (
+                              <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginTop: '2px' }}>
+                                {item.colors.slice(0, 6).map((hex, i) => (
                                   <span
                                     key={`${item.id}-${i}`}
                                     style={{
-                                      width: '16px',
-                                      height: '16px',
+                                      width: '14px',
+                                      height: '14px',
                                       borderRadius: '50%',
                                       backgroundColor: hex,
                                       border: '1px solid #cbd5e1',
+                                      display: 'inline-block',
                                     }}
                                   />
                                 ))}
                               </div>
-                            )}
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{item.name}</strong>
-
-                                {/* PENCIL QUICK EDIT ICON */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setQuickRenameItem(item);
-                                    setQuickRenameValue(item.name);
-                                  }}
-                                  title="Edit name"
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    padding: '2px 4px',
-                                    cursor: 'pointer',
-                                    color: '#64748b',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    borderRadius: '4px',
-                                  }}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                  </svg>
-                                </button>
-
-                                {(item.featured || item.recommended) && (
-                                  <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#d97706', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
-                                    ⭐ Featured
-                                  </span>
-                                )}
-                              </div>
-                              {item.description && (
-                                <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
-                                  {item.description.length > 55 ? `${item.description.slice(0, 55)}...` : item.description}
-                                </div>
-                              )}
-                            </div>
+                            ) : item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover', marginTop: '2px' }}
+                              />
+                            ) : null}
                           </div>
                         </td>
 
@@ -999,7 +996,7 @@ function AdminCustomizations() {
               </div>
 
               <label className="search-field">
-                <span>Option Name *</span>
+                <span>Current Name *</span>
                 <input
                   value={quickRenameValue}
                   onChange={(e) => setQuickRenameValue(e.target.value)}
