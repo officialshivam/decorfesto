@@ -12,16 +12,12 @@ import { calculateAddOnCost } from '../utils/customizationUtils';
 import { isTimeSlotPast } from '../utils/dateTimeUtils';
 
 function getInitialSelections(product) {
-  if (!product) return {};
+  const initial = { themePalette: 'Classic Pink & White' };
+  if (!product) return initial;
   const groups = (product.customizationOptions && product.customizationOptions.length > 0)
     ? product.customizationOptions
     : [];
 
-  if (groups.length === 0) {
-    return {};
-  }
-
-  const initial = {};
   groups.forEach((group) => {
     if (group.type === 'color_palette' && group.options && group.options.length > 0) {
       initial[group.id] = group.options[0].name;
