@@ -2,16 +2,12 @@ import { useMemo, useState } from 'react';
 import { getStoredDecorations } from '../services/mockDecorations';
 import {
   deleteStoredCustomization,
+  getStoredCategoryTabs,
   getStoredCustomizations,
+  saveStoredCategoryTab,
   saveStoredCustomization,
   swapCustomizationDisplayOrder,
 } from '../services/mockCustomizations';
-
-const TYPE_TABS = [
-  { id: 'colorPalette', label: 'Theme Color Palettes' },
-  { id: 'floralArrangement', label: 'Floral Arrangements' },
-  { id: 'addon', label: 'Recommended Add-ons & Experience Cards' },
-];
 
 function checkOptionInUse(option) {
   if (!option) return false;
@@ -59,12 +55,17 @@ function checkOptionInUse(option) {
 
 function AdminCustomizations() {
   const [activeTab, setActiveTab] = useState('colorPalette');
+  const [categoryTabs, setCategoryTabs] = useState(() => getStoredCategoryTabs());
   const [customizations, setCustomizations] = useState(() => getStoredCustomizations());
   const [editingItem, setEditingItem] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [notice, setNotice] = useState('');
 
-  // Quick Rename Modal state
+  // Quick Rename Category Modal state
+  const [quickRenameCategory, setQuickRenameCategory] = useState(null);
+  const [quickRenameCategoryValue, setQuickRenameCategoryValue] = useState('');
+
+  // Quick Rename Item Modal state
   const [quickRenameItem, setQuickRenameItem] = useState(null);
   const [quickRenameValue, setQuickRenameValue] = useState('');
 
@@ -357,10 +358,10 @@ function AdminCustomizations() {
           </div>
         )}
 
-        {/* TABS */}
+        {/* TABS WITH EDITABLE CATEGORY PENCIL BUTTONS */}
         <div className="catalog-toolbar" style={{ marginBottom: '16px' }}>
-          <div className="filter-group">
-            {TYPE_TABS.map((tab) => (
+          <div className="filter-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {categoryTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -369,8 +370,43 @@ function AdminCustomizations() {
                   setActiveTab(tab.id);
                   setIsFormOpen(false);
                 }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
               >
-                {tab.label}
+                <span>{tab.label}</span>
+
+                {/* EDIT CATEGORY PENCIL ICON BUTTON */}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Rename ${tab.label}`}
+                  title={`Rename ${tab.label}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setQuickRenameCategory(tab);
+                    setQuickRenameCategoryValue(tab.label);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation();
+                      setQuickRenameCategory(tab);
+                      setQuickRenameCategoryValue(tab.label);
+                    }
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2px',
+                    borderRadius: '4px',
+                    opacity: 0.8,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </span>
               </button>
             ))}
           </div>
@@ -986,7 +1022,52 @@ function AdminCustomizations() {
           </div>
         </div>
 
-        {/* QUICK RENAME MODAL */}
+        {/* RENAME CATEGORY MODAL */}
+        {quickRenameCategory && (
+          <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+            <div className="card-panel" style={{ width: '100%', maxWidth: '420px', borderRadius: '16px', background: '#fff', padding: '24px', boxShadow: '0 12px 32px rgba(0,0,0,0.15)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a' }}>Rename Category</h3>
+                <button type="button" onClick={() => setQuickRenameCategory(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              </div>
+
+              <label className="search-field">
+                <span>Category Name *</span>
+                <input
+                  value={quickRenameCategoryValue}
+                  onChange={(e) => setQuickRenameCategoryValue(e.target.value)}
+                  placeholder="Enter new category name..."
+                  autoFocus
+                />
+              </label>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    if (!quickRenameCategoryValue.trim()) return;
+                    const updatedTabs = saveStoredCategoryTab(quickRenameCategory.id, quickRenameCategoryValue.trim());
+                    setCategoryTabs(updatedTabs);
+                    setQuickRenameCategory(null);
+                    setNotice(`Category renamed to "${quickRenameCategoryValue.trim()}" successfully.`);
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => setQuickRenameCategory(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* QUICK RENAME ITEM MODAL */}
         {quickRenameItem && (
           <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
             <div className="card-panel" style={{ width: '100%', maxWidth: '420px', borderRadius: '16px', background: '#fff', padding: '24px', boxShadow: '0 12px 32px rgba(0,0,0,0.15)' }}>

@@ -367,3 +367,41 @@ export function swapCustomizationDisplayOrder(id1, id2) {
 
   writeCustomizations(all);
 }
+
+const CATEGORY_TABS_STORAGE_KEY = 'decorfesto-customization-category-tabs';
+
+const DEFAULT_TYPE_TABS = [
+  { id: 'colorPalette', label: 'Theme Color Palettes' },
+  { id: 'floralArrangement', label: 'Floral Arrangements' },
+  { id: 'addon', label: 'Recommended Add-ons & Experience Cards' },
+];
+
+export function getStoredCategoryTabs() {
+  if (typeof window === 'undefined') return DEFAULT_TYPE_TABS;
+  try {
+    const raw = window.localStorage.getItem(CATEGORY_TABS_STORAGE_KEY);
+    if (!raw) return DEFAULT_TYPE_TABS;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length >= 3) {
+      return parsed;
+    }
+  } catch (err) {
+    console.warn('Failed to read stored category tabs', err);
+  }
+  return DEFAULT_TYPE_TABS;
+}
+
+export function saveStoredCategoryTab(tabId, newLabel) {
+  const tabs = getStoredCategoryTabs();
+  const updatedTabs = tabs.map((tab) =>
+    tab.id === tabId ? { ...tab, label: newLabel.trim() } : tab
+  );
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(CATEGORY_TABS_STORAGE_KEY, JSON.stringify(updatedTabs));
+    } catch (err) {
+      console.warn('Failed to save category tabs', err);
+    }
+  }
+  return updatedTabs;
+}
