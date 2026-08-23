@@ -1,10 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getStoredOrders } from '../services/mockAuth';
+import { getOrdersApi } from '../services/orderService';
 
 function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState('All');
-  const orders = getStoredOrders();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadOrders() {
+      setLoading(true);
+      const res = await getOrdersApi();
+      setOrders(res || []);
+      setLoading(false);
+    }
+    loadOrders();
+  }, []);
+
   const statuses = ['All', ...new Set(orders.map((order) => order.bookingStatus || 'Order Received'))];
   const visibleOrders = statusFilter === 'All'
     ? orders

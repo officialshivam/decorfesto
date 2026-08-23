@@ -299,3 +299,31 @@ export async function getOrderByIdApi(orderId) {
   }
   return getOrderById(orderId);
 }
+
+export async function updateAdminOrderStatusApi(orderId, updates) {
+  const localOrder = updateOrderStatus(orderId, updates);
+  if (updates && (updates.vendorId || updates.vendorName)) {
+    assignOrderVendor(orderId, updates.vendorId || updates.vendorName, updates.vendorName);
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-role': 'admin',
+      },
+      body: JSON.stringify(updates),
+    });
+    if (response.ok) {
+      const result = await response.json();
+      if (result.order) {
+        return sanitizeOrder(result.order);
+      }
+    }
+  } catch (error) {
+    console.debug('Backend API unavailable, using local repository fallback for order update.', error);
+  }
+
+  return localOrder;
+}

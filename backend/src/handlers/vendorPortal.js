@@ -40,7 +40,16 @@ export async function getVendorOrders({ req }) {
   try {
     const repository = createRepository('orders');
     const allOrders = await repository.list();
-    const vendorOrders = allOrders.filter((order) => isOrderAssignedToAuthVendor(order, vendorAuth));
+    const vendorOrders = allOrders
+      .filter((order) => isOrderAssignedToAuthVendor(order, vendorAuth))
+      .map((order) => {
+        const canonicalId = vendorAuth.vendorId || vendorAuth.id;
+        if ((!order.vendorId || order.vendorId === 'null') && canonicalId) {
+          repository.update(order.id, { vendorId: canonicalId }).catch(() => {});
+          return { ...order, vendorId: canonicalId };
+        }
+        return order;
+      });
 
     return {
       statusCode: 200,

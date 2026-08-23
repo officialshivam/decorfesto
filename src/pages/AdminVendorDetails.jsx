@@ -333,8 +333,8 @@ function AdminVendorDetails() {
                       </td>
                       <td>₹{(o.total || 0).toLocaleString('en-IN')}</td>
                       <td>
-                        <span className={`status-pill status-pill--${String(o.bookingStatus).toLowerCase()}`}>
-                          {o.bookingStatus}
+                        <span className={`status-pill status-pill--${String(o.bookingStatus || '').toLowerCase()}`}>
+                          {typeof o.bookingStatus === 'string' ? o.bookingStatus : String(o.bookingStatus?.label || o.bookingStatus || 'VENDOR_ASSIGNED')}
                         </span>
                       </td>
                       <td>

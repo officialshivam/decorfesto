@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getStoredCharges } from '../services/chargeService';
-import { assignOrderVendor, getOrderById, updateOrderStatus } from '../services/orderService';
+import { getOrders, getOrderById, updateAdminOrderStatusApi } from '../services/orderService';
 import { getStoredVendors } from '../services/mockVendors';
 
 function AdminOrderDetails() {
@@ -28,11 +28,11 @@ function AdminOrderDetails() {
   const customization = order.customization || {};
   const remarks = order.remarks || customization.remarks || '';
 
-  const updateStatus = (bookingStatus, adminReviewStatus = 'REVIEWED') => {
+  const updateStatus = async (bookingStatus, adminReviewStatus = 'REVIEWED') => {
     const now = new Date().toISOString();
     const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
 
-    const updated = updateOrderStatus(order.id, {
+    const updated = await updateAdminOrderStatusApi(order.id, {
       bookingStatus,
       adminReviewStatus,
       updatedAt: now,
@@ -50,12 +50,12 @@ function AdminOrderDetails() {
     setOrder(updated);
   };
 
-  const handleVendorAssignment = () => {
+  const handleVendorAssignment = async () => {
     if (!selectedVendor) return;
     const now = new Date().toISOString();
     const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
 
-    const withWorkflowStatus = updateOrderStatus(order.id, {
+    const withWorkflowStatus = await updateAdminOrderStatusApi(order.id, {
       vendorId: selectedVendor.id,
       vendorName: selectedVendor.name,
       bookingStatus: 'VENDOR_ASSIGNED',
