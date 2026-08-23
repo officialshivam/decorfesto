@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { getCustomizationsForDesign } from '../services/mockCustomizations';
+import { getCustomizationsForDesign, resolveCategoryName } from '../services/mockCustomizations';
 
 function CustomizationPanel({
   product,
@@ -72,7 +72,7 @@ function CustomizationPanel({
       {/* 1. ADMIN-CONTROLLED THEME COLOR PALETTES */}
       {colorPalettes.length > 0 && (
         <div className="customization-section">
-          <h3>Theme Color Palette</h3>
+          <h3>{resolveCategoryName('colorPalette')}</h3>
           <div className="palette-grid">
             {colorPalettes.map((palette) => {
               const isSelected =
@@ -131,7 +131,7 @@ function CustomizationPanel({
       {/* 2. ADMIN-CONTROLLED FLORAL ARRANGEMENTS */}
       {floralArrangements.length > 0 && (
         <div className="customization-section">
-          <h3>Floral Arrangement</h3>
+          <h3>{resolveCategoryName('floralArrangement')}</h3>
           <div className="floral-grid">
             {floralArrangements.map((floral) => {
               const isSelected =
@@ -197,7 +197,7 @@ function CustomizationPanel({
       {addOnCards.length > 0 && (
         <div className="customization-section addon-carousel-section">
           <div className="addon-carousel__header">
-            <h3>Recommended Add-ons & Experiences</h3>
+            <h3>{resolveCategoryName('addon')}</h3>
             <div className="addon-carousel__controls">
               <button
                 type="button"

@@ -269,8 +269,23 @@ function writeCustomizations(data) {
   }
 }
 
+export function resolveCategoryName(type) {
+  const tabs = getStoredCategoryTabs();
+  const tab = tabs.find((t) => t.id === type);
+  if (tab && tab.label) return tab.label;
+  if (type === 'colorPalette') return 'Theme Color Palettes';
+  if (type === 'floralArrangement') return 'Floral Arrangements';
+  if (type === 'addon') return 'Recommended Add-ons & Experience Cards';
+  return 'Customization';
+}
+
 export function getStoredCustomizations() {
-  return readCustomizations().sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  return readCustomizations()
+    .map((item) => ({
+      ...item,
+      category: resolveCategoryName(item.type),
+    }))
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 }
 
 export function getCustomizationsForDesign(designId, type = null) {
@@ -293,11 +308,14 @@ export function saveStoredCustomization(item) {
   const existingIndex = all.findIndex((e) => e.id === item.id);
   const rawPrice = Number(item.price);
   const validPrice = !isNaN(rawPrice) && rawPrice >= 0 ? rawPrice : 0;
+  const canonicalCategory = resolveCategoryName(item.type);
 
   const nextItem = {
     ...item,
     id: item.id || `custom-${Date.now()}`,
+    type: item.type || 'colorPalette',
     name: String(item.name || '').trim(),
+    category: canonicalCategory,
     description: String(item.description || '').trim(),
     adminNotes: String(item.adminNotes || '').trim(),
     price: validPrice,

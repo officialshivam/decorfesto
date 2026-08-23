@@ -4,6 +4,7 @@ import {
   deleteStoredCustomization,
   getStoredCategoryTabs,
   getStoredCustomizations,
+  resolveCategoryName,
   saveStoredCategoryTab,
   saveStoredCustomization,
   swapCustomizationDisplayOrder,
@@ -495,11 +496,11 @@ function AdminCustomizations() {
                   </label>
 
                   <label className="search-field">
-                    <span>Category / Badge</span>
+                    <span>Category (Inherited)</span>
                     <input
-                      value={form.category}
-                      onChange={(e) => updateFormField({ category: e.target.value })}
-                      placeholder="e.g. Recommended, Personalization"
+                      readOnly
+                      value={resolveCategoryName(form.type)}
+                      style={{ background: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' }}
                     />
                   </label>
 
@@ -1049,6 +1050,7 @@ function AdminCustomizations() {
                     if (!quickRenameCategoryValue.trim()) return;
                     const updatedTabs = saveStoredCategoryTab(quickRenameCategory.id, quickRenameCategoryValue.trim());
                     setCategoryTabs(updatedTabs);
+                    setCustomizations(getStoredCustomizations());
                     setQuickRenameCategory(null);
                     setNotice(`Category renamed to "${quickRenameCategoryValue.trim()}" successfully.`);
                   }}
