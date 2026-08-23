@@ -1,6 +1,5 @@
 import crypto from 'node:crypto';
 import { adminPasswordHash, adminPasswordSalt, adminUsername, authSecret } from './config.js';
-import { getVendorById } from '../../src/services/mockVendors.js';
 
 export function hashPassword(password) {
   if (!password) return '';
@@ -291,13 +290,12 @@ export async function vendorLogin({ req }) {
     return { statusCode: 401, body: { error: 'Vendor account not found. Please check your credentials.' } };
   }
 
-  const mockV = getVendorById(matched.id) || getVendorById(matched.email);
-  const status = String(matched.status || matched.account_status || matched.accountStatus || mockV?.status || mockV?.accountStatus || 'active').toLowerCase();
+  const status = String(matched.status || matched.account_status || matched.accountStatus || 'active').toLowerCase();
   if (status === 'disabled' || status === 'inactive' || status === 'suspended' || status === 'archived') {
     return { statusCode: 403, body: { error: 'Vendor account is disabled or suspended. Please contact DecorFesto admin.' } };
   }
 
-  const storedHash = mockV?.passwordHash || matched.passwordHash || matched.password_hash || matched.password || 'VendorPassword123!';
+  const storedHash = matched.passwordHash || matched.password_hash || matched.password || 'VendorPassword123!';
   if (!verifyPassword(password, storedHash)) {
     return { statusCode: 401, body: { error: 'Invalid password.' } };
   }
