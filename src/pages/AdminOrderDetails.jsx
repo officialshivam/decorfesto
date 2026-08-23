@@ -55,8 +55,9 @@ function AdminOrderDetails() {
     const now = new Date().toISOString();
     const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
 
-    assignOrderVendor(order.id, selectedVendor.id, selectedVendor.name);
     const withWorkflowStatus = updateOrderStatus(order.id, {
+      vendorId: selectedVendor.id,
+      vendorName: selectedVendor.name,
       bookingStatus: 'VENDOR_ASSIGNED',
       vendorAssignedAt: now,
       updatedAt: now,

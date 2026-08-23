@@ -46,7 +46,7 @@ export default function VendorOrders() {
     const s = String(item.bookingStatus || '').toUpperCase();
 
     // Filter by tab
-    if (activeFilter === 'PENDING' && s !== 'VENDOR_ASSIGNED') return false;
+    if (activeFilter === 'PENDING' && s !== 'VENDOR_ASSIGNED' && s !== 'ASSIGNED_TO_VENDOR' && s !== 'CONFIRMED' && s !== 'CREATED' && s !== 'ORDER RECEIVED') return false;
     if (activeFilter === 'ACCEPTED' && s !== 'VENDOR_ACCEPTED') return false;
     if (activeFilter === 'IN_PROGRESS' && s !== 'IN_PROGRESS') return false;
     if (activeFilter === 'READY' && s !== 'READY_FOR_SETUP') return false;

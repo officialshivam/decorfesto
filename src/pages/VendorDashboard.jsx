@@ -41,13 +41,16 @@ export default function VendorDashboard() {
   }, [vendorUser?.id]);
 
   const assignedCount = orders.length;
-  const pendingCount = orders.filter((o) => (o.bookingStatus || '').toUpperCase() === 'VENDOR_ASSIGNED').length;
+  const pendingCount = orders.filter((o) => {
+    const s = String(o.bookingStatus || '').toUpperCase();
+    return s === 'VENDOR_ASSIGNED' || s === 'ASSIGNED_TO_VENDOR' || s === 'CONFIRMED' || s === 'CREATED' || s === 'ORDER RECEIVED';
+  }).length;
   const inProgressCount = orders.filter((o) => {
-    const s = (o.bookingStatus || '').toUpperCase();
+    const s = String(o.bookingStatus || '').toUpperCase();
     return s === 'VENDOR_ACCEPTED' || s === 'IN_PROGRESS';
   }).length;
-  const readyCount = orders.filter((o) => (o.bookingStatus || '').toUpperCase() === 'READY_FOR_SETUP').length;
-  const completedCount = orders.filter((o) => (o.bookingStatus || '').toUpperCase() === 'COMPLETED').length;
+  const readyCount = orders.filter((o) => String(o.bookingStatus || '').toUpperCase() === 'READY_FOR_SETUP').length;
+  const completedCount = orders.filter((o) => String(o.bookingStatus || '').toUpperCase() === 'COMPLETED').length;
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayEvents = orders.filter((o) => o.scheduledDate === todayStr || o.date === todayStr);

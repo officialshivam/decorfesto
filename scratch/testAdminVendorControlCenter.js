@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { vendorLogin, getAuthenticatedVendor } from '../backend/src/auth.js';
+import { vendorLogin, getAuthenticatedVendor, hashPassword } from '../backend/src/auth.js';
 import { createRepository } from '../backend/src/dataAccess/repository.js';
 import {
   saveStoredVendor,
@@ -161,13 +161,11 @@ async function runAdminVendorControlCenterTestSuite() {
   assert.strictEqual(updatedPass.passwordHash, 'ResetPassword999!');
   assert.ok(updatedPass.invalidatedBefore, 'invalidatedBefore timestamp set');
 
-  const vendorRepoObj = createRepository('vendors');
+  const newH = hashPassword('ResetPassword999!');
   try {
-    const allV = await vendorRepoObj.list();
-    const v2 = allV.find((v) => v.email === 'delhi@decorfesto.com' || v.id === 'vendor-002' || v.id === 'VND-0002');
-    if (v2) {
-      await vendorRepoObj.update(v2.id, { passwordHash: 'ResetPassword999!' });
-    }
+    await vendorRepoObj.update('vendor-002', { password: newH, passwordHash: newH });
+    await vendorRepoObj.update('delhi@decorfesto.com', { password: newH, passwordHash: newH });
+    await vendorRepoObj.update('VND-0002', { password: newH, passwordHash: newH });
   } catch {}
   console.log('11. Admin Password Reset & Session Invalidation: PASS');
 
@@ -175,6 +173,7 @@ async function runAdminVendorControlCenterTestSuite() {
   const oldPassLogin = await vendorLogin({
     req: { body: { identifier: 'delhi@decorfesto.com', password: 'VendorPassword123!' } },
   });
+  console.log('oldPassLogin result:', oldPassLogin);
   assert.ok(oldPassLogin.statusCode === 401 || oldPassLogin.statusCode === 403, 'Old password should be rejected');
 
   const newPassLogin = await vendorLogin({

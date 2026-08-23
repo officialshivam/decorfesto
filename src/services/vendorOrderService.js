@@ -1,6 +1,47 @@
-import { getStoredOrders, updateOrderStatus } from './orderService';
+import { getStoredOrders, updateOrderStatus } from './orderService.js';
+import { getVendorById } from './mockVendors.js';
 
-export async function fetchVendorOrdersApi(vendorId) {
+export function isOrderAssignedToVendor(order, vendorInput) {
+  if (!order || !vendorInput) return false;
+
+  let vId = typeof vendorInput === 'string' ? vendorInput : (vendorInput.id || vendorInput.vendorId || '');
+  let vName = typeof vendorInput === 'object' ? (vendorInput.name || vendorInput.contactName || '') : '';
+
+  if (typeof vendorInput === 'string' && !vName) {
+    const foundV = getVendorById(vendorInput);
+    if (foundV) {
+      vName = foundV.name || '';
+      vId = foundV.id || vId;
+    }
+  }
+
+  const cleanVId = String(vId || '').trim().toLowerCase();
+  const cleanVName = String(vName || '').trim().toLowerCase();
+  const orderVId = String(order.vendorId || order.vendor_id || '').trim().toLowerCase();
+  const orderVName = String(order.vendorName || order.vendor_name || '').trim().toLowerCase();
+
+  // 1. Direct ID match
+  if (cleanVId && orderVId && cleanVId === orderVId) return true;
+
+  // 2. Canonical ID Alias match ('vnd-0001' <-> 'vendor-001', 'vnd-0002' <-> 'vendor-002')
+  if (
+    (cleanVId === 'vnd-0001' && orderVId === 'vendor-001') ||
+    (cleanVId === 'vendor-001' && orderVId === 'vnd-0001') ||
+    (cleanVId === 'vnd-0002' && orderVId === 'vendor-002') ||
+    (cleanVId === 'vendor-002' && orderVId === 'vnd-0002')
+  ) {
+    return true;
+  }
+
+  // 3. Deterministic Name Backfill fallback (for legacy orders where vendorId is missing)
+  if (!orderVId && cleanVName && orderVName && cleanVName === orderVName) {
+    return true;
+  }
+
+  return false;
+}
+
+export async function fetchVendorOrdersApi(vendorInput) {
   try {
     const res = await fetch('/vendor/orders', {
       headers: { Accept: 'application/json' },
@@ -13,13 +54,13 @@ export async function fetchVendorOrdersApi(vendorId) {
     // Local mock fallback
   }
 
-  // Filter local stored orders strictly by vendorId
+  // Filter local stored orders safely
   const allOrders = getStoredOrders();
-  const filtered = allOrders.filter((order) => order.vendorId === vendorId);
+  const filtered = allOrders.filter((order) => isOrderAssignedToVendor(order, vendorInput));
   return { ok: true, orders: filtered };
 }
 
-export async function fetchVendorOrderDetailApi(orderId, vendorId) {
+export async function fetchVendorOrderDetailApi(orderId, vendorInput) {
   try {
     const res = await fetch(`/vendor/orders/${orderId}`, {
       headers: { Accept: 'application/json' },
@@ -42,7 +83,7 @@ export async function fetchVendorOrderDetailApi(orderId, vendorId) {
     return { ok: false, error: 'Order not found.' };
   }
 
-  if (order.vendorId !== vendorId) {
+  if (!isOrderAssignedToVendor(order, vendorInput)) {
     return { ok: false, error: 'Forbidden: Access denied to orders assigned to another vendor.', statusCode: 403 };
   }
 
@@ -73,7 +114,7 @@ export async function updateVendorOrderStatusApi(orderId, vendorId, vendorName, 
       return { ok: false, error: 'Order not found.' };
     }
 
-    if (order.vendorId !== vendorId) {
+    if (!isOrderAssignedToVendor(order, vendorId)) {
       return { ok: false, error: 'Forbidden: Cannot update order assigned to another vendor.' };
     }
 

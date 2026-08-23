@@ -117,13 +117,16 @@ export async function updateOrderStatus({ req, params }) {
 
   const repository = createRepository('orders');
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-  const updatedOrder = await repository.update(params[0], {
-    bookingStatus: payload.bookingStatus || 'CREATED',
-    adminReviewStatus: payload.adminReviewStatus || 'PENDING',
-    vendorId: payload.vendorId || null,
-    vendorAssignedAt: payload.vendorId ? new Date().toISOString() : null,
+  const updates = {
     updatedAt: new Date().toISOString(),
-  });
+  };
+  if (payload.bookingStatus) updates.bookingStatus = payload.bookingStatus;
+  if (payload.adminReviewStatus) updates.adminReviewStatus = payload.adminReviewStatus;
+  if (payload.vendorId !== undefined) updates.vendorId = payload.vendorId;
+  if (payload.vendorName !== undefined) updates.vendorName = payload.vendorName;
+  if (payload.vendorId && !payload.vendorAssignedAt) updates.vendorAssignedAt = new Date().toISOString();
+
+  const updatedOrder = await repository.update(params[0], updates);
 
   if (!updatedOrder) {
     return {
