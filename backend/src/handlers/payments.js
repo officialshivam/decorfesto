@@ -12,9 +12,9 @@ export async function createRazorpayOrder({ req }) {
     return { statusCode: 400, body: { error: 'Order ID is required to create a Razorpay payment order.' } };
   }
 
+  const orderRepo = createRepository('orders');
   let order = null;
   try {
-    const orderRepo = createRepository('orders');
     order = await orderRepo.getById(orderId);
     if (!order) {
       const allOrders = await orderRepo.list();
@@ -129,8 +129,8 @@ export async function verifyRazorpayPayment({ req }) {
     }
   }
 
-  // Test mode fallback helper if signature is valid mock or test key
-  if (!isSignatureValid && (razorpay_payment_id.startsWith('pay_') || razorpay_signature?.startsWith('valid_sig_'))) {
+  // Test mode fallback helper if signature is explicitly marked valid_sig_
+  if (!isSignatureValid && razorpay_signature?.startsWith('valid_sig_')) {
     isSignatureValid = true;
   }
 

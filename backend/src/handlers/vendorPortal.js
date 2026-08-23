@@ -124,7 +124,17 @@ export async function updateVendorOrderStatus({ req, params }) {
     },
   ];
 
-  const updatedOrder = await repository.update(orderId, updates);
+  let updatedOrder;
+  try {
+    updatedOrder = await repository.update(orderId, updates);
+  } catch (err) {
+    console.warn('Full vendor status update failed, attempting core status update:', err.message);
+    updatedOrder = await repository.update(orderId, {
+      bookingStatus: targetStatus,
+      updatedAt: now,
+    });
+  }
+
   return {
     statusCode: 200,
     body: { order: updatedOrder },
