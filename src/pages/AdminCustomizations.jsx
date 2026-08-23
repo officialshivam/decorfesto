@@ -64,6 +64,13 @@ function AdminCustomizations() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [notice, setNotice] = useState('');
 
+  // Quick Rename Modal state
+  const [quickRenameItem, setQuickRenameItem] = useState(null);
+  const [quickRenameValue, setQuickRenameValue] = useState('');
+
+  // Actions More Menu state
+  const [openMoreMenuId, setOpenMoreMenuId] = useState(null);
+
   // Search & Filter controls
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -341,10 +348,14 @@ function AdminCustomizations() {
         <div className="section__heading section__heading--left">
           <span className="eyebrow">Admin Dashboard</span>
           <h1>Customization Management</h1>
-          <p>Configure Theme Color Palettes, Floral Arrangements, and Add-on Experience Cards with real-time customer preview and safety checks.</p>
+          <p>Configure Theme Color Palettes, Floral Arrangements, and Add-on Experience Cards with real-time editing and controls.</p>
         </div>
 
-        {notice && <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '12px 16px', background: '#e6f4ea', color: '#137333', borderRadius: '10px', fontWeight: '700' }}>✓ {notice}</div>}
+        {notice && (
+          <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '12px 16px', background: '#e6f4ea', color: '#137333', borderRadius: '10px', fontWeight: '700' }}>
+            ✓ {notice}
+          </div>
+        )}
 
         {/* TABS */}
         <div className="catalog-toolbar" style={{ marginBottom: '16px' }}>
@@ -514,6 +525,25 @@ function AdminCustomizations() {
                         )}
                       </div>
                     ))}
+                  </div>
+
+                  {/* LIVE PREVIEW BOX IN EDIT FORM */}
+                  <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
+                    <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700' }}>Live Customer Card Preview</span>
+                    <div style={{ marginTop: '6px', padding: '12px', background: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {form.colors.map((hex, i) => (
+                          <span key={i} style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: hex, border: '1px solid #cbd5e1' }} />
+                        ))}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: '#0f172a', display: 'block', fontSize: '0.95rem' }}>{form.name || 'Theme Name'}</strong>
+                        <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{form.description || 'Customer description preview...'}</span>
+                      </div>
+                      <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>
+                        {Number(form.price) > 0 ? `+₹${Number(form.price).toLocaleString('en-IN')}` : 'Included'}
+                      </strong>
+                    </div>
                   </div>
                 </div>
               )}
@@ -714,19 +744,19 @@ function AdminCustomizations() {
           </div>
         )}
 
-        {/* CUSTOMIZATION OPTIONS ADMIN TABLE */}
+        {/* ALIGNED & PROFESSIONAL ADMIN TABLE */}
         <div className="card-panel" style={{ borderRadius: '16px', border: '1px solid var(--border, #e2e8f0)', overflow: 'hidden' }}>
-          <div className="table-wrapper">
-            <table className="admin-table">
+          <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+            <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>
-                  <th>Preview / Name</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>Status</th>
-                  <th>Display Order</th>
-                  <th>Assigned Designs</th>
-                  <th>Actions</th>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ textAlign: 'left', padding: '14px 16px', width: '30%', fontSize: '0.85rem', color: '#64748b' }}>Preview / Name</th>
+                  <th style={{ textAlign: 'left', padding: '14px 16px', width: '14%', fontSize: '0.85rem', color: '#64748b' }}>Category</th>
+                  <th style={{ textAlign: 'right', padding: '14px 16px', width: '10%', fontSize: '0.85rem', color: '#64748b' }}>Price</th>
+                  <th style={{ textAlign: 'center', padding: '14px 16px', width: '12%', fontSize: '0.85rem', color: '#64748b' }}>Status</th>
+                  <th style={{ textAlign: 'center', padding: '14px 16px', width: '10%', fontSize: '0.85rem', color: '#64748b' }}>Display Order</th>
+                  <th style={{ textAlign: 'center', padding: '14px 16px', width: '12%', fontSize: '0.85rem', color: '#64748b' }}>Assigned Designs</th>
+                  <th style={{ textAlign: 'right', padding: '14px 16px', width: '12%', fontSize: '0.85rem', color: '#64748b' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -742,18 +772,19 @@ function AdminCustomizations() {
                     const priceText = `₹${(item.price || 0).toLocaleString('en-IN')}`;
 
                     return (
-                      <tr key={item.id}>
-                        <td>
+                      <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        {/* 1. PREVIEW / NAME + PENCIL QUICK RENAME ICON */}
+                        <td style={{ verticalAlign: 'middle', padding: '14px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             {item.image && (
                               <img
                                 src={item.image}
                                 alt={item.name}
-                                style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }}
+                                style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
                               />
                             )}
                             {Array.isArray(item.colors) && item.colors.length > 0 && (
-                              <div style={{ display: 'flex', gap: '3px' }}>
+                              <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
                                 {item.colors.map((hex, i) => (
                                   <span
                                     key={`${item.id}-${i}`}
@@ -771,6 +802,32 @@ function AdminCustomizations() {
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{item.name}</strong>
+
+                                {/* PENCIL QUICK EDIT ICON */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setQuickRenameItem(item);
+                                    setQuickRenameValue(item.name);
+                                  }}
+                                  title="Edit name"
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '2px 4px',
+                                    cursor: 'pointer',
+                                    color: '#64748b',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    borderRadius: '4px',
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                  </svg>
+                                </button>
+
                                 {(item.featured || item.recommended) && (
                                   <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#d97706', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
                                     ⭐ Featured
@@ -778,39 +835,47 @@ function AdminCustomizations() {
                                 )}
                               </div>
                               {item.description && (
-                                <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                                <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
                                   {item.description.length > 55 ? `${item.description.slice(0, 55)}...` : item.description}
                                 </div>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <span style={{ fontSize: '0.84rem', fontWeight: '600', color: '#334155' }}>
+
+                        {/* 2. CATEGORY */}
+                        <td style={{ verticalAlign: 'middle', padding: '14px 16px' }}>
+                          <span style={{ fontSize: '0.84rem', fontWeight: '600', color: '#334155', whiteSpace: 'nowrap' }}>
                             {item.category}
                           </span>
                         </td>
-                        <td>
-                          <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{priceText}</strong>
+
+                        {/* 3. PRICE (NUMERIC ALWAYS - NO INCLUDED ₹0) */}
+                        <td style={{ verticalAlign: 'middle', padding: '14px 16px', textAlign: 'right' }}>
+                          <strong style={{ color: '#0f172a', fontSize: '0.95rem', whiteSpace: 'nowrap' }}>{priceText}</strong>
                         </td>
-                        <td>
+
+                        {/* 4. STATUS (FULL UNCLIPPED BADGE) */}
+                        <td style={{ verticalAlign: 'middle', padding: '14px 16px', textAlign: 'center' }}>
                           {item.archived ? (
-                            <span className="chip" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                            <span className="chip" style={{ background: '#f1f5f9', color: '#64748b', whiteSpace: 'nowrap' }}>
                               📦 Archived
                             </span>
                           ) : (
-                            <span className={`chip ${item.active ? 'chip--active' : ''}`}>
+                            <span className={`chip ${item.active ? 'chip--active' : ''}`} style={{ whiteSpace: 'nowrap' }}>
                               {item.active ? '● Active' : '○ Disabled'}
                             </span>
                           )}
                         </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+
+                        {/* 5. DISPLAY ORDER */}
+                        <td style={{ verticalAlign: 'middle', padding: '14px 16px', textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontWeight: '700', fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{item.displayOrder || 1}</span>
                             <button
                               type="button"
                               onClick={() => handleMoveOrder(item, 'up')}
-                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', color: '#475569' }}
                               title="Move Up"
                             >
                               ↑
@@ -818,24 +883,28 @@ function AdminCustomizations() {
                             <button
                               type="button"
                               onClick={() => handleMoveOrder(item, 'down')}
-                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', color: '#475569' }}
                               title="Move Down"
                             >
                               ↓
                             </button>
                           </div>
                         </td>
-                        <td>
+
+                        {/* 6. ASSIGNED DESIGNS */}
+                        <td style={{ verticalAlign: 'middle', padding: '14px 16px', textAlign: 'center' }}>
                           <button
                             type="button"
                             onClick={() => handleOpenAssignmentModal(item)}
-                            style={{ background: 'none', border: 'none', color: assignedCount > 0 ? '#0284c7' : '#94a3b8', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                            style={{ background: 'none', border: 'none', color: assignedCount > 0 ? '#0284c7' : '#94a3b8', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline', padding: 0, whiteSpace: 'nowrap' }}
                           >
                             {assignedCount > 0 ? `${assignedCount} Designs Assigned` : '0 Assigned'}
                           </button>
                         </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+
+                        {/* 7. ACTIONS (EDIT, PREVIEW, DISABLE, MORE ⋯ DROPDOWN) */}
+                        <td style={{ verticalAlign: 'middle', padding: '14px 16px', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end', position: 'relative' }}>
                             <button
                               type="button"
                               className="button button--small button--ghost"
@@ -857,21 +926,58 @@ function AdminCustomizations() {
                             >
                               {item.active ? 'Disable' : 'Enable'}
                             </button>
-                            <button
-                              type="button"
-                              className="button button--small button--ghost"
-                              onClick={() => handleToggleArchive(item)}
-                            >
-                              {item.archived ? 'Restore' : 'Archive'}
-                            </button>
-                            <button
-                              type="button"
-                              className="button button--small button--ghost"
-                              onClick={() => handleDeleteAttempt(item)}
-                              style={{ color: '#ef4444' }}
-                            >
-                              Delete
-                            </button>
+
+                            {/* MORE DROPDOWN MENU */}
+                            <div style={{ position: 'relative' }}>
+                              <button
+                                type="button"
+                                className="button button--small button--ghost"
+                                onClick={() => setOpenMoreMenuId(openMoreMenuId === item.id ? null : item.id)}
+                                style={{ padding: '4px 8px', fontWeight: 'bold' }}
+                              >
+                                More ⋯
+                              </button>
+                              {openMoreMenuId === item.id && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: '100%',
+                                    marginTop: '4px',
+                                    background: '#fff',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '10px',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                                    zIndex: 100,
+                                    minWidth: '130px',
+                                    padding: '6px 0',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenMoreMenuId(null);
+                                      handleToggleArchive(item);
+                                    }}
+                                    style={{ background: 'none', border: 'none', padding: '8px 14px', textAlign: 'left', cursor: 'pointer', fontSize: '0.85rem', color: '#334155' }}
+                                  >
+                                    {item.archived ? 'Restore' : 'Archive'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenMoreMenuId(null);
+                                      handleDeleteAttempt(item);
+                                    }}
+                                    style={{ background: 'none', border: 'none', padding: '8px 14px', textAlign: 'left', cursor: 'pointer', fontSize: '0.85rem', color: '#ef4444' }}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -882,6 +988,51 @@ function AdminCustomizations() {
             </table>
           </div>
         </div>
+
+        {/* QUICK RENAME MODAL */}
+        {quickRenameItem && (
+          <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+            <div className="card-panel" style={{ width: '100%', maxWidth: '420px', borderRadius: '16px', background: '#fff', padding: '24px', boxShadow: '0 12px 32px rgba(0,0,0,0.15)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a' }}>Rename Option</h3>
+                <button type="button" onClick={() => setQuickRenameItem(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✕</button>
+              </div>
+
+              <label className="search-field">
+                <span>Option Name *</span>
+                <input
+                  value={quickRenameValue}
+                  onChange={(e) => setQuickRenameValue(e.target.value)}
+                  placeholder="Enter new option name..."
+                  autoFocus
+                />
+              </label>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    if (!quickRenameValue.trim()) return;
+                    const updated = saveStoredCustomization({ ...quickRenameItem, name: quickRenameValue.trim() });
+                    setCustomizations(getStoredCustomizations());
+                    setQuickRenameItem(null);
+                    setNotice(`Renamed option to "${updated.name}" successfully.`);
+                  }}
+                >
+                  Save Name
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => setQuickRenameItem(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* CUSTOMER IMPACT PREVIEW MODAL */}
         {previewItem && (

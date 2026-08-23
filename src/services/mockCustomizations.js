@@ -306,6 +306,7 @@ export function saveStoredCustomization(item) {
     featured: Boolean(item.featured),
     recommended: Boolean(item.recommended),
     displayOrder: Number(item.displayOrder || 1),
+    colors: Array.isArray(item.colors) ? item.colors : undefined,
     assignedDesigns: Array.isArray(item.assignedDesigns) ? item.assignedDesigns.map(String) : [],
     createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
