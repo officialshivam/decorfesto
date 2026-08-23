@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { calculateAddOnCost } from '../utils/customizationUtils';
 
 const CartContext = createContext(null);
 
@@ -37,7 +38,9 @@ export function CartProvider({ children }) {
       const existingItem = currentItems.find((entry) => entry.key === item.key);
       if (existingItem) {
         return currentItems.map((entry) =>
-          entry.key === item.key ? { ...entry, quantity: entry.quantity + 1 } : entry,
+          entry.key === item.key
+            ? { ...entry, quantity: Math.min(3, entry.quantity + 1) }
+            : entry,
         );
       }
 
@@ -46,10 +49,36 @@ export function CartProvider({ children }) {
   };
 
   const updateQuantity = (key, quantity) => {
+    const clamped = Math.max(1, Math.min(3, quantity));
     setItems((currentItems) =>
-      currentItems
-        .map((item) => (item.key === key ? { ...item, quantity } : item))
-        .filter((item) => item.quantity > 0),
+      currentItems.map((item) => (item.key === key ? { ...item, quantity: clamped } : item)),
+    );
+  };
+
+  const removeAddon = (itemKey, addonName) => {
+    setItems((currentItems) =>
+      currentItems.map((item) => {
+        if (item.key !== itemKey) return item;
+
+        const nextCustomization = { ...(item.customization || {}) };
+        Object.keys(nextCustomization).forEach((k) => {
+          const val = String(nextCustomization[k] || '');
+          if (val.includes(addonName) || k === addonName) {
+            delete nextCustomization[k];
+          }
+        });
+
+        const nextAddOnPrice = calculateAddOnCost(nextCustomization);
+        const basePrice = item.basePrice || item.price || 0;
+        const nextTotalPrice = basePrice + nextAddOnPrice;
+
+        return {
+          ...item,
+          customization: nextCustomization,
+          addOnPrice: nextAddOnPrice,
+          totalPrice: nextTotalPrice,
+        };
+      }),
     );
   };
 
@@ -66,6 +95,7 @@ export function CartProvider({ children }) {
       items,
       addItem,
       updateQuantity,
+      removeAddon,
       removeItem,
       clearCart,
       itemCount: items.reduce((sum, item) => sum + item.quantity, 0),

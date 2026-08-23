@@ -308,7 +308,7 @@ function Checkout() {
                 return (
                   <div key={item.key} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
-                      <span>{item.productName}</span>
+                      <span>{item.productName} ({item.quantity} {item.quantity === 1 ? 'Pkg' : 'Pkgs'})</span>
                       <span>₹{(basePrice * item.quantity).toLocaleString('en-IN')}</span>
                     </div>
                     <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '4px' }}>
