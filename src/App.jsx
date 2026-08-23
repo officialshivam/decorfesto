@@ -18,6 +18,7 @@ import MyOrderDetail from './pages/MyOrderDetail';
 import AdminOrders from './pages/AdminOrders';
 import AdminOrderDetails from './pages/AdminOrderDetails';
 import AdminVendors from './pages/AdminVendors';
+import AdminVendorDetails from './pages/AdminVendorDetails';
 import AdminServiceAreas from './pages/AdminServiceAreas';
 import AdminDecorations from './pages/AdminDecorations';
 import AdminCategories from './pages/AdminCategories';
@@ -102,6 +103,7 @@ function App() {
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="orders/:id" element={<AdminOrderDetails />} />
                 <Route path="vendors" element={<AdminVendors />} />
+                <Route path="vendors/:vendorId" element={<AdminVendorDetails />} />
                 <Route path="service-areas" element={<AdminServiceAreas />} />
                 <Route path="decorations" element={<AdminDecorations />} />
                 <Route path="categories" element={<AdminCategories />} />

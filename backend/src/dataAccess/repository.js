@@ -83,7 +83,7 @@ export const columnMaps = {
     phone: 'phone',
     specialties: 'specialties',
     servicePincodes: 'service_pincodes',
-    passwordHash: 'password_hash',
+    passwordHash: 'password',
     role: 'role',
     accountStatus: 'account_status',
     status: 'status',

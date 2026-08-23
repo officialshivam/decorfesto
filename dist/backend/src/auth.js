@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { adminPasswordHash, adminPasswordSalt, adminUsername, authSecret } from './config.js';
+import { getVendorById } from '../../src/services/mockVendors.js';
 
 export function hashPassword(password) {
   if (!password) return '';
@@ -56,13 +57,15 @@ export function createAdminSessionToken() {
 }
 
 export function createVendorSessionToken(vendor) {
+  const now = Date.now();
   const payload = {
     id: vendor.id,
     vendorId: vendor.id,
     role: 'VENDOR',
     email: vendor.email || '',
     name: vendor.name || vendor.contactName || 'Vendor',
-    exp: Date.now() + 24 * 3600 * 1000,
+    iat: now,
+    exp: now + 24 * 3600 * 1000,
     nonce: crypto.randomBytes(8).toString('hex'),
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -173,13 +176,27 @@ export async function validateActiveUserSession(headers = {}) {
       try {
         const repository = createRepository('vendors');
         const vendor = await repository.getById(vendorPayload.vendorId || vendorPayload.id);
-        if (vendor && (vendor.status === 'disabled' || vendor.status === 'inactive' || vendor.accountStatus === 'disabled' || vendor.accountStatus === 'inactive')) {
-          return {
-            valid: false,
-            statusCode: 403,
-            error: 'ACCOUNT_DISABLED',
-            message: 'This vendor account has been disabled. Please contact DecorFesto Admin.',
-          };
+        if (vendor) {
+          const status = String(vendor.status || vendor.accountStatus || 'active').toLowerCase();
+          if (status === 'disabled' || status === 'inactive' || status === 'suspended' || status === 'archived') {
+            return {
+              valid: false,
+              statusCode: 403,
+              error: 'ACCOUNT_DISABLED',
+              message: 'This vendor account has been disabled or suspended. Please contact DecorFesto Admin.',
+            };
+          }
+          if (vendor.invalidatedBefore && vendorPayload.iat) {
+            const invalidatedAt = new Date(vendor.invalidatedBefore).getTime();
+            if (vendorPayload.iat < invalidatedAt) {
+              return {
+                valid: false,
+                statusCode: 403,
+                error: 'SESSION_INVALIDATED',
+                message: 'Your vendor session has been invalidated. Please log in again.',
+              };
+            }
+          }
         }
       } catch {
         // Fallback if DB lookup fails
@@ -274,11 +291,13 @@ export async function vendorLogin({ req }) {
     return { statusCode: 401, body: { error: 'Vendor account not found. Please check your credentials.' } };
   }
 
-  if (matched.status === 'disabled' || matched.status === 'inactive' || matched.accountStatus === 'disabled' || matched.accountStatus === 'inactive') {
-    return { statusCode: 403, body: { error: 'Vendor account is disabled. Please contact DecorFesto admin.' } };
+  const mockV = getVendorById(matched.id) || getVendorById(matched.email);
+  const status = String(matched.status || matched.account_status || matched.accountStatus || mockV?.status || mockV?.accountStatus || 'active').toLowerCase();
+  if (status === 'disabled' || status === 'inactive' || status === 'suspended' || status === 'archived') {
+    return { statusCode: 403, body: { error: 'Vendor account is disabled or suspended. Please contact DecorFesto admin.' } };
   }
 
-  const storedHash = matched.passwordHash || matched.password || 'VendorPassword123!';
+  const storedHash = mockV?.passwordHash || matched.passwordHash || matched.password_hash || matched.password || 'VendorPassword123!';
   if (!verifyPassword(password, storedHash)) {
     return { statusCode: 401, body: { error: 'Invalid password.' } };
   }

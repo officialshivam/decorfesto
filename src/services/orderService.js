@@ -204,9 +204,16 @@ export function updateOrderStatus(orderId, bookingStatus) {
   return getOrderById(orderId);
 }
 
-export function assignOrderVendor(orderId, vendor) {
-  const vendorName = typeof vendor === 'string' ? vendor : (vendor.name || vendor.fullName || 'Vendor');
-  const vendorId = typeof vendor === 'object' ? vendor.id : null;
+export function assignOrderVendor(orderId, vendor, vendorNameParam = '') {
+  let vId = null;
+  let vName = 'Vendor';
+  if (typeof vendor === 'object' && vendor !== null) {
+    vId = vendor.id;
+    vName = vendor.name || vendor.contactName || 'Vendor';
+  } else if (typeof vendor === 'string') {
+    vId = vendor;
+    vName = vendorNameParam || vendor;
+  }
 
   const orders = readAllOrders();
   let updated = null;
@@ -215,9 +222,10 @@ export function assignOrderVendor(orderId, vendor) {
     if (o.id !== orderId) return o;
     updated = sanitizeOrder({
       ...o,
-      vendorId,
-      vendorName,
-      bookingStatus: 'ASSIGNED_TO_VENDOR',
+      vendorId: vId,
+      vendorName: vName,
+      bookingStatus: 'VENDOR_ASSIGNED',
+      vendorAssignedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
     return updated;

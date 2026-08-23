@@ -147,14 +147,31 @@ function AdminOrderDetails() {
                   <span>Active vendor partners</span>
                   <select value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
                     <option value="">Select a vendor partner</option>
-                    {activeVendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
+                    {activeVendors.map((vendor) => {
+                      const allOrds = getOrders();
+                      const activeCount = allOrds.filter((o) => o.vendorId === vendor.id && ['VENDOR_ASSIGNED', 'VENDOR_ACCEPTED', 'IN_PROGRESS', 'READY_FOR_SETUP'].includes(o.bookingStatus)).length;
+                      const servesPincode = order.pincode && (vendor.servicePincodes || []).includes(order.pincode);
+                      return (
+                        <option key={vendor.id} value={vendor.id}>
+                          {vendor.name} ({vendor.id}) — Active: {activeCount} {servesPincode ? '✓ Serves Pincode' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 {selectedVendor ? (
                   <div className="summary-box admin-order-vendor-summary" style={{ marginTop: '12px' }}>
-                    <div className="summary-box__row"><span>Vendor</span><strong>{selectedVendor.name}</strong></div>
-                    <div className="summary-box__row"><span>Speciality</span><strong>{selectedVendor.specialties?.join(', ') || 'Not provided'}</strong></div>
+                    <div className="summary-box__row"><span>Vendor</span><strong>{selectedVendor.name} ({selectedVendor.id})</strong></div>
+                    <div className="summary-box__row"><span>Specialities</span><strong>{selectedVendor.specialties?.join(', ') || 'Not provided'}</strong></div>
                     <div className="summary-box__row"><span>Service Pincodes</span><strong>{selectedVendor.servicePincodes?.join(', ') || 'Not provided'}</strong></div>
+                    <div className="summary-box__row">
+                      <span>Booking Pincode Match</span>
+                      <strong style={{ color: order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode) ? '#166534' : '#b91c1c' }}>
+                        {order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode)
+                          ? `✓ Serves booking pincode ${order.pincode}`
+                          : `⚠️ Outside service area (Booking Pincode: ${order.pincode || 'N/A'})`}
+                      </strong>
+                    </div>
                   </div>
                 ) : null}
                 <button type="button" className="button" onClick={handleVendorAssignment} disabled={!selectedVendor} style={{ marginTop: '12px' }}>
