@@ -35,28 +35,37 @@ const distRoot = syncFs.existsSync(path.join(distCandidate, 'index.html'))
   ? distCandidate
   : path.resolve(__dirname, '..');
 
-const apiPrefixes = [
-  '/health',
-  '/decorations',
-  '/customers',
-  '/vendors',
-  '/service-areas',
-  '/orders',
-  '/availability',
-  '/auth',
-  '/charges',
-  '/payments',
-  '/admin',
-];
+function isApiRequest(pathname, req) {
+  const acceptHeader = req?.headers?.accept || '';
+  if (acceptHeader.includes('text/html')) {
+    return false;
+  }
 
-function isApiRequest(pathname) {
-  return (
-    pathname === '/health' ||
-    apiPrefixes.some(
-      (prefix) =>
-        pathname === prefix || pathname.startsWith(`${prefix}/`)
-    )
-  );
+  const explicitApiPrefixes = [
+    '/health',
+    '/auth',
+    '/payments',
+    '/decorations',
+    '/customers',
+    '/vendors',
+    '/service-areas',
+    '/charges',
+    '/availability',
+  ];
+
+  if (explicitApiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return true;
+  }
+
+  if (pathname === '/admin/dashboard' || pathname.startsWith('/admin/charges') || pathname.startsWith('/admin/users')) {
+    return true;
+  }
+
+  if (pathname === '/orders' || pathname.startsWith('/orders/')) {
+    return true;
+  }
+
+  return false;
 }
 
 function getContentType(filePath) {
@@ -184,11 +193,13 @@ async function main() {
       );
 
       if (
-        isApiRequest(requestUrl.pathname) ||
+        isApiRequest(requestUrl.pathname, req) ||
         req.method === 'OPTIONS'
       ) {
-        await handleApiRequest(req, res);
-        return;
+        const handled = await handleApiRequest(req, res);
+        if (handled !== false) {
+          return;
+        }
       }
 
       await serveFrontend(req, res);

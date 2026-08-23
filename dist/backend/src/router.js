@@ -144,9 +144,12 @@ export async function handleApiRequest(req, res) {
 
   const route = matchRoute(pathname, method, routeHandlers[method] || {});
   if (!route) {
+    if (method === 'GET' && !pathname.startsWith('/api')) {
+      return false;
+    }
     res.writeHead(404, { 'Content-Type': 'application/json', ...corsHeaders });
     res.end(JSON.stringify({ error: 'Route not found.' }));
-    return;
+    return true;
   }
 
   const { handler, params } = route;

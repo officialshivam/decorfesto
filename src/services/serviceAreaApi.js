@@ -1,9 +1,8 @@
+import { getApiBaseUrl } from './apiConfig.js';
+
 function resolveApiBases() {
-  const bases = [window.location.origin];
-  if (window.location.port === '5173') {
-    bases.push('http://localhost:4100');
-  }
-  return bases;
+  const base = getApiBaseUrl();
+  return base ? [base] : [''];
 }
 
 async function postJson(path, payload, extraHeaders = {}) {

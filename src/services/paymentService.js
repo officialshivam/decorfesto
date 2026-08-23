@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:4100';
+import { getApiBaseUrl } from './apiConfig.js';
+
+const API_BASE_URL = getApiBaseUrl();
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {

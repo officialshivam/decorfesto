@@ -1,5 +1,5 @@
-import { calculateItemSubtotal, getEnabledCharges } from './chargeService';
-import { getCurrentUser, persistCurrentUser, readUsers, writeUsers } from './userService';
+import { calculateItemSubtotal, getEnabledCharges } from './chargeService.js';
+import { getCurrentUser, persistCurrentUser, readUsers, writeUsers } from './userService.js';
 
 const ALL_ORDERS_STORAGE_KEY = 'decorfesto-all-orders';
 const LAST_ORDER_STORAGE_KEY = 'decorfesto-last-order';
@@ -235,7 +235,9 @@ export function assignOrderVendor(orderId, vendor) {
   return getOrderById(orderId);
 }
 
-const API_BASE_URL = 'http://localhost:4100';
+import { getApiBaseUrl } from './apiConfig.js';
+
+const API_BASE_URL = getApiBaseUrl();
 
 export async function createOrderApi(orderData, userFields = {}) {
   try {
