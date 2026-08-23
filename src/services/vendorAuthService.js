@@ -1,4 +1,4 @@
-import { getVendorById, saveStoredVendor } from './mockVendors';
+import { getVendorById } from './mockVendors';
 
 const VENDOR_SESSION_KEY = 'decorfesto-vendor-user';
 

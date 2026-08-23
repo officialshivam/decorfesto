@@ -10,6 +10,10 @@
       "Floral",
       "Birthday"
     ],
+    "servicePincodes": ["110001", "110032", "400001"],
+    "passwordHash": "VendorPassword123!",
+    "role": "VENDOR",
+    "accountStatus": "active",
     "status": "active",
     "createdAt": "2026-08-08T17:30:32.319Z",
     "updatedAt": "2026-08-08T17:30:32.319Z"
@@ -25,6 +29,10 @@
       "Kids",
       "Corporate"
     ],
+    "servicePincodes": ["110001", "110032"],
+    "passwordHash": "VendorPassword123!",
+    "role": "VENDOR",
+    "accountStatus": "active",
     "status": "active",
     "createdAt": "2026-08-09T14:23:13.673Z",
     "updatedAt": "2026-08-09T14:23:13.675Z"

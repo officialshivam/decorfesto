@@ -162,6 +162,10 @@ export function getOrders() {
   );
 }
 
+export function getStoredOrders() {
+  return getOrders();
+}
+
 export function getOrderById(orderId) {
   const idStr = String(orderId || '').trim();
   if (!idStr) return null;

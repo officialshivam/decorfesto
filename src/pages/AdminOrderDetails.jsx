@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getStoredCharges } from '../services/mockCharges';
+import { Link, useParams } from 'react-router-dom';
+import { getStoredCharges } from '../services/chargeService';
 import { assignOrderVendor, getOrderById, updateOrderStatus } from '../services/orderService';
 import { getStoredVendors } from '../services/mockVendors';
 
 function AdminOrderDetails() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [order, setOrder] = useState(() => getOrderById(id));
   const vendors = getStoredVendors();
   const activeVendors = vendors.filter((v) => v.status === 'active' && v.accountStatus !== 'disabled');
@@ -56,7 +55,7 @@ function AdminOrderDetails() {
     const now = new Date().toISOString();
     const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
 
-    const updated = assignOrderVendor(order.id, selectedVendor.id, selectedVendor.name);
+    assignOrderVendor(order.id, selectedVendor.id, selectedVendor.name);
     const withWorkflowStatus = updateOrderStatus(order.id, {
       bookingStatus: 'VENDOR_ASSIGNED',
       vendorAssignedAt: now,

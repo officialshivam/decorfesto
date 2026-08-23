@@ -77,6 +77,10 @@ export function getCharges() {
   return readSettings().charges;
 }
 
+export function getStoredCharges() {
+  return getCharges();
+}
+
 export function getEnabledCharges() {
   return getCharges().filter((c) => c.enabled === true);
 }
