@@ -12,8 +12,17 @@ export async function createRazorpayOrder({ req }) {
     return { statusCode: 400, body: { error: 'Order ID is required to create a Razorpay payment order.' } };
   }
 
-  const orderRepo = createRepository('orders');
-  const order = await orderRepo.getById(orderId);
+  let order = null;
+  try {
+    const orderRepo = createRepository('orders');
+    order = await orderRepo.getById(orderId);
+    if (!order) {
+      const allOrders = await orderRepo.list();
+      order = (allOrders || []).find((o) => o.id === orderId || o.orderId === orderId) || null;
+    }
+  } catch {
+    order = null;
+  }
 
   const amountNumber = order ? Number(order.total || order.totalAmount || 0) : Number(payload.total || 0);
   if (!amountNumber || amountNumber <= 0) {

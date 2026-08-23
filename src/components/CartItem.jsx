@@ -1,5 +1,6 @@
 import { useCart } from '../context/CartContext';
 import { getEnabledCharges, calculateTotalCharges } from '../services/mockSettings';
+import { formatDisplayDate } from '../utils/dateTimeUtils';
 
 function parseAddonEntries(customization = {}) {
   const entries = [];
@@ -52,7 +53,7 @@ function CartItem({ item }) {
         {/* LOGISTICS DETAILS */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '0.88rem', color: 'var(--text-main, #334155)', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px' }}>
           <span><strong>Pincode:</strong> {item.pincode}</span>
-          <span><strong>Date:</strong> {item.date}</span>
+          <span><strong>Date:</strong> {formatDisplayDate(item.date)}</span>
           <span><strong>Slot:</strong> {item.time}</span>
         </div>
 

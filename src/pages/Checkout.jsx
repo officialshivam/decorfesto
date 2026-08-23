@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
 import { getEnabledCharges, calculateTotalCharges, calculateItemSubtotal } from '../services/mockSettings';
 import { initiateRazorpayPayment } from '../services/paymentService';
+import { formatDisplayDate } from '../utils/dateTimeUtils';
 
 function Checkout() {
   const navigate = useNavigate();
@@ -301,19 +302,31 @@ function Checkout() {
             </div>
 
             <div className="cart-list">
-              {items.map((item) => (
-                <div key={item.key} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <strong>{item.productName}</strong>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    ₹{item.totalPrice.toLocaleString('en-IN')} × {item.quantity}
-                  </div>
-                  {(item.remarks || item.customization?.remarks) && (
-                    <div style={{ fontSize: '0.82rem', color: 'var(--accent-dark)', fontWeight: '600', marginTop: '4px' }}>
-                      Remarks: "{item.remarks || item.customization?.remarks}"
+              {items.map((item) => {
+                const basePrice = item.basePrice || item.price || 0;
+                const addOnPrice = item.addOnPrice || 0;
+                return (
+                  <div key={item.key} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
+                      <span>{item.productName}</span>
+                      <span>₹{(basePrice * item.quantity).toLocaleString('en-IN')}</span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      <strong>Date:</strong> {formatDisplayDate(item.date)} • <strong>Slot:</strong> {item.time}
+                    </div>
+                    {addOnPrice > 0 && (
+                      <div style={{ fontSize: '0.84rem', color: '#0284c7', marginTop: '2px', fontWeight: '600' }}>
+                        + Add-ons: ₹{(addOnPrice * item.quantity).toLocaleString('en-IN')}
+                      </div>
+                    )}
+                    {(item.remarks || item.customization?.remarks) && (
+                      <div style={{ fontSize: '0.82rem', color: 'var(--accent-dark)', fontWeight: '600', marginTop: '4px' }}>
+                        Remarks: "{item.remarks || item.customization?.remarks}"
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="summary-box" style={{ marginTop: '16px' }}>

@@ -48,6 +48,21 @@ export function normalizeDateToISO(dateVal) {
   return str;
 }
 
+export function formatDisplayDate(dateVal) {
+  if (!dateVal || dateVal === 'Pending') return 'Pending';
+  try {
+    const iso = normalizeDateToISO(dateVal);
+    if (!iso || !iso.includes('-')) return String(dateVal);
+    const [year, month, day] = iso.split('-').map(Number);
+    if (!year || !month || !day) return String(dateVal);
+    const dateObj = new Date(year, month - 1, day);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${day} ${months[dateObj.getMonth()]} ${year}`;
+  } catch {
+    return String(dateVal);
+  }
+}
+
 export function isTimeSlotPast(dateStr, slotLabel) {
   if (!dateStr || !slotLabel) return false;
 
