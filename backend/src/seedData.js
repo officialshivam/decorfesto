@@ -1,4 +1,3 @@
-import { products } from '../../src/data/products.js';
 import { createRepository } from './dataAccess/repository.js';
 import { ensureDataDirectory } from './config.js';
 
@@ -30,7 +29,16 @@ export async function seedBackendData() {
   const decorationRepo = createRepository('decorations');
   const existingDecorations = await decorationRepo.list();
   if (existingDecorations.length === 0) {
-    await Promise.all(products.map((product) => decorationRepo.create(toDecorationRecord(product))));
+    let productsList = [];
+    try {
+      const prodMod = await import('../../src/data/products.js');
+      productsList = prodMod.products || [];
+    } catch {
+      // Fallback if products data is not present in deployment environment
+    }
+    if (productsList.length > 0) {
+      await Promise.all(productsList.map((product) => decorationRepo.create(toDecorationRecord(product))));
+    }
   }
 
   const defaultVendors = [

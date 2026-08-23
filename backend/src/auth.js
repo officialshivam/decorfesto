@@ -1,14 +1,6 @@
 import crypto from 'node:crypto';
 import { adminPasswordHash, adminPasswordSalt, adminUsername, authSecret } from './config.js';
 
-let getVendorById = () => null;
-try {
-  const mockMod = await import('../../src/services/mockVendors.js');
-  getVendorById = mockMod.getVendorById;
-} catch {
-  // Gracefully fallback when running in production server environment where src/ is not copied
-}
-
 export function hashPassword(password) {
   if (!password) return '';
   const salt = crypto.randomBytes(16).toString('hex');
@@ -303,8 +295,17 @@ export async function vendorLogin({ req }) {
     return { statusCode: 403, body: { error: 'Vendor account is disabled or suspended. Please contact DecorFesto admin.' } };
   }
 
-  const mockV = getVendorById(matched.id) || getVendorById(matched.email);
-  const storedHash = matched.passwordHash || matched.password || matched.password_hash || mockV?.passwordHash || 'VendorPassword123!';
+  let storedHash = matched.passwordHash || matched.password || matched.password_hash;
+  if (!storedHash) {
+    try {
+      const mockMod = await import('../../src/services/mockVendors.js');
+      const mockV = mockMod.getVendorById?.(matched.id) || mockMod.getVendorById?.(matched.email);
+      storedHash = mockV?.passwordHash || 'VendorPassword123!';
+    } catch {
+      storedHash = 'VendorPassword123!';
+    }
+  }
+
   if (!verifyPassword(password, storedHash)) {
     return { statusCode: 401, body: { error: 'Invalid password.' } };
   }
