@@ -33,7 +33,7 @@ function MobileNumberInput({
   value = '',
   onChange,
   label = 'Mobile Number',
-  placeholder = '9876543210',
+  placeholder = 'Enter 10 Digit Mobile No.',
   required = true,
   disabled = false,
   error = '',
@@ -52,7 +52,6 @@ function MobileNumberInput({
       {label && <label htmlFor={inputId}>{label}{required ? ' *' : ''}</label>}
       <div className="mobile-input-group">
         <span className="mobile-prefix-badge" aria-hidden="true">+91</span>
-        <span className="mobile-prefix-divider" aria-hidden="true">|</span>
         <input
           id={inputId}
           name={name}

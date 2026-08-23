@@ -89,7 +89,7 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
       prefill: {
         name: customer.fullName || customer.name || 'Shivam Gupta',
         email: customer.email || 'shivam@decorfesto.com',
-        contact: customer.mobile || customer.phone || '9876543210',
+        contact: customer.mobile || customer.phone || '',
       },
       notes: {
         orderId: order.id,

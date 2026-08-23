@@ -138,7 +138,7 @@ function Signup() {
                 setSubmitError('');
               }}
               label="Mobile Number"
-              placeholder="9876543210"
+              placeholder="Enter 10 Digit Mobile No."
               required
               error={errors.mobile}
             />

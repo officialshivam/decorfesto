@@ -7,8 +7,8 @@ const initialForm = {
   requirements: 'Soft luxury theme with elegant floral backdrop.',
   preferredDate: '2026-09-15',
   preferredTime: '6:00 PM',
-  contactName: 'Aarav',
-  contactMobile: '9876543210',
+  contactName: '',
+  contactMobile: '',
 };
 
 function NIFTConsultation() {
@@ -68,7 +68,7 @@ function NIFTConsultation() {
               </label>
               <label className="search-field">
                 <span>Mobile number</span>
-                <input name="contactMobile" value={form.contactMobile} onChange={handleChange} placeholder="Mobile number" />
+                <input name="contactMobile" value={form.contactMobile} onChange={handleChange} placeholder="Enter 10 Digit Mobile No." />
               </label>
             </div>
 

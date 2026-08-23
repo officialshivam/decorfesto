@@ -80,7 +80,7 @@ function QuickCustomerModal({ isOpen, onClose, onSubmit, pendingProduct }) {
             value={mobile}
             onChange={setMobile}
             label="Mobile Number"
-            placeholder="9876543210"
+            placeholder="Enter 10 Digit Mobile No."
             required
             error={error && error.includes('mobile') ? error : ''}
           />
