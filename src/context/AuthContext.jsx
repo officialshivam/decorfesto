@@ -8,10 +8,22 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState('');
 
   useEffect(() => {
-    if (!user) {
-      setAuthError('');
-    }
-  }, [user]);
+    const syncUserStatus = () => {
+      const currentUser = getStoredUser();
+      setUser(currentUser);
+      if (!currentUser) {
+        setAuthError('');
+      }
+    };
+
+    syncUserStatus();
+    window.addEventListener('storage', syncUserStatus);
+    window.addEventListener('focus', syncUserStatus);
+    return () => {
+      window.removeEventListener('storage', syncUserStatus);
+      window.removeEventListener('focus', syncUserStatus);
+    };
+  }, []);
 
   const login = ({ identifier, password }) => {
     const result = loginWithCredentials({ identifier, password });

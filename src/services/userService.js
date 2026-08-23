@@ -77,8 +77,13 @@ export function getCurrentUser() {
     const stored = window.localStorage.getItem(CURRENT_USER_STORAGE_KEY);
     if (!stored) return null;
     const parsed = JSON.parse(stored);
-    const freshUser = readUsers().find((u) => u.id === parsed.id || u.email === parsed.email);
-    return freshUser ? sanitizeUser(freshUser) : sanitizeUser(parsed);
+    const users = readUsers();
+    const freshUser = users.find((u) => u.id === parsed.id || u.email === parsed.email);
+    if (freshUser && (freshUser.disabled === true || freshUser.status === 'DISABLED')) {
+      window.localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+      return null;
+    }
+    return freshUser ? sanitizeUser(freshUser) : (parsed && !parsed.disabled ? sanitizeUser(parsed) : null);
   } catch {
     return null;
   }
@@ -143,8 +148,22 @@ export function createAdminUser({ fullName, name, mobile, phone, email, password
 
 export function toggleUserStatus(userId) {
   const users = readUsers();
-  const nextUsers = users.map((u) => (u.id === userId ? { ...u, disabled: !u.disabled } : u));
+  const nextUsers = users.map((u) => {
+    if (u.id !== userId) return u;
+    const nextDisabled = !u.disabled;
+    return {
+      ...u,
+      disabled: nextDisabled,
+      status: nextDisabled ? 'DISABLED' : 'ACTIVE',
+    };
+  });
   writeUsers(nextUsers);
+
+  const currentUser = getCurrentUser();
+  if (currentUser && currentUser.id === userId && (currentUser.disabled || currentUser.status === 'DISABLED')) {
+    persistCurrentUser(null);
+  }
+
   return { ok: true };
 }
 

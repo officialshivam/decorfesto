@@ -6,7 +6,7 @@ import { createOrder, getOrder, listOrders, updateOrderStatus } from './handlers
 import { checkAvailability } from './handlers/availability.js';
 import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
-import { adminLogin } from './auth.js';
+import { adminLogin, validateActiveUserSession } from './auth.js';
 import { getCorsHeaders } from './config.js';
 import { listEnabledCharges, listAdminCharges, createAdminCharge, updateAdminCharge, deleteAdminCharge } from './handlers/charges.js';
 import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdminUserPassword } from './handlers/users.js';
@@ -153,6 +153,14 @@ export async function handleApiRequest(req, res) {
   }
 
   const { handler, params } = route;
+
+  const sessionCheck = await validateActiveUserSession(req.headers);
+  if (!sessionCheck.valid) {
+    res.writeHead(sessionCheck.statusCode || 403, { 'Content-Type': 'application/json', ...corsHeaders });
+    res.end(JSON.stringify({ error: sessionCheck.error, message: sessionCheck.message }));
+    return true;
+  }
+
   const body = await parseRequestBody(req);
   req.body = body;
 

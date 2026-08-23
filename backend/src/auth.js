@@ -123,6 +123,35 @@ function extractTokenFromHeaders(headers = {}) {
   return null;
 }
 
+import { createRepository } from './dataAccess/repository.js';
+
+export async function validateActiveUserSession(headers = {}) {
+  const token = extractTokenFromHeaders(headers);
+  if (!token) return { valid: true };
+  const adminPayload = verifyAdminSessionToken(token);
+  if (adminPayload) return { valid: true, role: 'ADMIN' };
+  const userPayload = verifyUserSessionToken(token);
+  if (!userPayload) return { valid: true };
+
+  if (userPayload.id) {
+    try {
+      const repository = createRepository('customers');
+      const user = await repository.getById(userPayload.id);
+      if (user && (user.disabled === true || user.status === 'DISABLED')) {
+        return {
+          valid: false,
+          statusCode: 403,
+          error: 'ACCOUNT_DISABLED',
+          message: 'This account has been disabled. Please contact DecorFesto support.',
+        };
+      }
+    } catch {
+      // Fallback if DB lookup is unavailable
+    }
+  }
+  return { valid: true, role: userPayload.role || 'CUSTOMER', user: userPayload };
+}
+
 export function getUserRole(headers = {}) {
   const token = extractTokenFromHeaders(headers);
   if (!token) return 'CUSTOMER';
