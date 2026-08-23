@@ -151,53 +151,58 @@ export async function handleApiRequest(req, res) {
     return;
   }
 
-  const route = matchRoute(pathname, method, routeHandlers[method] || {});
-  if (!route) {
-    if (method === 'GET' && !pathname.startsWith('/api')) {
-      return false;
-    }
-    res.writeHead(404, { 'Content-Type': 'application/json', ...corsHeaders });
-    res.end(JSON.stringify({ error: 'Route not found.' }));
-    return true;
-  }
-
-  const { handler, params } = route;
-
-  const sessionCheck = await validateActiveUserSession(req.headers);
-  if (!sessionCheck.valid) {
-    res.writeHead(sessionCheck.statusCode || 403, { 'Content-Type': 'application/json', ...corsHeaders });
-    res.end(JSON.stringify({ error: sessionCheck.error, message: sessionCheck.message }));
-    return true;
-  }
-
-  const body = await parseRequestBody(req);
-  req.body = body;
-
-  const context = {
-    req,
-    res,
-    params,
-    query: Object.fromEntries(url.searchParams.entries()),
-  };
-
   try {
+    const route = matchRoute(pathname, method, routeHandlers[method] || {});
+    if (!route) {
+      if (method === 'GET' && !pathname.startsWith('/api')) {
+        return false;
+      }
+      res.writeHead(404, { 'Content-Type': 'application/json', ...corsHeaders });
+      res.end(JSON.stringify({ error: 'Route not found.' }));
+      return true;
+    }
+
+    const { handler, params } = route;
+
+    const sessionCheck = await validateActiveUserSession(req.headers);
+    if (!sessionCheck.valid) {
+      res.writeHead(sessionCheck.statusCode || 403, { 'Content-Type': 'application/json', ...corsHeaders });
+      res.end(JSON.stringify({ error: sessionCheck.error, message: sessionCheck.message }));
+      return true;
+    }
+
+    const body = await parseRequestBody(req);
+    req.body = body;
+
+    const context = {
+      req,
+      res,
+      params,
+      query: Object.fromEntries(url.searchParams.entries()),
+    };
+
     const response = await handler(context);
     if (!response) {
       res.writeHead(204, { 'Content-Type': 'application/json', ...corsHeaders });
       res.end();
-      return;
+      return true;
     }
 
     const statusCode = response.statusCode || 200;
-    const body = response.body;
+    const responseBody = response.body;
     res.writeHead(statusCode, {
       'Content-Type': 'application/json',
       ...corsHeaders,
       ...response.headers,
     });
-    res.end(JSON.stringify(body));
+    res.end(JSON.stringify(responseBody));
+    return true;
   } catch (error) {
-    res.writeHead(500, { 'Content-Type': 'application/json', ...corsHeaders });
-    res.end(JSON.stringify({ error: error.message || 'Internal server error.' }));
+    console.error('API Router Exception:', error);
+    try {
+      res.writeHead(500, { 'Content-Type': 'application/json', ...corsHeaders });
+      res.end(JSON.stringify({ error: error.message || 'Internal server error.' }));
+    } catch {}
+    return true;
   }
 }
