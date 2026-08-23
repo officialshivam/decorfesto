@@ -278,7 +278,7 @@ export function getCustomizationsForDesign(designId, type = null) {
   const dId = String(designId || '');
 
   return all.filter((item) => {
-    if (!item.active) return false;
+    if (!item.active || item.archived) return false;
     if (type && item.type !== type) return false;
 
     const assigned = Array.isArray(item.assignedDesigns)
@@ -291,16 +291,23 @@ export function getCustomizationsForDesign(designId, type = null) {
 export function saveStoredCustomization(item) {
   const all = readCustomizations();
   const existingIndex = all.findIndex((e) => e.id === item.id);
+  const rawPrice = Number(item.price);
+  const validPrice = !isNaN(rawPrice) && rawPrice >= 0 ? rawPrice : 0;
+
   const nextItem = {
     ...item,
     id: item.id || `custom-${Date.now()}`,
     name: String(item.name || '').trim(),
     description: String(item.description || '').trim(),
     adminNotes: String(item.adminNotes || '').trim(),
-    price: Number(item.price || 0),
+    price: validPrice,
     active: item.active !== false,
+    archived: Boolean(item.archived),
+    featured: Boolean(item.featured),
+    recommended: Boolean(item.recommended),
     displayOrder: Number(item.displayOrder || 1),
     assignedDesigns: Array.isArray(item.assignedDesigns) ? item.assignedDesigns.map(String) : [],
+    createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
@@ -344,4 +351,18 @@ export function toggleCustomizationAssignment(itemId, designId, isAssigned) {
     ...item,
     assignedDesigns: currentAssigned,
   });
+}
+
+export function swapCustomizationDisplayOrder(id1, id2) {
+  const all = readCustomizations();
+  const item1 = all.find((e) => e.id === id1);
+  const item2 = all.find((e) => e.id === id2);
+
+  if (!item1 || !item2) return;
+
+  const tempOrder = item1.displayOrder || 1;
+  item1.displayOrder = item2.displayOrder || 1;
+  item2.displayOrder = tempOrder;
+
+  writeCustomizations(all);
 }

@@ -230,7 +230,13 @@ function CustomizationPanel({
                 >
                   <div className="addon-card__media">
                     <img src={addon.image} alt={addon.name} loading="lazy" />
-                    {addon.category && <span className="addon-card__category">{addon.category}</span>}
+                    {(addon.recommended || addon.featured) ? (
+                      <span className="addon-card__category" style={{ background: '#fef3c7', color: '#d97706', fontWeight: '700' }}>
+                        ⭐ Recommended
+                      </span>
+                    ) : addon.category ? (
+                      <span className="addon-card__category">{addon.category}</span>
+                    ) : null}
                   </div>
                   <div className="addon-card__content">
                     <h4 className="addon-card__title">{addon.name}</h4>
