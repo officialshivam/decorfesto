@@ -7,37 +7,6 @@ function buildOrderId() {
 
 export async function createOrder({ req }) {
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-
-  if (payload.action === 'APPROVED_TRANSACTIONAL_RESET') {
-    const { getPool } = await import('../dataAccess/mysqlConnection.js');
-    const conn = await getPool().getConnection();
-    await conn.beginTransaction();
-    try {
-      const [resItems] = await conn.query('DELETE FROM order_items');
-      const [resOrders] = await conn.query('DELETE FROM orders');
-      const [resCustomers] = await conn.query('DELETE FROM customers');
-      const [resChecks] = await conn.query('DELETE FROM availability_checks');
-      await conn.commit();
-      return {
-        statusCode: 200,
-        body: {
-          success: true,
-          deleted: {
-            order_items: resItems.affectedRows,
-            orders: resOrders.affectedRows,
-            customers: resCustomers.affectedRows,
-            availability_checks: resChecks.affectedRows,
-          },
-        },
-      };
-    } catch (err) {
-      await conn.rollback();
-      return { statusCode: 500, body: { error: err.message } };
-    } finally {
-      conn.release();
-    }
-  }
-
   const repository = createRepository('orders');
   const customerRepo = createRepository('customers');
   const vendorRepo = createRepository('vendors');
