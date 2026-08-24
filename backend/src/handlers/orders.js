@@ -153,7 +153,9 @@ export async function listOrders({ req, query }) {
   const role = getUserRole(req.headers);
   const repository = createRepository('orders');
   const userAuth = getAuthenticatedUser(req.headers);
-  const targetCustomerId = userAuth?.id || userAuth?.email || req.headers['x-customer-id'] || req.headers['X-Customer-Id'] || query?.customerId;
+  const targetCustomerId = userAuth?.id || req.headers['x-customer-id'] || req.headers['X-Customer-Id'] || query?.customerId;
+  const targetEmail = userAuth?.email || req.headers['x-customer-email'] || req.headers['X-Customer-Email'] || query?.customerEmail;
+  const targetPhone = userAuth?.phone || userAuth?.mobile || req.headers['x-customer-phone'] || req.headers['X-Customer-Phone'] || query?.customerPhone;
 
   if (role === 'admin') {
     return {
@@ -162,18 +164,22 @@ export async function listOrders({ req, query }) {
     };
   }
 
-  if (targetCustomerId) {
+  if (targetCustomerId || targetEmail || targetPhone) {
     const allOrders = await repository.list();
-    const cleanId = String(targetCustomerId).trim().toLowerCase();
-    const cleanMobile = cleanId.replace(/\D/g, '').slice(-10);
+    const cleanId = String(targetCustomerId || '').trim().toLowerCase();
+    const cleanEmail = String(targetEmail || '').trim().toLowerCase();
+    const cleanPhone = String(targetPhone || '').replace(/\D/g, '').slice(-10);
+    const cleanIdMobile = cleanId.replace(/\D/g, '').slice(-10);
+
     const customerOrders = (allOrders || []).filter((o) => {
       const oCustId = String(o.customerId || '').trim().toLowerCase();
       const oEmail = String(o.customerEmail || '').trim().toLowerCase();
       const oMobile = String(o.customerPhone || o.customerMobile || '').replace(/\D/g, '').slice(-10);
       return (
-        (oCustId && (oCustId === cleanId || oCustId.replace(/^(cust|customer)-/, '') === cleanId.replace(/^(cust|customer)-/, ''))) ||
-        (oEmail && oEmail === cleanId) ||
-        (cleanMobile && oMobile && oMobile === cleanMobile)
+        (cleanId && oCustId && (oCustId === cleanId || oCustId.replace(/^(cust|customer)-/, '') === cleanId.replace(/^(cust|customer)-/, ''))) ||
+        (cleanEmail && oEmail && oEmail === cleanEmail) ||
+        (cleanPhone && oMobile && oMobile === cleanPhone) ||
+        (cleanIdMobile && cleanIdMobile.length === 10 && oMobile && oMobile === cleanIdMobile)
       );
     });
     return {

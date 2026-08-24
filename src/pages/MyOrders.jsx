@@ -49,8 +49,8 @@ function MyOrders() {
     async function loadOrders() {
       try {
         let fetchedOrders = [];
-        if (user?.id) {
-          fetchedOrders = await getUserOrdersApi(user.id);
+        if (user) {
+          fetchedOrders = await getUserOrdersApi(user);
         } else {
           fetchedOrders = await getOrdersApi();
         }

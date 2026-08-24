@@ -297,10 +297,19 @@ export async function getOrdersApi() {
   return [];
 }
 
-export async function getUserOrdersApi(customerId) {
-  if (!customerId) return [];
+export async function getUserOrdersApi(userOrId) {
+  if (!userOrId) return [];
+  const customerId = typeof userOrId === 'object' ? userOrId.id : userOrId;
+  const customerEmail = typeof userOrId === 'object' ? (userOrId.email || '') : '';
+  const customerPhone = typeof userOrId === 'object' ? (userOrId.mobile || userOrId.phone || '') : '';
+
   try {
-    const headers = { Accept: 'application/json', 'x-customer-id': customerId };
+    const headers = {
+      Accept: 'application/json',
+      'x-customer-id': customerId || '',
+      'x-customer-email': customerEmail || '',
+      'x-customer-phone': customerPhone || '',
+    };
     const response = await fetch(`${API_BASE_URL}/orders`, {
       headers,
       credentials: 'include',

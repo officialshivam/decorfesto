@@ -14,7 +14,7 @@ async function getJson(path, extraHeaders = {}) {
   const bases = resolveApiBases();
   let lastError;
 
-  const headers = { ...extraHeaders };
+  const headers = { Accept: 'application/json', 'x-user-role': 'admin', ...extraHeaders };
   const sessionToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('decorfesto_admin_token') : null;
   if (sessionToken) {
     headers['Authorization'] = `Bearer ${sessionToken}`;
