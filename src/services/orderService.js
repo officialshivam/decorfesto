@@ -297,6 +297,26 @@ export async function getOrdersApi() {
   return [];
 }
 
+export async function getUserOrdersApi(customerId) {
+  if (!customerId) return [];
+  try {
+    const headers = { Accept: 'application/json', 'x-customer-id': customerId };
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      headers,
+      credentials: 'include',
+    });
+    if (response.ok) {
+      const result = await response.json();
+      if (Array.isArray(result.orders)) {
+        return result.orders.map(sanitizeOrder);
+      }
+    }
+  } catch (error) {
+    console.debug('Unable to fetch customer orders from backend:', error);
+  }
+  return [];
+}
+
 export async function getOrderByIdApi(orderId) {
   try {
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {

@@ -245,6 +245,16 @@ export function getAuthenticatedVendor(headers = {}) {
   return verifyVendorSessionToken(token);
 }
 
+export function getAuthenticatedUser(headers = {}) {
+  const token = extractTokenFromHeaders(headers);
+  if (!token) return null;
+  const adminPayload = verifyAdminSessionToken(token);
+  if (adminPayload) return { ...adminPayload, role: 'ADMIN' };
+  const userPayload = verifyUserSessionToken(token);
+  if (userPayload) return userPayload;
+  return null;
+}
+
 export function requireRole(role, request) {
   const userRole = getUserRole(request.headers);
   const normalizedTarget = String(role).toUpperCase();

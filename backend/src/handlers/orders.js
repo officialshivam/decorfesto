@@ -1,5 +1,5 @@
 import { createRepository } from '../dataAccess/repository.js';
-import { getUserRole } from '../auth.js';
+import { getAuthenticatedUser, getUserRole } from '../auth.js';
 
 function buildOrderId() {
   return `ORD-${Date.now().toString().slice(-8)}`;
@@ -149,10 +149,11 @@ export async function getOrder({ req, params }) {
   };
 }
 
-export async function listOrders({ req }) {
+export async function listOrders({ req, query }) {
   const role = getUserRole(req.headers);
   const repository = createRepository('orders');
-  const customerId = req.headers['x-customer-id'] || req.headers['X-Customer-Id'];
+  const userAuth = getAuthenticatedUser(req.headers);
+  const targetCustomerId = userAuth?.id || userAuth?.email || req.headers['x-customer-id'] || req.headers['X-Customer-Id'] || query?.customerId;
 
   if (role === 'admin') {
     return {
@@ -161,11 +162,20 @@ export async function listOrders({ req }) {
     };
   }
 
-  if (customerId) {
+  if (targetCustomerId) {
     const allOrders = await repository.list();
-    const customerOrders = (allOrders || []).filter(
-      (o) => o.customerId === customerId || o.customerEmail === customerId || o.customerMobile === customerId
-    );
+    const cleanId = String(targetCustomerId).trim().toLowerCase();
+    const cleanMobile = cleanId.replace(/\D/g, '').slice(-10);
+    const customerOrders = (allOrders || []).filter((o) => {
+      const oCustId = String(o.customerId || '').trim().toLowerCase();
+      const oEmail = String(o.customerEmail || '').trim().toLowerCase();
+      const oMobile = String(o.customerPhone || o.customerMobile || '').replace(/\D/g, '').slice(-10);
+      return (
+        (oCustId && (oCustId === cleanId || oCustId.replace(/^(cust|customer)-/, '') === cleanId.replace(/^(cust|customer)-/, ''))) ||
+        (oEmail && oEmail === cleanId) ||
+        (cleanMobile && oMobile && oMobile === cleanMobile)
+      );
+    });
     return {
       statusCode: 200,
       body: { orders: customerOrders },
@@ -174,7 +184,7 @@ export async function listOrders({ req }) {
 
   return {
     statusCode: 200,
-    body: { orders: await repository.list() },
+    body: { orders: [] },
   };
 }
 
