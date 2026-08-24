@@ -186,9 +186,7 @@ async function serveFrontend(req, res) {
   }
 }
 
-async function main() {
-  await initializeBackend();
-
+function main() {
   const server = http.createServer(async (req, res) => {
     try {
       const requestUrl = new URL(
@@ -228,16 +226,18 @@ async function main() {
   const rawPort = process.env.PORT || localPort;
   const port = isNaN(Number(rawPort)) ? rawPort : Number(rawPort);
 
-  server.listen(port, () => {
-    console.log(`DecorFesto server listening on ${port}`);
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`DecorFesto server listening on ${port} (0.0.0.0)`);
     console.log(`Serving React app from ${distRoot}`);
+
+    initializeBackend()
+      .then(() => {
+        console.log('Backend async initialization complete.');
+      })
+      .catch((err) => {
+        console.warn('Backend async initialization warning:', err.message);
+      });
   });
 }
 
-main().catch((error) => {
-  console.error(
-    'Failed to start DecorFesto:',
-    error
-  );
-  process.exit(1);
-});
+main();

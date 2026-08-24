@@ -431,39 +431,110 @@ export class MySqlRepository {
 }
 
 // ---------------------------------------------------------------------------
-// JSON fallback repository (kept for local dev and as a safe default).
+// JSON fallback repository with atomic writes, per-file lock, and corruption safety.
 // ---------------------------------------------------------------------------
+const fileLocks = new Map();
+
+function getFileLock(filePath) {
+  if (!fileLocks.has(filePath)) {
+    fileLocks.set(filePath, Promise.resolve());
+  }
+  return fileLocks.get(filePath);
+}
+
+async function withFileLock(filePath, operation) {
+  const currentLock = getFileLock(filePath);
+  let releaseLock;
+  const nextLock = new Promise((resolve) => {
+    releaseLock = resolve;
+  });
+  fileLocks.set(filePath, currentLock.then(() => nextLock));
+
+  await currentLock;
+  try {
+    return await operation();
+  } finally {
+    releaseLock();
+  }
+}
+
 export class LocalJsonRepository {
   constructor(table) {
     this.table = table;
     this.filePath = path.join(dataDirectory, `${table}.json`);
   }
 
-  async initialize() {
+  async initializeInternal() {
     await ensureDataDirectory();
     try {
       await fs.access(this.filePath);
     } catch {
-      await fs.writeFile(this.filePath, '[]', 'utf8');
+      const tmpPath = `${this.filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+      await fs.writeFile(tmpPath, '[]', 'utf8');
+      await fs.rename(tmpPath, this.filePath);
     }
   }
 
-  async readAll() {
-    await this.initialize();
-    const raw = await fs.readFile(this.filePath, 'utf8');
+  async initialize() {
+    return withFileLock(this.filePath, () => this.initializeInternal());
+  }
+
+  async readAllInternal() {
+    await this.initializeInternal();
+    let raw = '';
+    try {
+      raw = await fs.readFile(this.filePath, 'utf8');
+    } catch (readErr) {
+      if (readErr.code === 'ENOENT') return [];
+      throw readErr;
+    }
+
+    if (!raw || !raw.trim()) {
+      return [];
+    }
 
     try {
       return JSON.parse(raw);
     } catch (err) {
-      console.warn(`Resetting malformed JSON store for ${this.filePath}:`, err.message);
-      await fs.writeFile(this.filePath, '[]', 'utf8');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = `${this.filePath}.corrupted.${timestamp}`;
+      console.error(`CRITICAL: Malformed JSON store detected at ${this.filePath}. Preserving original file and creating backup at ${backupPath}. Parse error:`, err.message);
+
+      try {
+        await fs.copyFile(this.filePath, backupPath);
+      } catch (copyErr) {
+        console.error(`Failed to create corrupted backup file at ${backupPath}:`, copyErr.message);
+      }
+
+      // DO NOT overwrite this.filePath with '[]'! Preserve original file on disk.
       return [];
     }
   }
 
+  async readAll() {
+    return withFileLock(this.filePath, () => this.readAllInternal());
+  }
+
+  async writeAllInternal(items) {
+    await this.initializeInternal();
+    const tmpPath = `${this.filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2)}`;
+    const content = JSON.stringify(items, null, 2);
+
+    const fileHandle = await fs.open(tmpPath, 'w');
+    try {
+      await fileHandle.writeFile(content, 'utf8');
+      if (typeof fileHandle.sync === 'function') {
+        await fileHandle.sync();
+      }
+    } finally {
+      await fileHandle.close();
+    }
+
+    await fs.rename(tmpPath, this.filePath);
+  }
+
   async writeAll(items) {
-    await this.initialize();
-    await fs.writeFile(this.filePath, JSON.stringify(items, null, 2), 'utf8');
+    return withFileLock(this.filePath, () => this.writeAllInternal(items));
   }
 
   async getById(id) {
@@ -476,29 +547,35 @@ export class LocalJsonRepository {
   }
 
   async create(item) {
-    const items = await this.readAll();
-    items.push(item);
-    await this.writeAll(items);
-    return item;
+    return withFileLock(this.filePath, async () => {
+      const items = await this.readAllInternal();
+      items.push(item);
+      await this.writeAllInternal(items);
+      return item;
+    });
   }
 
   async update(id, updates) {
-    const items = await this.readAll();
-    const index = items.findIndex((item) => item.id === id);
-    if (index < 0) {
-      return null;
-    }
+    return withFileLock(this.filePath, async () => {
+      const items = await this.readAllInternal();
+      const index = items.findIndex((item) => item.id === id);
+      if (index < 0) {
+        return null;
+      }
 
-    items[index] = { ...items[index], ...updates, updatedAt: new Date().toISOString() };
-    await this.writeAll(items);
-    return items[index];
+      items[index] = { ...items[index], ...updates, updatedAt: new Date().toISOString() };
+      await this.writeAllInternal(items);
+      return items[index];
+    });
   }
 
   async delete(id) {
-    const items = await this.readAll();
-    const filtered = items.filter((item) => item.id !== id);
-    await this.writeAll(filtered);
-    return filtered.length !== items.length;
+    return withFileLock(this.filePath, async () => {
+      const items = await this.readAllInternal();
+      const filtered = items.filter((item) => item.id !== id);
+      await this.writeAllInternal(filtered);
+      return filtered.length !== items.length;
+    });
   }
 
   async queryByField(field, value) {

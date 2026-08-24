@@ -14,31 +14,12 @@ import { createRepository } from './dataAccess/repository.js';
 import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
 import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword } from './handlers/vendorPortal.js';
 
-async function healthCheck() {
-  const resourceNames = ['orders', 'customers', 'vendors', 'service-areas', 'service-area-vendors', 'decorations', 'availability-checks'];
-  const resourceStatuses = {};
-
-  let degraded = false;
-  for (const resourceName of resourceNames) {
-    const repository = createRepository(resourceName);
-    try {
-      const items = await repository.list();
-      resourceStatuses[resourceName] = { ok: true, count: items.length };
-    } catch (error) {
-      degraded = true;
-      resourceStatuses[resourceName] = { ok: false, error: error.message };
-    }
-  }
-
+function healthCheck() {
   return {
     statusCode: 200,
     body: {
       status: 'ok',
-      api: 'healthy',
-      backend: degraded ? 'degraded' : 'healthy',
-      repositories: resourceStatuses,
       uptimeSeconds: Math.floor(process.uptime()),
-      checkedAt: new Date().toISOString(),
     },
   };
 }
