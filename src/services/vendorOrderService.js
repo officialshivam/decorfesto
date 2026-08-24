@@ -1,4 +1,4 @@
-import { getStoredOrders, updateOrderStatus } from './orderService.js';
+import { updateOrderStatus } from './orderService.js';
 import { getVendorById } from './mockVendors.js';
 
 export function isOrderAssignedToVendor(order, vendorInput) {
@@ -52,7 +52,7 @@ function getVendorAuthHeaders(extraHeaders = {}) {
   return headers;
 }
 
-export async function fetchVendorOrdersApi(vendorInput) {
+export async function fetchVendorOrdersApi(_vendorInput) {
   try {
     const res = await fetch('/vendor/orders', {
       headers: getVendorAuthHeaders(),
@@ -62,17 +62,14 @@ export async function fetchVendorOrdersApi(vendorInput) {
       const data = await res.json();
       return { ok: true, orders: data.orders || [] };
     }
-  } catch {
-    // Local mock fallback
+    const errData = await res.json().catch(() => ({}));
+    return { ok: false, orders: [], error: errData.error || 'Failed to fetch vendor orders.' };
+  } catch (err) {
+    return { ok: false, orders: [], error: err.message || 'Unable to connect to vendor orders server.' };
   }
-
-  // Filter local stored orders safely
-  const allOrders = getStoredOrders();
-  const filtered = allOrders.filter((order) => isOrderAssignedToVendor(order, vendorInput));
-  return { ok: true, orders: filtered };
 }
 
-export async function fetchVendorOrderDetailApi(orderId, vendorInput) {
+export async function fetchVendorOrderDetailApi(orderId, _vendorInput) {
   try {
     const res = await fetch(`/vendor/orders/${orderId}`, {
       headers: getVendorAuthHeaders(),
@@ -85,22 +82,11 @@ export async function fetchVendorOrderDetailApi(orderId, vendorInput) {
     if (res.status === 403) {
       return { ok: false, error: 'Forbidden: Order assigned to another vendor.', statusCode: 403 };
     }
-  } catch {
-    // Local mock fallback
+    const errData = await res.json().catch(() => ({}));
+    return { ok: false, error: errData.error || 'Order not found.' };
+  } catch (err) {
+    return { ok: false, error: err.message || 'Unable to fetch vendor order detail.' };
   }
-
-  const allOrders = getStoredOrders();
-  const order = allOrders.find((o) => o.id === orderId);
-
-  if (!order) {
-    return { ok: false, error: 'Order not found.' };
-  }
-
-  if (!isOrderAssignedToVendor(order, vendorInput)) {
-    return { ok: false, error: 'Forbidden: Access denied to orders assigned to another vendor.', statusCode: 403 };
-  }
-
-  return { ok: true, order };
 }
 
 export async function updateVendorOrderStatusApi(orderId, vendorId, vendorName, nextBookingStatus, reason = '') {

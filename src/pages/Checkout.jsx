@@ -142,20 +142,27 @@ function Checkout() {
 
       console.log('BOOKING PAYLOAD', order);
 
-      // 1. Persist initial order to production MySQL store first
-      let serverOrder = null;
+      // 1. Persist order to production MySQL database FIRST
+      let activeOrder = null;
       try {
-        serverOrder = await createOrderApi(order, {
+        activeOrder = await createOrderApi(order, {
           fullName: form.fullName.trim(),
           mobile: mobileVal.fullMobile,
           email: form.email.trim(),
           savedAddress: form.address.trim(),
         });
       } catch (orderErr) {
-        console.warn('Backend order creation failed, using local order object:', orderErr);
+        console.error('Production order creation failed:', orderErr);
+        setIsSubmitting(false);
+        setSubmitError('Failed to initialize booking on server. Please try again.');
+        return;
       }
 
-      const activeOrder = serverOrder || order;
+      if (!activeOrder || !activeOrder.id) {
+        setIsSubmitting(false);
+        setSubmitError('Unable to create booking record in production database. Payment aborted.');
+        return;
+      }
 
       // 2. Save local UI fallback
       saveLastOrder(activeOrder);

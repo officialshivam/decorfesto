@@ -8,6 +8,8 @@ function buildOrderId() {
 export async function createOrder({ req }) {
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
   const repository = createRepository('orders');
+  const customerRepo = createRepository('customers');
+  const vendorRepo = createRepository('vendors');
 
   if (payload.pincode && !/^[1-9][0-9]{5}$/.test(String(payload.pincode).trim())) {
     return {
@@ -33,10 +35,57 @@ export async function createOrder({ req }) {
     };
   }
 
+  // Ensure customer record exists in customers table to satisfy foreign key fk_orders_customer
+  let validCustomerId = null;
+  const rawCustId = payload.customerId || payload.userId;
+  if (rawCustId) {
+    try {
+      const cust = await customerRepo.getById(rawCustId);
+      if (cust) validCustomerId = cust.id;
+    } catch {}
+  }
+
+  if (!validCustomerId && (payload.customerEmail || payload.email || payload.customerPhone || payload.mobile)) {
+    try {
+      const emailVal = payload.customerEmail || payload.email || '';
+      const phoneVal = payload.customerPhone || payload.customerMobile || payload.mobile || '';
+      const allCustomers = await customerRepo.list();
+      const match = (allCustomers || []).find((c) => (emailVal && c.email === emailVal) || (phoneVal && c.phone === phoneVal));
+      if (match) validCustomerId = match.id;
+    } catch {}
+  }
+
+  if (!validCustomerId) {
+    try {
+      const newCustId = rawCustId || `cust-${Date.now()}`;
+      const newCust = await customerRepo.create({
+        id: newCustId,
+        fullName: payload.customerName || payload.fullName || 'Customer',
+        email: payload.customerEmail || payload.email || '',
+        phone: payload.customerPhone || payload.customerMobile || payload.mobile || '',
+        createdAt: new Date().toISOString(),
+      });
+      if (newCust) validCustomerId = newCust.id;
+    } catch {
+      validCustomerId = null;
+    }
+  }
+
+  // Ensure vendor record exists if vendorId passed to satisfy fk_orders_vendor
+  let validVendorId = null;
+  if (payload.vendorId) {
+    try {
+      const vendor = await vendorRepo.getById(payload.vendorId);
+      if (vendor) validVendorId = vendor.id;
+    } catch {
+      validVendorId = null;
+    }
+  }
+
   const order = {
     id: targetId,
     orderId: targetId,
-    customerId: payload.customerId || `customer-${Date.now()}`,
+    customerId: validCustomerId,
     customerName: payload.customerName || payload.fullName || 'Guest Customer',
     customerEmail: payload.customerEmail || payload.email || '',
     customerPhone: payload.customerPhone || payload.customerMobile || payload.mobile || '',
@@ -60,18 +109,18 @@ export async function createOrder({ req }) {
     paymentStatus: payload.paymentStatus || 'PAYMENT_INITIATED',
     bookingStatus: payload.bookingStatus || 'Order Received',
     adminReviewStatus: 'PENDING',
-    vendorId: payload.vendorId || null,
-    vendorName: payload.vendorName || 'Unassigned',
-    vendorAssignedAt: null,
+    vendorId: validVendorId,
+    vendorName: payload.vendorName || (validVendorId ? 'Assigned Vendor' : 'Unassigned'),
+    vendorAssignedAt: validVendorId ? new Date().toISOString() : null,
     vendorNotificationSentAt: null,
     createdAt: payload.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
-  await repository.create(order);
+  const createdOrder = await repository.create(order);
   return {
     statusCode: 201,
-    body: { order },
+    body: { order: createdOrder || order },
   };
 }
 

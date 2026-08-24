@@ -252,22 +252,19 @@ import { getApiBaseUrl } from './apiConfig.js';
 const API_BASE_URL = getApiBaseUrl();
 
 export async function createOrderApi(orderData, userFields = {}) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...orderData, ...userFields }),
-    });
-    if (response.ok) {
-      const result = await response.json();
-      const serverOrder = sanitizeOrder(result.order || result);
-      saveLastOrder(serverOrder);
-      return serverOrder;
-    }
-  } catch (error) {
-    console.debug('Backend API unavailable, using local repository fallback for order creation.', error);
+  const response = await fetch(`${API_BASE_URL}/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...orderData, ...userFields }),
+  });
+  if (response.ok) {
+    const result = await response.json();
+    const serverOrder = sanitizeOrder(result.order || result);
+    saveLastOrder(serverOrder);
+    return serverOrder;
   }
-  return createOrder(orderData, userFields);
+  const errData = await response.json().catch(() => ({}));
+  throw new Error(errData.error || `Failed to create order on server (HTTP ${response.status}).`);
 }
 
 function getAdminAuthHeaders(extraHeaders = {}) {
@@ -295,9 +292,9 @@ export async function getOrdersApi() {
       }
     }
   } catch (error) {
-    console.debug('Backend API unavailable, using local repository fallback for orders list.', error);
+    console.debug('Unable to fetch backend orders list:', error);
   }
-  return getOrders();
+  return [];
 }
 
 export async function getOrderByIdApi(orderId) {
@@ -313,9 +310,9 @@ export async function getOrderByIdApi(orderId) {
       }
     }
   } catch (error) {
-    console.debug('Backend API unavailable, using local repository fallback for order fetch.', error);
+    console.debug('Unable to fetch backend order:', error);
   }
-  return getOrderById(orderId);
+  return null;
 }
 
 export async function updateAdminOrderStatusApi(orderId, updates) {

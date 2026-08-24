@@ -1,4 +1,3 @@
-import { getStoredOrders } from './mockAuth';
 import { getStoredVendors } from './mockVendors';
 import { getStoredServiceAreas } from './mockServiceAreas';
 import { getStoredDecorations } from './mockDecorations';
