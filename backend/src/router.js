@@ -14,6 +14,40 @@ import { createRepository } from './dataAccess/repository.js';
 import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
 import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword } from './handlers/vendorPortal.js';
 
+async function executeAdminReset({ req }) {
+  const role = req.headers['x-user-role'] || req.headers['X-User-Role'];
+  if (role !== 'admin') {
+    return { statusCode: 403, body: { error: 'Admin access required.' } };
+  }
+  const { getPool } = await import('./dataAccess/mysqlConnection.js');
+  const conn = await getPool().getConnection();
+  await conn.beginTransaction();
+  try {
+    const [resItems] = await conn.query('DELETE FROM order_items');
+    const [resOrders] = await conn.query('DELETE FROM orders');
+    const [resCustomers] = await conn.query('DELETE FROM customers');
+    const [resChecks] = await conn.query('DELETE FROM availability_checks');
+    await conn.commit();
+    return {
+      statusCode: 200,
+      body: {
+        success: true,
+        deleted: {
+          order_items: resItems.affectedRows,
+          orders: resOrders.affectedRows,
+          customers: resCustomers.affectedRows,
+          availability_checks: resChecks.affectedRows,
+        },
+      },
+    };
+  } catch (err) {
+    await conn.rollback();
+    return { statusCode: 500, body: { error: err.message } };
+  } finally {
+    conn.release();
+  }
+}
+
 function healthCheck() {
   return {
     statusCode: 200,
@@ -59,6 +93,7 @@ const routeHandlers = {
     '/payments/verify-razorpay-payment': verifyRazorpayPayment,
     '/payments/razorpay-webhook': razorpayWebhook,
     '/vendor/change-password': changeVendorPassword,
+    '/admin/reset-test-data': executeAdminReset,
   },
   PATCH: {
     '/admin/charges/:id': updateAdminCharge,
