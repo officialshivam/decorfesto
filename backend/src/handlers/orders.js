@@ -8,51 +8,63 @@ function buildOrderId() {
 export async function createOrder({ req }) {
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
   const repository = createRepository('orders');
-  const serviceAreaRepository = createRepository('service-areas');
-  const serviceArea = await serviceAreaRepository.getById(payload.pincode);
 
-  if (!serviceArea || !serviceArea.serviceable) {
+  if (payload.pincode && !/^[1-9][0-9]{5}$/.test(String(payload.pincode).trim())) {
     return {
       statusCode: 400,
-      body: { error: 'Decoration service is not available for the provided pincode.' },
+      body: { error: 'Please enter a valid 6-digit Indian pincode.' },
     };
   }
 
-  const existingOrders = await repository.queryByField('scheduledDate', payload.scheduledDate);
-  const duplicate = existingOrders.find((order) => {
-    return order.decorationId === payload.decorationId && order.scheduledTime === payload.scheduledTime && order.pincode === payload.pincode;
-  });
+  const targetId = payload.id || payload.orderId || buildOrderId();
 
-  if (duplicate) {
+  // Check if order already exists in database
+  let existingOrder = null;
+  try {
+    existingOrder = await repository.getById(targetId);
+  } catch {
+    existingOrder = null;
+  }
+
+  if (existingOrder) {
     return {
-      statusCode: 409,
-      body: { error: 'This decoration slot is no longer available for the selected date and time.' },
+      statusCode: 200,
+      body: { order: existingOrder },
     };
   }
 
   const order = {
-    id: payload.orderId || buildOrderId(),
+    id: targetId,
+    orderId: targetId,
     customerId: payload.customerId || `customer-${Date.now()}`,
-    customerName: payload.customerName || 'Guest Customer',
-    customerEmail: payload.customerEmail || '',
-    customerPhone: payload.customerPhone || '',
-    decorationId: payload.decorationId,
-    decorationName: payload.decorationName,
-    customization: payload.customization || {},
-    pincode: payload.pincode,
-    scheduledDate: payload.scheduledDate,
-    scheduledTime: payload.scheduledTime,
-    deliveryAddress: payload.deliveryAddress || '',
-    subtotal: payload.subtotal || 0,
-    serviceCharge: payload.serviceCharge || 299,
-    totalAmount: payload.totalAmount || 0,
-    paymentStatus: 'PENDING',
-    bookingStatus: 'CREATED',
+    customerName: payload.customerName || payload.fullName || 'Guest Customer',
+    customerEmail: payload.customerEmail || payload.email || '',
+    customerPhone: payload.customerPhone || payload.customerMobile || payload.mobile || '',
+    customerMobile: payload.customerPhone || payload.customerMobile || payload.mobile || '',
+    decorationId: payload.decorationId || payload.productId || payload.items?.[0]?.id || '1',
+    decorationName: payload.decorationName || payload.items?.[0]?.productName || 'DecorFesto Package',
+    customization: payload.customization || payload.items?.[0]?.customization || {},
+    items: Array.isArray(payload.items) ? payload.items : [],
+    pincode: String(payload.pincode || '').trim(),
+    scheduledDate: payload.scheduledDate || payload.eventDate || payload.date || '',
+    eventDate: payload.scheduledDate || payload.eventDate || payload.date || '',
+    scheduledTime: payload.scheduledTime || payload.timeSlot || payload.time || '',
+    timeSlot: payload.scheduledTime || payload.timeSlot || payload.time || '',
+    deliveryAddress: payload.deliveryAddress || payload.address || '',
+    address: payload.deliveryAddress || payload.address || '',
+    subtotal: Number(payload.subtotal || 0),
+    serviceCharge: Number(payload.serviceCharge || payload.serviceCharges || 299),
+    serviceCharges: Number(payload.serviceCharge || payload.serviceCharges || 299),
+    totalAmount: Number(payload.totalAmount || payload.total || 0),
+    total: Number(payload.totalAmount || payload.total || 0),
+    paymentStatus: payload.paymentStatus || 'PAYMENT_INITIATED',
+    bookingStatus: payload.bookingStatus || 'Order Received',
     adminReviewStatus: 'PENDING',
-    vendorId: null,
+    vendorId: payload.vendorId || null,
+    vendorName: payload.vendorName || 'Unassigned',
     vendorAssignedAt: null,
     vendorNotificationSentAt: null,
-    createdAt: new Date().toISOString(),
+    createdAt: payload.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
@@ -93,17 +105,27 @@ export async function listOrders({ req }) {
   const repository = createRepository('orders');
   const customerId = req.headers['x-customer-id'] || req.headers['X-Customer-Id'];
 
-  if (role === 'admin' || !customerId) {
+  if (role === 'admin') {
     return {
       statusCode: 200,
       body: { orders: await repository.list() },
     };
   }
 
-  const orders = await repository.queryByField('customerId', customerId);
+  if (customerId) {
+    const allOrders = await repository.list();
+    const customerOrders = (allOrders || []).filter(
+      (o) => o.customerId === customerId || o.customerEmail === customerId || o.customerMobile === customerId
+    );
+    return {
+      statusCode: 200,
+      body: { orders: customerOrders },
+    };
+  }
+
   return {
     statusCode: 200,
-    body: { orders },
+    body: { orders: await repository.list() },
   };
 }
 

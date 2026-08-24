@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getOrdersApi } from '../services/orderService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
 
 function CopyButton({ text }) {
@@ -41,21 +42,30 @@ function CopyButton({ text }) {
 
 function MyOrders() {
   const { user } = useAuth();
+  const [orders, setOrders] = useState(user?.orders || []);
 
-  if (!user) {
-    return (
-      <main className="page">
-        <section className="container section section--tight">
-          <div className="card-panel empty-state">
-            <h1>My orders</h1>
-            <p>Please log in to see your booking history.</p>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  const orders = user.orders || [];
+  useEffect(() => {
+    let isMounted = true;
+    async function loadOrders() {
+      try {
+        const fetchedOrders = await getOrdersApi();
+        if (isMounted && Array.isArray(fetchedOrders) && fetchedOrders.length > 0) {
+          if (user?.id) {
+            const userOrders = fetchedOrders.filter(
+              (o) => o.customerId === user.id || o.customerEmail === user.email || o.customerMobile === user.mobile
+            );
+            setOrders(userOrders.length > 0 ? userOrders : fetchedOrders);
+          } else {
+            setOrders(fetchedOrders);
+          }
+        }
+      } catch (err) {
+        console.debug('Unable to fetch backend orders, using session cache:', err);
+      }
+    }
+    loadOrders();
+    return () => { isMounted = false; };
+  }, [user]);
 
   return (
     <main className="page">

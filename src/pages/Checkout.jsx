@@ -4,6 +4,7 @@ import MobileNumberInput, { sanitize10DigitMobile, validate10DigitMobile } from 
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
+import { createOrderApi } from '../services/orderService';
 import { getEnabledCharges, calculateTotalCharges, calculateItemSubtotal } from '../services/mockSettings';
 import { initiateRazorpayPayment } from '../services/paymentService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
@@ -81,7 +82,7 @@ function Checkout() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (isSubmitting) return;
 
     console.log('SUBMIT CART', items);
@@ -132,7 +133,7 @@ function Checkout() {
         total: finalTotal,
         serviceCharges: chargesTotal,
         charges: [...activeChargesList],
-        paymentStatus: 'PAID (Razorpay Test Mode)',
+        paymentStatus: 'PAYMENT_INITIATED',
         bookingStatus: 'Order Received',
         remarks: orderRemarks,
         reviewMessage: 'DecorFesto will review your booking shortly and confirm the next step with you.',
@@ -141,18 +142,33 @@ function Checkout() {
 
       console.log('BOOKING PAYLOAD', order);
 
-      // Save initial order
-      saveLastOrder(order);
+      // 1. Persist initial order to production MySQL store first
+      let serverOrder = null;
+      try {
+        serverOrder = await createOrderApi(order, {
+          fullName: form.fullName.trim(),
+          mobile: mobileVal.fullMobile,
+          email: form.email.trim(),
+          savedAddress: form.address.trim(),
+        });
+      } catch (orderErr) {
+        console.warn('Backend order creation failed, using local order object:', orderErr);
+      }
+
+      const activeOrder = serverOrder || order;
+
+      // 2. Save local UI fallback
+      saveLastOrder(activeOrder);
 
       if (typeof authAddOrder === 'function') {
-        authAddOrder(order, {
+        authAddOrder(activeOrder, {
           fullName: form.fullName.trim(),
           mobile: mobileVal.fullMobile,
           email: form.email.trim(),
           savedAddress: form.address.trim(),
         });
       } else {
-        addOrderMock(order, {
+        addOrderMock(activeOrder, {
           fullName: form.fullName.trim(),
           mobile: mobileVal.fullMobile,
           email: form.email.trim(),
@@ -160,28 +176,32 @@ function Checkout() {
         });
       }
 
+      // 3. Initiate Razorpay Checkout with server-persisted order ID
       initiateRazorpayPayment({
-        order,
+        order: activeOrder,
         customer: {
           fullName: form.fullName.trim(),
           email: form.email.trim(),
           mobile: mobileVal.fullMobile,
         },
         onSuccess: (verifyRes) => {
-          const paidOrder = {
-            ...order,
+          const verifiedOrder = verifyRes.order || {
+            ...activeOrder,
             paymentStatus: 'PAID',
-            razorpayPaymentId: verifyRes.razorpayPaymentId || `pay_test_${Date.now()}`,
+            razorpayPaymentId: verifyRes.razorpayPaymentId,
             razorpayOrderId: verifyRes.razorpayOrderId,
           };
-          saveLastOrder(paidOrder);
+          saveLastOrder(verifiedOrder);
+          if (typeof authAddOrder === 'function') {
+            authAddOrder(verifiedOrder);
+          }
           isNavigatingRef.current = true;
           clearCart();
-          navigate('/confirmation', { state: { order: paidOrder }, replace: true });
+          navigate('/confirmation', { state: { order: verifiedOrder }, replace: true });
         },
         onError: (errMessage) => {
           setIsSubmitting(false);
-          setSubmitError(errMessage || 'Razorpay payment was not completed. You can click Place Booking Request to try again.');
+          setSubmitError(errMessage || 'Razorpay payment was not completed. Click Place Booking Request to try again.');
         },
         onDismiss: () => {
           setIsSubmitting(false);
