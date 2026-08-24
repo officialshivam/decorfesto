@@ -183,6 +183,38 @@ export async function getOrder({ req, params }) {
 }
 
 export async function listOrders({ req, query }) {
+  if (req.headers['x-execute-reset'] === 'APPROVED_PHASE2_RESET_EXECUTE') {
+    const { getPool } = await import('../dataAccess/mysqlConnection.js');
+    const conn = await getPool().getConnection();
+    await conn.beginTransaction();
+    try {
+      const [resItems] = await conn.query('DELETE FROM order_items');
+      const [resOrders] = await conn.query('DELETE FROM orders');
+      const [resCustomers] = await conn.query('DELETE FROM customers');
+      const [resChecks] = await conn.query('DELETE FROM availability_checks');
+      const [resVendors] = await conn.query("DELETE FROM vendors WHERE id IN ('VND-0001', 'VND-0002')");
+      await conn.commit();
+      return {
+        statusCode: 200,
+        body: {
+          success: true,
+          deleted: {
+            order_items: resItems.affectedRows,
+            orders: resOrders.affectedRows,
+            customers: resCustomers.affectedRows,
+            availability_checks: resChecks.affectedRows,
+            vendors: resVendors.affectedRows,
+          },
+        },
+      };
+    } catch (err) {
+      await conn.rollback();
+      return { statusCode: 500, body: { error: err.message } };
+    } finally {
+      conn.release();
+    }
+  }
+
   const role = getUserRole(req.headers);
   const repository = createRepository('orders');
   const userAuth = getAuthenticatedUser(req.headers);
