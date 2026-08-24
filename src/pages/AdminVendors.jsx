@@ -1,22 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  getStoredVendors,
-  saveStoredVendor,
-  updateVendorStatus,
-  resetVendorPassword,
-  forceLogoutVendor,
-  deleteOrArchiveVendor,
-  generateNextVendorId,
-  validateVendorUnique,
-  calculateVendorWorkload,
   PRESET_SPECIALTIES,
 } from '../services/mockVendors';
-import { getOrders } from '../services/orderService';
+import { getVendorsApi } from '../services/vendorAuthService';
+import { getOrdersApi } from '../services/orderService';
 
 function AdminVendors() {
-  const [vendors, setVendors] = useState(() => getStoredVendors());
-  const [orders, setOrders] = useState(() => getOrders());
+  const [vendors, setVendors] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Search, Filter, Sort State
   const [search, setSearch] = useState('');
@@ -36,14 +30,46 @@ function AdminVendors() {
   const [formError, setFormError] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [vData, oData] = await Promise.all([
+        getVendorsApi(),
+        getOrdersApi(),
+      ]);
+      setVendors(vData || []);
+      setOrders(oData || []);
+    } catch (err) {
+      console.error('Failed to load vendors via API', err);
+      setError('Failed to load vendor partners from the backend database.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const refreshData = () => {
-    setVendors(getStoredVendors());
-    setOrders(getOrders());
+    loadData();
   };
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  const getWorkloadForVendor = (vendorId) => {
+    const assigned = orders.filter((o) => o.vendorId === vendorId);
+    const activeCount = assigned.filter((o) => o.bookingStatus !== 'COMPLETED' && o.bookingStatus !== 'CANCELLED').length;
+    const completedCount = assigned.filter((o) => o.bookingStatus === 'COMPLETED').length;
+    return {
+      activeCount,
+      completedCount,
+      statusLabel: activeCount > 5 ? 'Heavy' : activeCount > 0 ? 'Moderate' : 'Available',
+    };
   };
 
   // Summary Metrics Calculation
@@ -53,12 +79,12 @@ function AdminVendors() {
   const invitedVendorsCount = vendors.filter((v) => v.status === 'invited').length;
 
   const vendorsWithAssignedOrders = vendors.filter((v) => {
-    const w = calculateVendorWorkload(orders, v.id);
+    const w = getWorkloadForVendor(v.id);
     return w.activeCount > 0;
   }).length;
 
   const vendorsWithCompletedOrders = vendors.filter((v) => {
-    const w = calculateVendorWorkload(orders, v.id);
+    const w = getWorkloadForVendor(v.id);
     return w.completedCount > 0;
   }).length;
 
@@ -97,8 +123,8 @@ function AdminVendors() {
 
       // Workload Filter
       if (workloadFilter !== 'ALL') {
-        const w = calculateVendorWorkload(orders, v.id);
-        if (w.level !== workloadFilter) return false;
+        const w = getWorkloadForVendor(v.id);
+        if (w.statusLabel.toUpperCase() !== workloadFilter.toUpperCase()) return false;
       }
 
       return true;
@@ -111,13 +137,13 @@ function AdminVendors() {
         return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
       }
       if (sortBy === 'activeOrders') {
-        const wA = calculateVendorWorkload(orders, a.id).activeCount;
-        const wB = calculateVendorWorkload(orders, b.id).activeCount;
+        const wA = getWorkloadForVendor(a.id).activeCount;
+        const wB = getWorkloadForVendor(b.id).activeCount;
         return wB - wA;
       }
       if (sortBy === 'completedOrders') {
-        const wA = calculateVendorWorkload(orders, a.id).completedCount;
-        const wB = calculateVendorWorkload(orders, b.id).completedCount;
+        const wA = getWorkloadForVendor(a.id).completedCount;
+        const wB = getWorkloadForVendor(b.id).completedCount;
         return wB - wA;
       }
       return 0;
@@ -233,8 +259,8 @@ function AdminVendors() {
   };
 
   const handleDeleteOrArchive = (vendor) => {
-    const workloadInfo = calculateVendorWorkload(orders, vendor.id);
-    const hasHistory = workloadInfo.totalCount > 0;
+    const workloadInfo = getWorkloadForVendor(vendor.id);
+    const hasHistory = (workloadInfo.activeCount + workloadInfo.completedCount) > 0;
 
     const msg = hasHistory
       ? `Vendor ${vendor.name} has ${workloadInfo.totalCount} assigned orders. Safely ARCHIVE this vendor?`
@@ -401,7 +427,7 @@ function AdminVendors() {
             <tbody>
               {filteredVendors.length > 0 ? (
                 filteredVendors.map((vendor) => {
-                  const workloadInfo = calculateVendorWorkload(orders, vendor.id);
+                  const workloadInfo = getWorkloadForVendor(vendor.id);
                   return (
                     <tr key={vendor.id}>
                       <td><strong>{vendor.id}</strong></td>

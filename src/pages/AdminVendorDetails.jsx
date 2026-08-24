@@ -1,26 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  getVendorById,
-  saveStoredVendor,
-  updateVendorStatus,
-  resetVendorPassword,
-  forceLogoutVendor,
-  deleteOrArchiveVendor,
-  calculateVendorWorkload,
-  getVendorAuditLogs,
   PRESET_SPECIALTIES,
-  validateVendorUnique,
 } from '../services/mockVendors';
-import { getOrders } from '../services/orderService';
+import { getVendorByIdApi, updateVendorApi } from '../services/vendorAuthService';
+import { getOrdersApi } from '../services/orderService';
 
 function AdminVendorDetails() {
   const { vendorId } = useParams();
   const navigate = useNavigate();
 
-  const [vendor, setVendor] = useState(() => getVendorById(vendorId));
-  const [allOrders, setAllOrders] = useState(() => getOrders());
-  const [auditLogs, setAuditLogs] = useState(() => getVendorAuditLogs(vendorId));
+  const [vendor, setVendor] = useState(null);
+  const [allOrders, setAllOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [orderFilter, setOrderFilter] = useState('ALL');
   const [activeModal, setActiveModal] = useState(null); // 'edit' | 'resetPassword' | 'statusReason'
 
@@ -30,13 +24,47 @@ function AdminVendorDetails() {
   const [formError, setFormError] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
-  if (!vendor) {
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [vData, oData] = await Promise.all([
+        getVendorByIdApi(vendorId),
+        getOrdersApi(),
+      ]);
+      setVendor(vData);
+      setAllOrders(oData || []);
+    } catch (err) {
+      console.error('Failed to load vendor details from API', err);
+      setError('Failed to load vendor details from the backend server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [vendorId]);
+
+  if (loading) {
     return (
       <main className="page">
         <section className="container section">
           <div className="card-panel text-center">
-            <h1>Vendor Not Found</h1>
-            <p>The vendor partner ID "{vendorId}" could not be located in the system.</p>
+            <p>Loading vendor details from production backend...</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (error || !vendor) {
+    return (
+      <main className="page">
+        <section className="container section">
+          <div className="card-panel text-center">
+            <h1>{error ? 'API Error' : 'Vendor Not Found'}</h1>
+            <p>{error || `The vendor partner ID "${vendorId}" could not be located in the production database.`}</p>
             <Link to="/admin/vendors" className="button button--small mt-3">Back to Vendor Control Center</Link>
           </div>
         </section>
@@ -50,14 +78,14 @@ function AdminVendorDetails() {
   };
 
   const refreshData = () => {
-    const updatedVendor = getVendorById(vendorId);
-    setVendor(updatedVendor);
-    setAllOrders(getOrders());
-    setAuditLogs(getVendorAuditLogs(vendorId));
+    loadData();
   };
 
   const assignedOrders = allOrders.filter((o) => o.vendorId === vendor.id);
-  const workload = calculateVendorWorkload(allOrders, vendor.id);
+  const workload = {
+    activeOrderCount: assignedOrders.filter((o) => o.bookingStatus !== 'COMPLETED' && o.bookingStatus !== 'CANCELLED').length,
+    statusLabel: assignedOrders.length > 5 ? 'Heavy' : assignedOrders.length > 0 ? 'Moderate' : 'Available',
+  };
 
   // Filtered orders
   const filteredOrders = assignedOrders.filter((o) => {
@@ -82,33 +110,27 @@ function AdminVendorDetails() {
     setActiveModal('edit');
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
 
-    const validation = validateVendorUnique({
-      email: editForm.email,
-      phone: editForm.phone,
-      id: vendor.id,
-    });
+    try {
+      const updated = await updateVendorApi(vendor.id, {
+        ...editForm,
+        servicePincodes: typeof editForm.servicePincodes === 'string'
+          ? editForm.servicePincodes.split(',').map((s) => s.trim()).filter(Boolean)
+          : editForm.servicePincodes,
+      });
 
-    if (!validation.valid) {
-      setFormError(validation.message);
-      return;
+      if (updated) {
+        setVendor(updated);
+        refreshData();
+        setActiveModal(null);
+        showToast(`Vendor details updated for ${updated.name}`);
+      }
+    } catch (err) {
+      setFormError(err.message || 'Failed to update vendor via API');
     }
-
-    const updated = saveStoredVendor({
-      ...editForm,
-      id: vendor.id,
-      servicePincodes: typeof editForm.servicePincodes === 'string'
-        ? editForm.servicePincodes.split(',').map((s) => s.trim()).filter(Boolean)
-        : editForm.servicePincodes,
-    });
-
-    setVendor(updated);
-    refreshData();
-    setActiveModal(null);
-    showToast(`Vendor details updated for ${updated.name}`);
   };
 
   const handlePasswordSubmit = (e) => {

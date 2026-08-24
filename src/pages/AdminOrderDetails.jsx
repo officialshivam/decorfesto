@@ -1,15 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getStoredCharges } from '../services/chargeService';
 import { getOrders, getOrderById, updateAdminOrderStatusApi } from '../services/orderService';
-import { getStoredVendors } from '../services/mockVendors';
+import { getVendorsApi } from '../services/vendorAuthService';
 
 function AdminOrderDetails() {
   const { id } = useParams();
   const [order, setOrder] = useState(() => getOrderById(id));
-  const vendors = getStoredVendors();
+  const [vendors, setVendors] = useState([]);
   const activeVendors = vendors.filter((v) => v.status === 'active' && v.accountStatus !== 'disabled');
   const [vendorId, setVendorId] = useState(order?.vendorId || '');
+
+  useEffect(() => {
+    async function loadVendors() {
+      const vList = await getVendorsApi();
+      setVendors(vList || []);
+    }
+    loadVendors();
+  }, []);
 
   if (!order) {
     return (

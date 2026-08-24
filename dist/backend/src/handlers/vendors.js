@@ -70,3 +70,32 @@ export async function createVendor({ req }) {
     body: { vendor },
   };
 }
+
+export async function updateVendor({ req, params }) {
+  const role = getUserRole(req.headers);
+  if (role !== 'admin') {
+    return {
+      statusCode: 403,
+      body: { error: 'Admin access required.' },
+    };
+  }
+
+  const repository = createRepository('vendors');
+  const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  const updated = await repository.update(params[0], {
+    ...payload,
+    updatedAt: new Date().toISOString(),
+  });
+
+  if (!updated) {
+    return {
+      statusCode: 404,
+      body: { error: 'Vendor not found.' },
+    };
+  }
+
+  return {
+    statusCode: 200,
+    body: { vendor: updated },
+  };
+}

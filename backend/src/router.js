@@ -1,6 +1,6 @@
 import { listDecorations, getDecoration } from './handlers/decorations.js';
 import { createCustomer, getCustomer } from './handlers/customers.js';
-import { listVendors, getVendor, createVendor } from './handlers/vendors.js';
+import { listVendors, getVendor, createVendor, updateVendor } from './handlers/vendors.js';
 import { createServiceArea, getServiceArea, listServiceAreaVendors } from './handlers/serviceAreas.js';
 import { createOrder, getOrder, listOrders, updateOrderStatus } from './handlers/orders.js';
 import { checkAvailability } from './handlers/availability.js';
@@ -65,6 +65,7 @@ const routeHandlers = {
     '/admin/users/:id/status': toggleAdminUserStatus,
     '/admin/users/:id/password': resetAdminUserPassword,
     '/orders/:id/status': updateOrderStatus,
+    '/vendors/:id': updateVendor,
     '/vendor/orders/:id/status': updateVendorOrderStatus,
     '/vendor/profile': updateVendorProfile,
   },

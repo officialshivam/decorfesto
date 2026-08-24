@@ -100,3 +100,89 @@ export async function loginVendorApi({ identifier, password }) {
     return { ok: true, vendor: safeVendor };
   }
 }
+
+export async function getVendorsApi() {
+  try {
+    const res = await fetch('/vendors', {
+      headers: { Accept: 'application/json', 'x-user-role': 'admin' },
+      credentials: 'include',
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.vendors || [];
+  } catch (err) {
+    console.error('getVendorsApi Error:', err);
+    return [];
+  }
+}
+
+export async function getVendorByIdApi(vendorId) {
+  try {
+    const res = await fetch(`/vendors/${vendorId}`, {
+      headers: { Accept: 'application/json', 'x-user-role': 'admin' },
+      credentials: 'include',
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.vendor || null;
+  } catch (err) {
+    console.error('getVendorByIdApi Error:', err);
+    return null;
+  }
+}
+
+export async function updateVendorApi(vendorId, updates) {
+  try {
+    const res = await fetch(`/vendors/${vendorId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-user-role': 'admin' },
+      body: JSON.stringify(updates),
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`Failed to update vendor (${res.status})`);
+    const data = await res.json();
+    return data.vendor || null;
+  } catch (err) {
+    console.error('updateVendorApi Error:', err);
+    throw err;
+  }
+}
+
+export async function fetchVendorProfileApi() {
+  try {
+    const headers = { Accept: 'application/json' };
+    if (typeof window !== 'undefined') {
+      const token = window.sessionStorage.getItem('decorfesto_vendor_token') || window.localStorage.getItem('decorfesto_vendor_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch('/vendor/profile', { headers, credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.vendor || null;
+  } catch (err) {
+    console.error('fetchVendorProfileApi Error:', err);
+    return null;
+  }
+}
+
+export async function updateVendorProfileApi(updates) {
+  try {
+    const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    if (typeof window !== 'undefined') {
+      const token = window.sessionStorage.getItem('decorfesto_vendor_token') || window.localStorage.getItem('decorfesto_vendor_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch('/vendor/profile', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(updates),
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`Failed to update profile (${res.status})`);
+    const data = await res.json();
+    return data.vendor || null;
+  } catch (err) {
+    console.error('updateVendorProfileApi Error:', err);
+    throw err;
+  }
+}

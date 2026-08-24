@@ -28,7 +28,7 @@ function AdminOrders() {
         <div className="section__heading section__heading--left">
           <span className="eyebrow">Admin</span>
           <h1>Orders</h1>
-          <p>Local mock booking requests placed through DecorFesto.</p>
+          <p>Manage customer bookings, payment status, booking status, and vendor assignments.</p>
         </div>
 
         <div className="admin-orders__toolbar">

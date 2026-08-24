@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useVendorAuth } from '../context/VendorAuthContext';
-import { getVendorById, saveStoredVendor } from '../services/mockVendors';
+import { fetchVendorProfileApi, updateVendorProfileApi } from '../services/vendorAuthService';
 
 export default function VendorProfile() {
   const { vendorUser, setVendorUser } = useVendorAuth();
-  const currentVendor = vendorUser?.id ? getVendorById(vendorUser.id) || vendorUser : vendorUser;
 
-  const [contactName, setContactName] = useState(currentVendor?.contactName || '');
-  const [phone, setPhone] = useState(currentVendor?.phone || '');
-  const [specialtiesStr, setSpecialtiesStr] = useState((currentVendor?.specialties || []).join(', '));
+  const [contactName, setContactName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [specialtiesStr, setSpecialtiesStr] = useState('');
   const [notice, setNotice] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -19,25 +18,42 @@ export default function VendorProfile() {
   const [passNotice, setPassNotice] = useState('');
   const [passError, setPassError] = useState('');
 
-  const handleProfileSave = (e) => {
+  useEffect(() => {
+    async function loadProfile() {
+      const p = await fetchVendorProfileApi();
+      if (p) {
+        setContactName(p.contactName || p.name || '');
+        setPhone(p.phone || '');
+        setSpecialtiesStr(Array.isArray(p.specialties) ? p.specialties.join(', ') : (p.specialties || ''));
+      } else if (vendorUser) {
+        setContactName(vendorUser.contactName || vendorUser.name || '');
+        setPhone(vendorUser.phone || '');
+        setSpecialtiesStr(Array.isArray(vendorUser.specialties) ? vendorUser.specialties.join(', ') : (vendorUser.specialties || ''));
+      }
+    }
+    loadProfile();
+  }, [vendorUser]);
+
+  const handleProfileSave = async (e) => {
     e.preventDefault();
     setNotice('');
     setErrorMsg('');
 
-    if (!vendorUser?.id) return;
-
     try {
-      const updated = saveStoredVendor({
-        ...currentVendor,
+      const updated = await updateVendorProfileApi({
         contactName: contactName.trim(),
         phone: phone.trim(),
         specialties: specialtiesStr.split(',').map((s) => s.trim()).filter(Boolean),
       });
 
-      setVendorUser(updated);
-      setNotice('Profile updated successfully.');
-    } catch {
-      setErrorMsg('Failed to update profile.');
+      if (updated) {
+        setVendorUser(updated);
+        setNotice('Profile updated successfully.');
+      } else {
+        setErrorMsg('Failed to update profile.');
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update profile.');
     }
   };
 
