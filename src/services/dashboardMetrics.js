@@ -59,10 +59,10 @@ export function mergeOrders(clientOrders, backendOrders) {
   let sourceOrders;
   if (Array.isArray(backendOrders)) {
     sourceOrders = backendOrders;
-  } else if (Array.isArray(clientOrders) && clientOrders.length > 0) {
+  } else if (Array.isArray(clientOrders)) {
     sourceOrders = clientOrders;
   } else {
-    sourceOrders = getStoredOrders();
+    sourceOrders = [];
   }
   const merged = dedupeById(sourceOrders.map(normalizeOrder));
   return merged.sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0));

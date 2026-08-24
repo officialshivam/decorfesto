@@ -1,4 +1,3 @@
-import { getStoredOrders } from './mockAuth';
 import { getStoredVendors } from './mockVendors';
 import { getStoredServiceAreas } from './mockServiceAreas';
 import { getStoredDecorations } from './mockDecorations';
@@ -86,7 +85,7 @@ export async function fetchAdminDashboard() {
   const [backend, health, orders, vendors, serviceAreas, decorations, categories] = await Promise.all([
     fetchBackendDashboard().catch(() => null),
     fetchHealth().catch(() => null),
-    Promise.resolve(getStoredOrders()),
+    Promise.resolve([]),
     Promise.resolve(getStoredVendors()),
     Promise.resolve(getStoredServiceAreas()),
     Promise.resolve(getStoredDecorations()),
