@@ -1014,7 +1014,11 @@ function AdminDashboard() {
     try {
       const data = await fetchAdminDashboard();
       setPayload(data);
-      setError('');
+      if (data?.backendError && !data?.backend) {
+        setError(data.backendError);
+      } else {
+        setError('');
+      }
     } catch (loadError) {
       setError(loadError.message || 'Unable to load dashboard data.');
     } finally {

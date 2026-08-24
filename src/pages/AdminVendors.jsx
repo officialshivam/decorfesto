@@ -277,48 +277,48 @@ function AdminVendors() {
         )}
 
         {/* 1. Summary Cards */}
-        <div className="grid grid--6 gap-2 mb-4">
+        <div className="admin-vendors__metrics-grid">
           <div className="metric-card">
             <span className="metric-card__title">Total Vendors</span>
-            <span className="metric-card__value">{totalVendorsCount}</span>
+            <strong className="metric-card__value">{totalVendorsCount}</strong>
             <span className="metric-card__subtext">Registered Partners</span>
           </div>
 
           <div className="metric-card">
             <span className="metric-card__title">Active Vendors</span>
-            <span className="metric-card__value text-success">{activeVendorsCount}</span>
+            <strong className="metric-card__value text-success">{activeVendorsCount}</strong>
             <span className="metric-card__subtext">Login Enabled</span>
           </div>
 
           <div className="metric-card">
             <span className="metric-card__title">Inactive / Suspended</span>
-            <span className="metric-card__value text-danger">{inactiveVendorsCount}</span>
+            <strong className="metric-card__value text-danger">{inactiveVendorsCount}</strong>
             <span className="metric-card__subtext">Access Blocked</span>
           </div>
 
           <div className="metric-card">
             <span className="metric-card__title">Invited / Pending</span>
-            <span className="metric-card__value">{invitedVendorsCount}</span>
+            <strong className="metric-card__value">{invitedVendorsCount}</strong>
             <span className="metric-card__subtext">First Login Pending</span>
           </div>
 
           <div className="metric-card">
             <span className="metric-card__title">With Active Orders</span>
-            <span className="metric-card__value">{vendorsWithAssignedOrders}</span>
+            <strong className="metric-card__value">{vendorsWithAssignedOrders}</strong>
             <span className="metric-card__subtext">Currently Executing</span>
           </div>
 
           <div className="metric-card">
             <span className="metric-card__title">With Completed</span>
-            <span className="metric-card__value">{vendorsWithCompletedOrders}</span>
+            <strong className="metric-card__value">{vendorsWithCompletedOrders}</strong>
             <span className="metric-card__subtext">Fulfilled History</span>
           </div>
         </div>
 
         {/* 2. Search, Filter & Sort Toolbar */}
-        <div className="card-panel mb-4">
-          <div className="grid grid--4 gap-2 align-end">
-            <label className="search-field mb-0">
+        <div className="card-panel admin-vendors__filters-card">
+          <div className="admin-vendors__filters-grid">
+            <label className="search-field">
               <span>Search Vendors</span>
               <input
                 type="text"
@@ -328,7 +328,7 @@ function AdminVendors() {
               />
             </label>
 
-            <label className="search-field mb-0">
+            <label className="search-field">
               <span>Filter Status</span>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="ALL">All Account Statuses</option>
@@ -339,7 +339,7 @@ function AdminVendors() {
               </select>
             </label>
 
-            <label className="search-field mb-0">
+            <label className="search-field">
               <span>Filter Specialty</span>
               <select value={specialtyFilter} onChange={(e) => setSpecialtyFilter(e.target.value)}>
                 <option value="ALL">All Specialties</option>
@@ -349,29 +349,42 @@ function AdminVendors() {
               </select>
             </label>
 
-            <label className="search-field mb-0">
-              <span>Filter Workload / Sort</span>
-              <div className="d-flex gap-2">
-                <select value={workloadFilter} onChange={(e) => setWorkloadFilter(e.target.value)}>
-                  <option value="ALL">All Workloads</option>
-                  <option value="LOW">LOW Workload</option>
-                  <option value="MEDIUM">MEDIUM Workload</option>
-                  <option value="HIGH">HIGH Workload</option>
-                </select>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                  <option value="name">Sort: Name</option>
-                  <option value="date">Sort: Newest</option>
-                  <option value="activeOrders">Sort: Active Orders</option>
-                  <option value="completedOrders">Sort: Completed Orders</option>
-                </select>
-              </div>
+            <label className="search-field">
+              <span>Filter Workload</span>
+              <select value={workloadFilter} onChange={(e) => setWorkloadFilter(e.target.value)}>
+                <option value="ALL">All Workloads</option>
+                <option value="LOW">LOW Workload</option>
+                <option value="MEDIUM">MEDIUM Workload</option>
+                <option value="HIGH">HIGH Workload</option>
+              </select>
+            </label>
+
+            <label className="search-field">
+              <span>Sort Order</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="name">Sort: Name</option>
+                <option value="date">Sort: Newest</option>
+                <option value="activeOrders">Sort: Active Orders</option>
+                <option value="completedOrders">Sort: Completed Orders</option>
+              </select>
             </label>
           </div>
         </div>
 
         {/* 3. Vendor Control Table */}
-        <div className="card-panel admin-orders__table-wrap">
-          <table className="admin-orders__table">
+        <div className="admin-vendors__table-wrap">
+          <table className="admin-vendors__table">
+            <colgroup>
+              <col className="col-id" />
+              <col className="col-business" />
+              <col className="col-contact" />
+              <col className="col-specialties" />
+              <col className="col-areas" />
+              <col className="col-workload" />
+              <col className="col-status" />
+              <col className="col-orders" />
+              <col className="col-actions" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Vendor ID</th>
@@ -381,7 +394,7 @@ function AdminVendors() {
                 <th>Service Areas</th>
                 <th>Workload</th>
                 <th>Status</th>
-                <th>Orders (Active / Done)</th>
+                <th>Orders</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -398,7 +411,7 @@ function AdminVendors() {
                       </td>
                       <td>
                         <div>{vendor.contactName || '—'}</div>
-                        <small className="subtext">{vendor.phone} | {vendor.email}</small>
+                        <small className="subtext">{vendor.phone}<br />{vendor.email}</small>
                       </td>
                       <td>
                         <div className="d-flex wrap gap-1">
@@ -435,7 +448,7 @@ function AdminVendors() {
                         <small className="subtext">Completed: {workloadInfo.completedCount}</small>
                       </td>
                       <td>
-                        <div className="d-flex wrap gap-1">
+                        <div className="admin-vendors__actions">
                           <Link to={`/admin/vendors/${vendor.id}`} className="button button--small">Details</Link>
                           <button type="button" className="button button--small button--ghost" onClick={() => openEditModal(vendor)}>Edit</button>
                           <button type="button" className="button button--small button--ghost" onClick={() => openResetPasswordModal(vendor)}>Password</button>

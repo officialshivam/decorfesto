@@ -82,8 +82,17 @@ export async function fetchHealth() {
 }
 
 export async function fetchAdminDashboard() {
-  const [backend, health, orders, vendors, serviceAreas, decorations, categories] = await Promise.all([
-    fetchBackendDashboard().catch(() => null),
+  let backend = null;
+  let backendError = null;
+
+  try {
+    backend = await fetchBackendDashboard();
+  } catch (err) {
+    console.error('Admin Dashboard API fetch failed:', err);
+    backendError = err.message || 'Dashboard authorization or network error';
+  }
+
+  const [health, orders, vendors, serviceAreas, decorations, categories] = await Promise.all([
     fetchHealth().catch(() => null),
     Promise.resolve([]),
     Promise.resolve(getStoredVendors()),
@@ -95,6 +104,7 @@ export async function fetchAdminDashboard() {
   return {
     client: { orders, vendors, serviceAreas, decorations, categories },
     backend,
+    backendError,
     health,
     fetchedAt: new Date().toISOString(),
   };
