@@ -316,13 +316,14 @@ export class MySqlRepository {
     }
   }
 
-  async query(sql, params = []) {
-    if (this.connection) {
-      const [rows] = await this.connection.execute(sql, params);
+  async query(sql, params) {
+    const connection = await getPool().getConnection();
+    try {
+      const [rows] = await connection.execute(sql, params);
       return rows;
+    } finally {
+      connection.release();
     }
-    const [rows] = await getPool().execute(sql, params);
-    return rows;
   }
 
   async list() {

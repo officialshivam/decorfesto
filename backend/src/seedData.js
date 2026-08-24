@@ -43,7 +43,7 @@ export async function seedBackendData() {
 
   const defaultVendors = [
     {
-      id: 'vendor-001',
+      id: 'VND-0001',
       name: 'DecorFesto Studio',
       contactName: 'Aarav Mehta',
       email: 'vendor@decorfesto.com',
@@ -52,7 +52,7 @@ export async function seedBackendData() {
       status: 'active',
     },
     {
-      id: 'vendor-002',
+      id: 'VND-0002',
       name: 'Delhi Celebrations Co.',
       contactName: 'Priya Sharma',
       email: 'delhi@decorfesto.com',

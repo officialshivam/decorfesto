@@ -34,6 +34,10 @@ export function persistVendorUser(vendorUser) {
 }
 
 export function clearVendorSession() {
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem('decorfesto_vendor_token');
+    window.localStorage.removeItem('decorfesto_vendor_token');
+  }
   persistVendorUser(null);
 }
 
@@ -47,6 +51,10 @@ export async function loginVendorApi({ identifier, password }) {
 
     const data = await res.json();
     if (res.ok && data.success) {
+      if (typeof window !== 'undefined' && data.token) {
+        window.sessionStorage.setItem('decorfesto_vendor_token', data.token);
+        window.localStorage.setItem('decorfesto_vendor_token', data.token);
+      }
       persistVendorUser(data.vendor);
       return { ok: true, vendor: data.vendor, token: data.token };
     }

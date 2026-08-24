@@ -91,14 +91,15 @@ export async function getOrder({ req, params }) {
 export async function listOrders({ req }) {
   const role = getUserRole(req.headers);
   const repository = createRepository('orders');
-  if (role === 'admin') {
+  const customerId = req.headers['x-customer-id'] || req.headers['X-Customer-Id'];
+
+  if (role === 'admin' || !customerId) {
     return {
       statusCode: 200,
       body: { orders: await repository.list() },
     };
   }
 
-  const customerId = req.headers['x-customer-id'];
   const orders = await repository.queryByField('customerId', customerId);
   return {
     statusCode: 200,

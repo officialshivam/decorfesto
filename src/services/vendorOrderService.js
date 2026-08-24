@@ -41,10 +41,22 @@ export function isOrderAssignedToVendor(order, vendorInput) {
   return false;
 }
 
+function getVendorAuthHeaders(extraHeaders = {}) {
+  const headers = { Accept: 'application/json', ...extraHeaders };
+  if (typeof window !== 'undefined') {
+    const token = window.sessionStorage.getItem('decorfesto_vendor_token') || window.localStorage.getItem('decorfesto_vendor_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  return headers;
+}
+
 export async function fetchVendorOrdersApi(vendorInput) {
   try {
     const res = await fetch('/vendor/orders', {
-      headers: { Accept: 'application/json' },
+      headers: getVendorAuthHeaders(),
+      credentials: 'include',
     });
     if (res.ok) {
       const data = await res.json();
@@ -63,7 +75,8 @@ export async function fetchVendorOrdersApi(vendorInput) {
 export async function fetchVendorOrderDetailApi(orderId, vendorInput) {
   try {
     const res = await fetch(`/vendor/orders/${orderId}`, {
-      headers: { Accept: 'application/json' },
+      headers: getVendorAuthHeaders(),
+      credentials: 'include',
     });
     if (res.ok) {
       const data = await res.json();
@@ -94,7 +107,8 @@ export async function updateVendorOrderStatusApi(orderId, vendorId, vendorName, 
   try {
     const res = await fetch(`/vendor/orders/${orderId}/status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getVendorAuthHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
       body: JSON.stringify({ bookingStatus: nextBookingStatus, reason }),
     });
 

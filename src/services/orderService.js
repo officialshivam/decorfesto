@@ -270,9 +270,24 @@ export async function createOrderApi(orderData, userFields = {}) {
   return createOrder(orderData, userFields);
 }
 
+function getAdminAuthHeaders(extraHeaders = {}) {
+  const headers = { Accept: 'application/json', ...extraHeaders };
+  if (typeof window !== 'undefined') {
+    const token = window.sessionStorage.getItem('decorfesto_admin_token') || window.localStorage.getItem('decorfesto_admin_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    headers['x-user-role'] = 'admin';
+  }
+  return headers;
+}
+
 export async function getOrdersApi() {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders`);
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      headers: getAdminAuthHeaders(),
+      credentials: 'include',
+    });
     if (response.ok) {
       const result = await response.json();
       if (Array.isArray(result.orders)) {
@@ -287,7 +302,10 @@ export async function getOrdersApi() {
 
 export async function getOrderByIdApi(orderId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`);
+    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+      headers: getAdminAuthHeaders(),
+      credentials: 'include',
+    });
     if (response.ok) {
       const result = await response.json();
       if (result.order) {
