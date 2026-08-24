@@ -56,8 +56,15 @@ function normalizeOrder(order) {
 }
 
 export function mergeOrders(clientOrders, backendOrders) {
-  const allMock = getStoredOrders();
-  const merged = dedupeById([...allMock, ...(clientOrders || []), ...(backendOrders || [])].map(normalizeOrder));
+  let sourceOrders;
+  if (Array.isArray(backendOrders)) {
+    sourceOrders = backendOrders;
+  } else if (Array.isArray(clientOrders) && clientOrders.length > 0) {
+    sourceOrders = clientOrders;
+  } else {
+    sourceOrders = getStoredOrders();
+  }
+  const merged = dedupeById(sourceOrders.map(normalizeOrder));
   return merged.sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0));
 }
 
