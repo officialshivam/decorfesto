@@ -61,6 +61,11 @@ export default function Home() {
     return decorations.slice(0, 3);
   }, [decorations]);
 
+  // 2. Serviceability Checker State
+  const [pincode, setPincode] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState(null);
+
   if (loading) {
     return (
       <main className="page page--home" style={{ background: '#faf8f5', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -107,11 +112,6 @@ export default function Home() {
       description: 'Baby showers, housewarmings, proposals & milestone celebrations.',
     },
   };
-
-  // 2. Serviceability Checker State
-  const [pincode, setPincode] = useState('');
-  const [checking, setChecking] = useState(false);
-  const [checkResult, setCheckResult] = useState(null);
 
   const handleCheckService = async (e) => {
     e.preventDefault();

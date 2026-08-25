@@ -79,25 +79,6 @@ function ProductDetail() {
     window.scrollTo(0, 0);
   }, [id]);
 
-  if (loading) {
-    return (
-      <main className="page page--product-detail" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#64748b', fontSize: '16px', fontWeight: '500' }}>Loading decoration details...</p>
-      </main>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <main className="page page--product-detail" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', padding: '32px' }}>
-          <p style={{ color: '#e11d48', fontSize: '16px', marginBottom: '16px' }}>{error || 'Decoration package not found.'}</p>
-          <Link to="/catalog" style={{ padding: '10px 20px', borderRadius: '8px', background: '#c2410c', color: '#fff', textDecoration: 'none', fontWeight: '600' }}>Back to Catalog</Link>
-        </div>
-      </main>
-    );
-  }
-
   useEffect(() => {
     if (product) {
       setSelections(getInitialSelections(product));
@@ -110,7 +91,7 @@ function ProductDetail() {
 
   const totalPrice = useMemo(() => {
     if (!product) return 0;
-    return product.price + addOnCost;
+    return (product.price || 0) + addOnCost;
   }, [product, addOnCost]);
 
   // Discount / Savings calculation (Only positive if originalPrice > price)
@@ -120,7 +101,7 @@ function ProductDetail() {
   }, [product]);
 
   const savings = useMemo(() => {
-    if (!hasDiscount) return 0;
+    if (!hasDiscount || !product) return 0;
     return product.originalPrice - product.price;
   }, [product, hasDiscount]);
 
@@ -145,16 +126,21 @@ function ProductDetail() {
     return messages;
   }, [availability, date, time]);
 
-  if (!product) {
+  if (loading) {
     return (
-      <main className="page">
-        <section className="container section">
-          <div className="empty-state">
-            <h1>Decoration design not found</h1>
-            <p>The package you are looking for does not exist or has been disabled.</p>
-            <Link to="/catalog" className="button">Browse Catalog</Link>
-          </div>
-        </section>
+      <main className="page page--product-detail" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: '16px', fontWeight: '500' }}>Loading decoration details...</p>
+      </main>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <main className="page page--product-detail" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', padding: '32px' }}>
+          <p style={{ color: '#e11d48', fontSize: '16px', marginBottom: '16px' }}>{error || 'Decoration package not found.'}</p>
+          <Link to="/catalog" style={{ padding: '10px 20px', borderRadius: '8px', background: '#c2410c', color: '#fff', textDecoration: 'none', fontWeight: '600' }}>Back to Catalog</Link>
+        </div>
       </main>
     );
   }
