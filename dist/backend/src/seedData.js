@@ -28,16 +28,23 @@ export async function seedBackendData() {
 
   const decorationRepo = createRepository('decorations');
   const existingDecorations = await decorationRepo.list();
-  if (existingDecorations.length === 0) {
-    let productsList = [];
-    try {
-      const prodMod = await import('../../src/data/products.js');
-      productsList = prodMod.products || [];
-    } catch {
-      // Fallback if products data is not present in deployment environment
-    }
-    if (productsList.length > 0) {
-      await Promise.all(productsList.map((product) => decorationRepo.create(toDecorationRecord(product))));
+  const existingDecIds = new Set((existingDecorations || []).map((d) => String(d.id || '')));
+
+  let productsList = [];
+  try {
+    const prodMod = await import('../../src/data/products.js');
+    productsList = prodMod.products || [];
+  } catch {
+    // Fallback if products data is not present in deployment environment
+  }
+
+  if (productsList.length > 0) {
+    for (const product of productsList) {
+      const rec = toDecorationRecord(product);
+      if (!existingDecIds.has(rec.id) && !existingDecIds.has(String(product.id))) {
+        await decorationRepo.create(rec);
+        existingDecIds.add(rec.id);
+      }
     }
   }
 

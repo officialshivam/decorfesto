@@ -290,7 +290,9 @@ export function getStoredCustomizations() {
 
 export function getCustomizationsForDesign(designId, type = null) {
   const all = getStoredCustomizations();
-  const dId = String(designId || '');
+  const rawId = String(designId || '').trim();
+  const numId = rawId.replace(/^decoration-/, '');
+  const prefixedId = `decoration-${numId}`;
 
   return all.filter((item) => {
     if (!item.active || item.archived) return false;
@@ -299,7 +301,11 @@ export function getCustomizationsForDesign(designId, type = null) {
     const assigned = Array.isArray(item.assignedDesigns)
       ? item.assignedDesigns.map(String)
       : [];
-    return assigned.includes(dId);
+    return (
+      assigned.includes(rawId) ||
+      assigned.includes(numId) ||
+      assigned.includes(prefixedId)
+    );
   });
 }
 
