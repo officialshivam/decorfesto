@@ -14,10 +14,12 @@ function Checkout() {
   const { items, clearCart } = useCart();
   const { user, addOrder: authAddOrder } = useAuth();
   const isNavigatingRef = useRef(false);
+  const currentUserId = user?.id || user?.email || user?.mobile || null;
+  const prevUserIdRef = useRef(currentUserId);
 
   const [form, setForm] = useState({
     fullName: user?.name || user?.fullName || '',
-    mobile: sanitize10DigitMobile(user?.mobile || ''),
+    mobile: sanitize10DigitMobile(user?.mobile || user?.phone || ''),
     email: user?.email || '',
     address: user?.savedAddress || user?.address || '',
     city: 'Delhi NCR',
@@ -26,16 +28,23 @@ function Checkout() {
   });
 
   useEffect(() => {
-    if (user) {
-      setForm((curr) => ({
-        ...curr,
-        fullName: curr.fullName || user.name || user.fullName || '',
-        mobile: curr.mobile || sanitize10DigitMobile(user.mobile || ''),
-        email: curr.email || user.email || '',
-        address: curr.address || user.savedAddress || user.address || '',
-      }));
+    if (currentUserId) {
+      const userChanged = prevUserIdRef.current !== currentUserId;
+      prevUserIdRef.current = currentUserId;
+
+      if (userChanged) {
+        setForm((curr) => ({
+          ...curr,
+          fullName: user.name || user.fullName || '',
+          mobile: sanitize10DigitMobile(user.mobile || user.phone || ''),
+          email: user.email || '',
+          address: user.savedAddress || user.address || '',
+        }));
+      }
+    } else {
+      prevUserIdRef.current = null;
     }
-  }, [user]);
+  }, [currentUserId, user]);
 
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
