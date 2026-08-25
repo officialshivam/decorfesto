@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 const adminNavItems = [
   { label: 'Dashboard', to: '/admin' },
@@ -13,11 +13,11 @@ const adminNavItems = [
 
 function AdminNavbar() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logoutAdmin } = useAdminAuth();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
+  const handleLogout = async () => {
+    await logoutAdmin();
+    navigate('/admin/login', { replace: true });
   };
 
   return (

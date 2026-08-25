@@ -101,10 +101,12 @@ export async function loginVendorApi({ identifier, password }) {
   }
 }
 
+import { getAdminAuthHeaders } from './adminAuthService';
+
 export async function getVendorsApi() {
   try {
     const res = await fetch('/vendors', {
-      headers: { Accept: 'application/json', 'x-user-role': 'admin' },
+      headers: getAdminAuthHeaders(),
       credentials: 'include',
     });
     if (!res.ok) return [];
@@ -119,7 +121,7 @@ export async function getVendorsApi() {
 export async function getVendorByIdApi(vendorId) {
   try {
     const res = await fetch(`/vendors/${vendorId}`, {
-      headers: { Accept: 'application/json', 'x-user-role': 'admin' },
+      headers: getAdminAuthHeaders(),
       credentials: 'include',
     });
     if (!res.ok) return null;
@@ -135,7 +137,7 @@ export async function updateVendorApi(vendorId, updates) {
   try {
     const res = await fetch(`/vendors/${vendorId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-user-role': 'admin' },
+      headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(updates),
       credentials: 'include',
     });

@@ -6,7 +6,7 @@ import { createOrder, getOrder, listOrders, updateOrderStatus } from './handlers
 import { checkAvailability } from './handlers/availability.js';
 import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
-import { adminLogin, vendorLogin, validateActiveUserSession } from './auth.js';
+import { adminLogin, adminLogout, getAdminMe, vendorLogin, validateActiveUserSession } from './auth.js';
 import { getCorsHeaders } from './config.js';
 import { listEnabledCharges, listAdminCharges, createAdminCharge, updateAdminCharge, deleteAdminCharge } from './handlers/charges.js';
 import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdminUserPassword } from './handlers/users.js';
@@ -27,6 +27,8 @@ function healthCheck() {
 const routeHandlers = {
   GET: {
     '/health': healthCheck,
+    '/auth/admin-me': getAdminMe,
+    '/admin/me': getAdminMe,
     '/admin/dashboard': getDashboard,
     '/admin/charges': listAdminCharges,
     '/admin/users': listAdminUsers,
@@ -47,6 +49,7 @@ const routeHandlers = {
   },
   POST: {
     '/auth/admin-login': adminLogin,
+    '/auth/admin-logout': adminLogout,
     '/auth/vendor-login': vendorLogin,
     '/admin/charges': createAdminCharge,
     '/admin/users': createAdminUserRecord,

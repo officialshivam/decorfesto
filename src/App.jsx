@@ -27,6 +27,10 @@ import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLayout from './components/AdminLayout';
 
+// ADMIN PORTAL IMPORTS
+import AdminLogin from './pages/AdminLogin';
+import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
+
 // VENDOR PORTAL IMPORTS
 import VendorLayout from './components/VendorLayout';
 import VendorLogin from './pages/VendorLogin';
@@ -62,6 +66,25 @@ function RequireVendorAuth({ children }) {
   return children;
 }
 
+function RequireAdminAuth({ children }) {
+  const { isAdminAuthenticated, loadingSession } = useAdminAuth();
+  const location = useLocation();
+
+  if (loadingSession) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif', color: '#64748b' }}>
+        <p>Verifying admin session...</p>
+      </div>
+    );
+  }
+
+  if (!isAdminAuthenticated) {
+    return <Navigate to="/admin/login" replace state={{ from: location }} />;
+  }
+
+  return children;
+}
+
 function CustomerLayout() {
   return (
     <div className="app-shell">
@@ -76,41 +99,50 @@ function App() {
   return (
     <AuthProvider>
       <VendorAuthProvider>
-        <CartProvider>
-          <Router>
-            <Routes>
-              {/* VENDOR PORTAL ROUTES */}
-              <Route path="/vendor/login" element={<VendorLogin />} />
-              <Route
-                path="/vendor"
-                element={
-                  <RequireVendorAuth>
-                    <VendorLayout />
-                  </RequireVendorAuth>
-                }
-              >
-                <Route index element={<Navigate to="/vendor/dashboard" replace />} />
-                <Route path="dashboard" element={<VendorDashboard />} />
-                <Route path="orders" element={<VendorOrders />} />
-                <Route path="orders/:orderId" element={<VendorOrderDetails />} />
-                <Route path="profile" element={<VendorProfile />} />
-                <Route path="*" element={<Navigate to="/vendor/dashboard" replace />} />
-              </Route>
+        <AdminAuthProvider>
+          <CartProvider>
+            <Router>
+              <Routes>
+                {/* VENDOR PORTAL ROUTES */}
+                <Route path="/vendor/login" element={<VendorLogin />} />
+                <Route
+                  path="/vendor"
+                  element={
+                    <RequireVendorAuth>
+                      <VendorLayout />
+                    </RequireVendorAuth>
+                  }
+                >
+                  <Route index element={<Navigate to="/vendor/dashboard" replace />} />
+                  <Route path="dashboard" element={<VendorDashboard />} />
+                  <Route path="orders" element={<VendorOrders />} />
+                  <Route path="orders/:orderId" element={<VendorOrderDetails />} />
+                  <Route path="profile" element={<VendorProfile />} />
+                  <Route path="*" element={<Navigate to="/vendor/dashboard" replace />} />
+                </Route>
 
-              {/* ADMIN ROUTES */}
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="orders" element={<AdminOrders />} />
-                <Route path="orders/:id" element={<AdminOrderDetails />} />
-                <Route path="vendors" element={<AdminVendors />} />
-                <Route path="vendors/:vendorId" element={<AdminVendorDetails />} />
-                <Route path="service-areas" element={<AdminServiceAreas />} />
-                <Route path="decorations" element={<AdminDecorations />} />
-                <Route path="categories" element={<AdminCategories />} />
-                <Route path="customizations" element={<AdminCustomizations />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="*" element={<Navigate to="/admin" replace />} />
-              </Route>
+                {/* ADMIN ROUTES */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route
+                  path="/admin"
+                  element={
+                    <RequireAdminAuth>
+                      <AdminLayout />
+                    </RequireAdminAuth>
+                  }
+                >
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="orders" element={<AdminOrders />} />
+                  <Route path="orders/:id" element={<AdminOrderDetails />} />
+                  <Route path="vendors" element={<AdminVendors />} />
+                  <Route path="vendors/:vendorId" element={<AdminVendorDetails />} />
+                  <Route path="service-areas" element={<AdminServiceAreas />} />
+                  <Route path="decorations" element={<AdminDecorations />} />
+                  <Route path="categories" element={<AdminCategories />} />
+                  <Route path="customizations" element={<AdminCustomizations />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="*" element={<Navigate to="/admin" replace />} />
+                </Route>
 
               {/* CUSTOMER ROUTES */}
               <Route path="/" element={<CustomerLayout />}>
@@ -132,7 +164,8 @@ function App() {
             </Routes>
           </Router>
         </CartProvider>
-      </VendorAuthProvider>
+      </AdminAuthProvider>
+    </VendorAuthProvider>
     </AuthProvider>
   );
 }

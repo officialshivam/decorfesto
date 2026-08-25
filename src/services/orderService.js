@@ -267,17 +267,7 @@ export async function createOrderApi(orderData, userFields = {}) {
   throw new Error(errData.error || `Failed to create order on server (HTTP ${response.status}).`);
 }
 
-function getAdminAuthHeaders(extraHeaders = {}) {
-  const headers = { Accept: 'application/json', ...extraHeaders };
-  if (typeof window !== 'undefined') {
-    const token = window.sessionStorage.getItem('decorfesto_admin_token') || window.localStorage.getItem('decorfesto_admin_token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    headers['x-user-role'] = 'admin';
-  }
-  return headers;
-}
+import { getAdminAuthHeaders } from './adminAuthService';
 
 export async function getOrdersApi() {
   try {
@@ -353,10 +343,7 @@ export async function updateAdminOrderStatusApi(orderId, updates) {
   try {
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-role': 'admin',
-      },
+      headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(updates),
     });
     if (response.ok) {

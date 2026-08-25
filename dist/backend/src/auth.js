@@ -27,6 +27,9 @@ export function verifyPassword(password, storedCombinedHash) {
 }
 
 export function verifyAdminCredentials({ username, password }) {
+  if (!adminUsername || !adminPasswordSalt || !adminPasswordHash) {
+    return false;
+  }
   if (!username || !password) return false;
   const normalizedUser = String(username).trim().toLowerCase();
   const expectedUser = String(adminUsername).trim().toLowerCase();
@@ -226,8 +229,6 @@ export async function validateActiveUserSession(headers = {}) {
 }
 
 export function getUserRole(headers = {}) {
-  const customRole = headers['x-user-role'] || headers['X-User-Role'];
-  if (customRole && String(customRole).toLowerCase() === 'admin') return 'admin';
   const token = extractTokenFromHeaders(headers);
   if (!token) return 'CUSTOMER';
   const adminPayload = verifyAdminSessionToken(token);
@@ -265,17 +266,57 @@ export function requireRole(role, request) {
   return { allowed: true, userRole: normalizedCurrent };
 }
 
+export async function getAdminMe({ req }) {
+  const role = getUserRole(req.headers);
+  if (role !== 'admin') {
+    return {
+      statusCode: 401,
+      body: { authenticated: false, error: 'Not authenticated as admin.' },
+    };
+  }
+  const payload = getAuthenticatedUser(req.headers);
+  return {
+    statusCode: 200,
+    body: {
+      authenticated: true,
+      user: {
+        username: payload?.user || adminUsername || 'admin',
+        role: 'ADMIN',
+      },
+    },
+  };
+}
+
 export async function adminLogin({ req }) {
+  if (!adminUsername || !adminPasswordSalt || !adminPasswordHash) {
+    return {
+      statusCode: 500,
+      body: { error: 'Admin authentication is not configured on this server.' },
+    };
+  }
+
   const body = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
   const { username, password } = body;
   if (!verifyAdminCredentials({ username, password })) {
     return { statusCode: 401, body: { error: 'Invalid admin credentials.' } };
   }
   const token = createAdminSessionToken();
+  const isSecure = (req && req.headers && req.headers['x-forwarded-proto'] === 'https') || process.env.NODE_ENV === 'production';
+  const cookieFlags = `Path=/; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
   return {
     statusCode: 200,
-    headers: { 'Set-Cookie': `decorfesto_admin_session=${token}; Path=/; HttpOnly; SameSite=Lax` },
-    body: { success: true, role: 'ADMIN', token },
+    headers: { 'Set-Cookie': `decorfesto_admin_session=${token}; ${cookieFlags}` },
+    body: { success: true, role: 'ADMIN', user: { username, role: 'ADMIN' } },
+  };
+}
+
+export async function adminLogout({ req }) {
+  const isSecure = (req && req.headers && req.headers['x-forwarded-proto'] === 'https') || process.env.NODE_ENV === 'production';
+  const cookieFlags = `Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+  return {
+    statusCode: 200,
+    headers: { 'Set-Cookie': `decorfesto_admin_session=; ${cookieFlags}` },
+    body: { success: true, message: 'Admin logged out successfully.' },
   };
 }
 

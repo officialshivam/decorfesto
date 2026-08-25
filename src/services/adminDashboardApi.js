@@ -3,6 +3,7 @@ import { getStoredServiceAreas } from './mockServiceAreas';
 import { getStoredDecorations } from './mockDecorations';
 import { getStoredCategories } from './mockCategories';
 
+import { getAdminAuthHeaders } from './adminAuthService';
 import { getApiBaseUrl } from './apiConfig.js';
 
 function resolveApiBases() {
@@ -14,11 +15,7 @@ async function getJson(path, extraHeaders = {}) {
   const bases = resolveApiBases();
   let lastError;
 
-  const headers = { Accept: 'application/json', 'x-user-role': 'admin', ...extraHeaders };
-  const sessionToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('decorfesto_admin_token') : null;
-  if (sessionToken) {
-    headers['Authorization'] = `Bearer ${sessionToken}`;
-  }
+  const headers = getAdminAuthHeaders(extraHeaders);
 
   for (const base of bases) {
     try {

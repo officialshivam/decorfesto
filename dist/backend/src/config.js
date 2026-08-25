@@ -59,11 +59,9 @@ export function tableName(name) {
 
 // --- Server-side Authentication & Session Security -----------------------
 export const authSecret = process.env.DECORFESTO_AUTH_SECRET || 'server-side-decorfesto-session-secret-key-2026';
-export const adminUsername = process.env.DECORFESTO_ADMIN_USERNAME || 'admin';
-export const adminPasswordSalt = process.env.DECORFESTO_ADMIN_SALT || 'decorfesto-salt-2026';
-export const adminPasswordHash =
-  process.env.DECORFESTO_ADMIN_PASSWORD_HASH ||
-  'fb5f7c4ab886e7abb83dc2acb2196814a18cc93abc3f58228478678c9fb6e9bffd28d20d0510169a540100bd26709fe462655c80f6ee35103fe64473743e1915';
+export const adminUsername = String(process.env.DECORFESTO_ADMIN_USERNAME || '').trim();
+export const adminPasswordSalt = String(process.env.DECORFESTO_ADMIN_PASSWORD_SALT || process.env.DECORFESTO_ADMIN_SALT || '').trim();
+export const adminPasswordHash = String(process.env.DECORFESTO_ADMIN_PASSWORD_HASH || '').trim();
 
 // --- Razorpay Credentials -------------------------------------------------
 export const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
