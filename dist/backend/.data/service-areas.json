@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "id": "110001",
+    "pincode": "110001",
+    "city": "Delhi",
+    "serviceable": true,
+    "leadTimeHours": 24,
+    "active": true,
+    "createdAt": "2026-08-25T17:56:53.270Z",
+    "updatedAt": "2026-08-25T17:56:53.270Z"
+  },
+  {
+    "id": "110032",
+    "pincode": "110032",
+    "city": "Delhi",
+    "serviceable": true,
+    "leadTimeHours": 24,
+    "active": true,
+    "createdAt": "2026-08-25T17:56:53.286Z",
+    "updatedAt": "2026-08-25T17:56:53.286Z"
+  },
+  {
+    "id": "400001",
+    "pincode": "400001",
+    "city": "Mumbai",
+    "serviceable": true,
+    "leadTimeHours": 36,
+    "active": true,
+    "createdAt": "2026-08-25T17:56:53.302Z",
+    "updatedAt": "2026-08-25T17:56:53.303Z"
+  }
+]

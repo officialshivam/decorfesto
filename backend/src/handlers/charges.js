@@ -1,19 +1,40 @@
-import { createRepository } from '../dataAccess/repository.js';
+import { createRepository, LocalJsonRepository } from '../dataAccess/repository.js';
 import { requireRole } from '../auth.js';
 
+const CANONICAL_ENABLED_CHARGES = [
+  {
+    id: 'booking_service_fee',
+    name: 'Booking Service Fee',
+    amount: 1,
+    description: 'Booking/service charge applied to customer checkouts.',
+    type: 'FIXED',
+    enabled: true,
+  },
+];
+
 export async function listEnabledCharges() {
-  const repository = createRepository('charges');
-  const allCharges = await repository.list();
-  const enabledCharges = (allCharges || [])
-    .filter((c) => c.enabled !== false && c.is_enabled !== 0)
-    .map((c) => ({
-      id: c.id || c.charge_id,
-      name: c.name,
-      amount: Number(c.amount || 0),
-      description: c.description || '',
-      type: c.type || 'FIXED',
-      enabled: true,
-    }));
+  let enabledCharges = CANONICAL_ENABLED_CHARGES;
+  try {
+    const repository = new LocalJsonRepository('charges');
+    const allCharges = await repository.list();
+    if (Array.isArray(allCharges) && allCharges.length > 0) {
+      const filtered = allCharges
+        .filter((c) => c.enabled !== false && c.is_enabled !== 0)
+        .map((c) => ({
+          id: c.id || c.charge_id || 'booking_service_fee',
+          name: c.name || 'Booking Service Fee',
+          amount: Number(c.amount ?? 1),
+          description: c.description || 'Booking/service charge applied to customer checkouts.',
+          type: c.type || 'FIXED',
+          enabled: true,
+        }));
+      if (filtered.length > 0) {
+        enabledCharges = filtered;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load charges from local JSON repository, using canonical defaults:', err.message);
+  }
 
   return {
     statusCode: 200,

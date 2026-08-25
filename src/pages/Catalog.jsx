@@ -53,25 +53,6 @@ function Catalog() {
     }));
   }, [products]);
 
-  if (loading) {
-    return (
-      <main className="page page--catalog" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#64748b', fontSize: '16px', fontWeight: '500' }}>Loading catalog packages...</p>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="page page--catalog" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', padding: '32px' }}>
-          <p style={{ color: '#e11d48', fontSize: '16px', marginBottom: '16px' }}>{error}</p>
-          <button type="button" onClick={() => window.location.reload()} style={{ padding: '10px 20px', borderRadius: '8px', background: '#c2410c', color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
-        </div>
-      </main>
-    );
-  }
-
   // 1. Group products by Occasion for Level 1 (Occasion Landing Page)
   const occasionsData = useMemo(() => {
     const map = new Map();
@@ -137,6 +118,25 @@ function Catalog() {
       return matchesOccasion && matchesQuery;
     });
   }, [products, activeOccasion, query]);
+
+  if (loading) {
+    return (
+      <main className="page page--catalog" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: '16px', fontWeight: '500' }}>Loading catalog packages...</p>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="page page--catalog" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', padding: '32px' }}>
+          <p style={{ color: '#e11d48', fontSize: '16px', marginBottom: '16px' }}>{error}</p>
+          <button type="button" onClick={() => window.location.reload()} style={{ padding: '10px 20px', borderRadius: '8px', background: '#c2410c', color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
+        </div>
+      </main>
+    );
+  }
 
   const handleSelectOccasion = (occasionName) => {
     navigate(`/catalog?occasion=${encodeURIComponent(occasionName)}`);

@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "110001#vendor-001",
+    "pincode": "110001",
+    "vendorId": "vendor-001",
+    "createdAt": "2026-08-25T17:56:53.322Z",
+    "updatedAt": "2026-08-25T17:56:53.322Z"
+  },
+  {
+    "id": "400001#vendor-001",
+    "pincode": "400001",
+    "vendorId": "vendor-001",
+    "createdAt": "2026-08-25T17:56:53.322Z",
+    "updatedAt": "2026-08-25T17:56:53.322Z"
+  },
+  {
+    "id": "110032#vendor-002",
+    "pincode": "110032",
+    "vendorId": "vendor-002",
+    "createdAt": "2026-08-25T17:56:53.322Z",
+    "updatedAt": "2026-08-25T17:56:53.322Z"
+  }
+]
