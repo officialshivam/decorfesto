@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
 import { createOrderApi } from '../services/orderService';
-import { getEnabledCharges, calculateTotalCharges, calculateItemSubtotal } from '../services/mockSettings';
+import { fetchEnabledChargesApi, calculateItemSubtotal } from '../services/chargeService';
 import { initiateRazorpayPayment } from '../services/paymentService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
 
@@ -41,8 +41,29 @@ function Checkout() {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const enabledCharges = getEnabledCharges();
-  const serviceFee = calculateTotalCharges();
+  const [enabledCharges, setEnabledCharges] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCharges() {
+      try {
+        const data = await fetchEnabledChargesApi();
+        if (isMounted) {
+          setEnabledCharges(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching charges for checkout:', err);
+        }
+      }
+    }
+    loadCharges();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const serviceFee = enabledCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
   const subtotal = items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
 
   const serviceCharges = items.length > 0 ? serviceFee : 0;

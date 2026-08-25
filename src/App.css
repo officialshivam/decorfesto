@@ -668,6 +668,15 @@ input {
   gap: 8px;
 }
 
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none !important;
+  }
+  .mobile-menu-btn {
+    display: block !important;
+  }
+}
+
 .footer a {
   color: rgba(255, 255, 255, 0.8);
 }

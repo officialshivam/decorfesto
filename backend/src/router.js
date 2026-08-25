@@ -38,6 +38,7 @@ const routeHandlers = {
     '/customers/:id': getCustomer,
     '/vendors': listVendors,
     '/vendors/:id': getVendor,
+    '/service-areas': listServiceAreas,
     '/service-areas/:pincode': getServiceArea,
     '/service-areas/:pincode/vendors': listServiceAreaVendors,
     '/orders': listOrders,
@@ -74,6 +75,7 @@ const routeHandlers = {
   },
   DELETE: {
     '/admin/charges/:id': deleteAdminCharge,
+    '/service-areas/:pincode': deleteServiceArea,
   },
 };
 

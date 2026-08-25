@@ -1,3 +1,10 @@
+import { getApiBaseUrl } from './apiConfig.js';
+
+function resolveApiBases() {
+  const base = getApiBaseUrl();
+  return base ? [base, ''] : [''];
+}
+
 const SETTINGS_STORAGE_KEY = 'decorfesto-admin-settings';
 
 export const defaultCharges = [
@@ -26,6 +33,35 @@ function sanitizeCharge(c) {
     createdAt: c.createdAt || new Date().toISOString(),
     updatedAt: c.updatedAt || new Date().toISOString(),
   };
+}
+
+export async function fetchEnabledChargesApi() {
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/charges/enabled`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status} fetching enabled charges`);
+        continue;
+      }
+
+      const data = await response.json();
+      const rawList = Array.isArray(data.charges) ? data.charges : (Array.isArray(data) ? data : []);
+      return rawList.map(sanitizeCharge).filter((c) => c && c.enabled);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  console.error('fetchEnabledChargesApi error:', lastError);
+  throw lastError || new Error('Failed to fetch enabled charges from server.');
 }
 
 export function readSettings() {

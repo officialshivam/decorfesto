@@ -147,11 +147,11 @@ export function checkPincodeServiceability(pincode) {
   }
 
   return {
-    isServiceable: true,
+    isServiceable: false,
     pincode: pc,
     city: 'Delhi NCR',
     state: 'Delhi',
-    message: '✓ Decoration service available at your location.',
+    message: '✕ Decoration service is currently unavailable at this pincode.',
   };
 }
 

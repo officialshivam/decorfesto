@@ -269,6 +269,21 @@ export async function createOrderApi(orderData, userFields = {}) {
 
 import { getAdminAuthHeaders } from './adminAuthService';
 
+function createCustomerAuthToken(userObj) {
+  if (!userObj || typeof userObj !== 'object') return '';
+  const payload = {
+    id: userObj.id || userObj.customerId || '',
+    role: 'CUSTOMER',
+    email: userObj.email || userObj.customerEmail || '',
+    mobile: userObj.mobile || userObj.phone || userObj.customerMobile || '',
+    name: userObj.fullName || userObj.name || 'User',
+    exp: Date.now() + 24 * 3600 * 1000,
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  // Match backend session token format
+  return `${payloadB64}.customer_sig`;
+}
+
 export async function getOrdersApi() {
   try {
     const response = await fetch(`${API_BASE_URL}/orders`, {
@@ -289,17 +304,16 @@ export async function getOrdersApi() {
 
 export async function getUserOrdersApi(userOrId) {
   if (!userOrId) return [];
-  const customerId = typeof userOrId === 'object' ? userOrId.id : userOrId;
-  const customerEmail = typeof userOrId === 'object' ? (userOrId.email || '') : '';
-  const customerPhone = typeof userOrId === 'object' ? (userOrId.mobile || userOrId.phone || '') : '';
+  const userObj = typeof userOrId === 'object' ? userOrId : getCurrentUser();
 
   try {
     const headers = {
       Accept: 'application/json',
-      'x-customer-id': customerId || '',
-      'x-customer-email': customerEmail || '',
-      'x-customer-phone': customerPhone || '',
     };
+    if (userObj) {
+      const token = createCustomerAuthToken(userObj);
+      headers.Authorization = `Bearer ${token}`;
+    }
     const response = await fetch(`${API_BASE_URL}/orders`, {
       headers,
       credentials: 'include',
@@ -318,8 +332,14 @@ export async function getUserOrdersApi(userOrId) {
 
 export async function getOrderByIdApi(orderId) {
   try {
+    const userObj = getCurrentUser();
+    const headers = getAdminAuthHeaders({ Accept: 'application/json' });
+    if (userObj && !headers.Authorization) {
+      headers.Authorization = `Bearer ${createCustomerAuthToken(userObj)}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-      headers: getAdminAuthHeaders(),
+      headers,
       credentials: 'include',
     });
     if (response.ok) {
@@ -335,26 +355,17 @@ export async function getOrderByIdApi(orderId) {
 }
 
 export async function updateAdminOrderStatusApi(orderId, updates) {
-  const localOrder = updateOrderStatus(orderId, updates);
-  if (updates && (updates.vendorId || updates.vendorName)) {
-    assignOrderVendor(orderId, updates.vendorId || updates.vendorName, updates.vendorName);
-  }
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
-      method: 'PATCH',
-      headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify(updates),
-    });
-    if (response.ok) {
-      const result = await response.json();
-      if (result.order) {
-        return sanitizeOrder(result.order);
-      }
+  const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(updates),
+  });
+  if (response.ok) {
+    const result = await response.json();
+    if (result.order) {
+      return sanitizeOrder(result.order);
     }
-  } catch (error) {
-    console.debug('Backend API unavailable, using local repository fallback for order update.', error);
   }
-
-  return localOrder;
+  const errData = await response.json().catch(() => ({}));
+  throw new Error(errData.error || `Failed to update order status on server (HTTP ${response.status}).`);
 }

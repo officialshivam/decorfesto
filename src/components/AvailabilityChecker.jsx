@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { checkPincodeServiceability } from '../services/mockServiceAreas';
+import { checkAvailabilityOnServer } from '../services/serviceAreaApi';
 
 function AvailabilityChecker({ value, onChange, onStatusChange, onPincodeChange }) {
   const [pincode, setPincode] = useState(() => value?.pincode || '');
@@ -26,15 +26,25 @@ function AvailabilityChecker({ value, onChange, onStatusChange, onPincodeChange 
     setError('');
     setIsChecking(true);
 
-    const checkRes = checkPincodeServiceability(normalized);
-    const result = {
-      available: checkRes.isServiceable,
-      message: checkRes.message,
-    };
-
-    setStatus(result);
-    setIsChecking(false);
-    notify(result.available, result.message, normalized);
+    try {
+      const res = await checkAvailabilityOnServer(normalized);
+      const available = Boolean(res && (res.available || res.serviceable));
+      const message = available
+        ? `Service available in ${res.areaName || res.name || normalized}.`
+        : (res?.message || `DecorFesto is not available in pincode ${normalized} yet.`);
+      const result = { available, message };
+      setStatus(result);
+      notify(result.available, result.message, normalized);
+    } catch {
+      const errResult = {
+        available: false,
+        message: `Unable to verify pincode ${normalized} at the moment. Please try again.`,
+      };
+      setStatus(errResult);
+      notify(false, errResult.message, normalized);
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   const feedback = useMemo(() => {

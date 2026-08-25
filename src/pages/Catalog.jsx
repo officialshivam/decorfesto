@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import { getActiveStoredDecorations } from '../services/mockDecorations';
-import { getStoredCategories } from '../services/mockCategories';
+import { fetchDecorationsApi } from '../services/decorationService';
 
 function Catalog() {
   const navigate = useNavigate();
@@ -10,8 +9,68 @@ function Catalog() {
   const activeOccasion = searchParams.get('occasion') || '';
   const [query, setQuery] = useState('');
 
-  const products = useMemo(() => getActiveStoredDecorations(), []);
-  const categories = useMemo(() => getStoredCategories().filter((category) => category.active), []);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchDecorationsApi();
+        if (isMounted) {
+          setProducts(Array.isArray(data) ? data.filter((item) => item.active) : []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error loading catalog decorations:', err);
+          setError('Unable to load decoration catalog. Please check connection.');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Derive categories dynamically from live products
+  const categories = useMemo(() => {
+    const set = new Set();
+    products.forEach((p) => {
+      const occ = p.occasion || p.category;
+      if (occ) set.add(occ);
+    });
+    return Array.from(set).map((name, index) => ({
+      id: `category-${name.toLowerCase().replace(/\s+/g, '-')}`,
+      name,
+      active: true,
+      displayOrder: index + 1,
+    }));
+  }, [products]);
+
+  if (loading) {
+    return (
+      <main className="page page--catalog" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: '16px', fontWeight: '500' }}>Loading catalog packages...</p>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="page page--catalog" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', padding: '32px' }}>
+          <p style={{ color: '#e11d48', fontSize: '16px', marginBottom: '16px' }}>{error}</p>
+          <button type="button" onClick={() => window.location.reload()} style={{ padding: '10px 20px', borderRadius: '8px', background: '#c2410c', color: '#fff', border: 'none', cursor: 'pointer' }}>Retry</button>
+        </div>
+      </main>
+    );
+  }
 
   // 1. Group products by Occasion for Level 1 (Occasion Landing Page)
   const occasionsData = useMemo(() => {

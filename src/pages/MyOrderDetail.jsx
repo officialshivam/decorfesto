@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getOrderByIdApi } from '../services/orderService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
 
 function CopyButton({ text }) {
@@ -43,6 +44,54 @@ function MyOrderDetail() {
   const { id } = useParams();
   const { user } = useAuth();
 
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadOrder() {
+      if (!id) return;
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getOrderByIdApi(id);
+        if (isMounted) {
+          if (!data) {
+            setError('The requested booking could not be found.');
+            setOrder(null);
+          } else {
+            // Customer Security / Isolation check:
+            // Verify order email/mobile matches authenticated customer user
+            const orderEmail = (data.email || data.customerEmail || '').toLowerCase().trim();
+            const userEmail = (user?.email || '').toLowerCase().trim();
+            const orderMobile = String(data.mobile || data.customerMobile || '').replace(/\D/g, '');
+            const userMobile = String(user?.mobile || '').replace(/\D/g, '');
+
+            if (user && userEmail && orderEmail && userEmail !== orderEmail && userMobile && orderMobile && userMobile !== orderMobile) {
+              setError('You do not have permission to view this booking.');
+              setOrder(null);
+            } else {
+              setOrder(data);
+            }
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error loading order details:', err);
+          setError('Unable to load booking details from server. Please try again.');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadOrder();
+    return () => {
+      isMounted = false;
+    };
+  }, [id, user]);
+
   if (!user) {
     return (
       <main className="page">
@@ -56,16 +105,26 @@ function MyOrderDetail() {
     );
   }
 
-  const order = (user.orders || []).find((entry) => entry.id === id);
+  if (loading) {
+    return (
+      <main className="page">
+        <section className="container section section--tight">
+          <div className="card-panel empty-state" style={{ padding: '40px', textAlign: 'center' }}>
+            <p style={{ color: '#64748b', fontSize: '16px' }}>Loading booking details from server...</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
-  if (!order) {
+  if (error || !order) {
     return (
       <main className="page">
         <section className="container section section--tight">
           <div className="card-panel empty-state">
             <h1>Order not found</h1>
-            <p>The requested booking could not be found.</p>
-            <Link to="/my-orders" className="button">Back to orders</Link>
+            <p>{error || 'The requested booking could not be found.'}</p>
+            <Link to="/my-orders" className="button" style={{ marginTop: '12px' }}>Back to orders</Link>
           </div>
         </section>
       </main>

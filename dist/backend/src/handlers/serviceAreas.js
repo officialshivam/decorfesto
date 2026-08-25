@@ -77,3 +77,49 @@ export async function listServiceAreaVendors({ params }) {
     body: { pincode: params[0], vendors: vendors.filter(Boolean) },
   };
 }
+
+export async function listServiceAreas({ req }) {
+  const role = getUserRole(req.headers);
+  if (role !== 'admin') {
+    return {
+      statusCode: 403,
+      body: { error: 'Admin access required.' },
+    };
+  }
+
+  const repository = createRepository('service-areas');
+  const serviceAreas = await repository.list();
+
+  return {
+    statusCode: 200,
+    body: { serviceAreas: serviceAreas || [] },
+  };
+}
+
+export async function deleteServiceArea({ req, params }) {
+  const role = getUserRole(req.headers);
+  if (role !== 'admin') {
+    return {
+      statusCode: 403,
+      body: { error: 'Admin access required.' },
+    };
+  }
+
+  const pincode = params[0];
+  const repository = createRepository('service-areas');
+  const existingArea = await repository.getById(pincode);
+
+  if (!existingArea) {
+    return {
+      statusCode: 404,
+      body: { error: 'Service area not found.' },
+    };
+  }
+
+  await repository.delete(pincode);
+
+  return {
+    statusCode: 200,
+    body: { success: true, message: `Service area ${pincode} deleted.` },
+  };
+}

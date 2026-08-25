@@ -6,7 +6,7 @@ import CustomizationPanel from '../components/CustomizationPanel';
 import DateTimeSelector from '../components/DateTimeSelector';
 import ProductImageGallery from '../components/ProductImageGallery';
 import { useCart } from '../context/CartContext';
-import { getActiveStoredDecorations } from '../services/mockDecorations';
+import { fetchDecorationByIdApi } from '../services/decorationService';
 import { checkPincodeServiceability } from '../services/mockServiceAreas';
 import { calculateAddOnCost } from '../utils/customizationUtils';
 import { isTimeSlotPast } from '../utils/dateTimeUtils';
@@ -32,16 +32,37 @@ function ProductDetail() {
   const navigate = useNavigate();
   const { addItem } = useCart();
 
-  const [decorations, setDecorations] = useState(() => getActiveStoredDecorations());
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    setDecorations(getActiveStoredDecorations());
+    let isMounted = true;
+    async function loadProduct() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchDecorationByIdApi(id);
+        if (isMounted) {
+          setProduct(data);
+          if (!data) {
+            setError('Decoration package not found.');
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching decoration:', err);
+          setError('Unable to load decoration details. Please try again.');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadProduct();
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
-
-  const product = useMemo(
-    () => decorations.find((item) => String(item.id) === String(id)),
-    [decorations, id],
-  );
 
   const [selections, setSelections] = useState(() => getInitialSelections(product));
   const [remarks, setRemarks] = useState('');
@@ -57,6 +78,25 @@ function ProductDetail() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
+
+  if (loading) {
+    return (
+      <main className="page page--product-detail" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#64748b', fontSize: '16px', fontWeight: '500' }}>Loading decoration details...</p>
+      </main>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <main className="page page--product-detail" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', padding: '32px' }}>
+          <p style={{ color: '#e11d48', fontSize: '16px', marginBottom: '16px' }}>{error || 'Decoration package not found.'}</p>
+          <Link to="/catalog" style={{ padding: '10px 20px', borderRadius: '8px', background: '#c2410c', color: '#fff', textDecoration: 'none', fontWeight: '600' }}>Back to Catalog</Link>
+        </div>
+      </main>
+    );
+  }
 
   useEffect(() => {
     if (product) {

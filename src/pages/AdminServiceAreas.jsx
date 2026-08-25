@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  deleteStoredServiceArea,
-  getStoredServiceAreas,
-  saveStoredServiceArea,
-} from '../services/mockServiceAreas';
-import { saveServiceAreaOnServer } from '../services/serviceAreaApi';
+  deleteServiceAreaApi,
+  fetchServiceAreasApi,
+  saveServiceAreaOnServer,
+} from '../services/serviceAreaApi';
 import { fetchPincodeLocation } from '../services/pincodeLookup';
 
 function formatLastUpdated(isoString) {
@@ -33,13 +32,34 @@ const emptyServiceArea = {
 };
 
 function AdminServiceAreas() {
-  const [serviceAreas, setServiceAreas] = useState(() => getStoredServiceAreas());
+  const [serviceAreas, setServiceAreas] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState('');
   const [successToast, setSuccessToast] = useState('');
   const [isLookupLoading, setIsLookupLoading] = useState(false);
   const [lookupResult, setLookupResult] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setApiError(null);
+      const data = await fetchServiceAreasApi();
+      setServiceAreas(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching service areas:', err);
+      setApiError(err.message || 'Unable to load service areas from server.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Summary Metrics
   const serviceableCount = useMemo(() => serviceAreas.filter((a) => a.serviceable).length, [serviceAreas]);
@@ -149,33 +169,36 @@ function AdminServiceAreas() {
 
     try {
       await saveServiceAreaOnServer(payload);
-    } catch {
-      // Local fallback repository handles offline mode seamlessly
-    }
+      await loadData();
+      setIsSaving(false);
+      setForm(null);
 
-    const savedArea = saveStoredServiceArea(payload);
-    setServiceAreas(getStoredServiceAreas());
-    setIsSaving(false);
-    setForm(null);
+      const toastMsg = isEditing
+        ? `✓ Service area updated successfully: ${pc} is now ${form.serviceable ? 'Serviceable' : 'Non-Serviceable'}`
+        : '✓ Service area added successfully';
 
-    const toastMsg = isEditing
-      ? `✓ Service area updated successfully: ${savedArea.pincode} is now ${savedArea.serviceable ? 'Serviceable' : 'Non-Serviceable'}`
-      : '✓ Service area added successfully';
-
-    setSuccessToast(toastMsg);
-    setTimeout(() => {
-      setSuccessToast('');
-    }, 5000);
-  };
-
-  const handleDelete = (area) => {
-    if (window.confirm(`Delete service area ${area.pincode} (${area.city})?`)) {
-      deleteStoredServiceArea(area.pincode);
-      setServiceAreas(getStoredServiceAreas());
-      setSuccessToast(`✓ Service area ${area.pincode} deleted.`);
+      setSuccessToast(toastMsg);
       setTimeout(() => {
         setSuccessToast('');
-      }, 4000);
+      }, 5000);
+    } catch (err) {
+      setIsSaving(false);
+      setFormError(err.message || 'Failed to save service area to server.');
+    }
+  };
+
+  const handleDelete = async (area) => {
+    if (window.confirm(`Delete service area ${area.pincode} (${area.city})?`)) {
+      try {
+        await deleteServiceAreaApi(area.pincode);
+        await loadData();
+        setSuccessToast(`✓ Service area ${area.pincode} deleted.`);
+        setTimeout(() => {
+          setSuccessToast('');
+        }, 4000);
+      } catch (err) {
+        alert(err.message || 'Failed to delete service area from server.');
+      }
     }
   };
 
@@ -312,61 +335,87 @@ function AdminServiceAreas() {
           </div>
         ) : null}
 
+        {/* API ERROR / RETRY BANNER */}
+        {apiError && (
+          <div className="card-panel" style={{ background: '#fce8e6', borderColor: '#fad2cf', padding: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <strong style={{ color: '#c5221f' }}>Failed to load service areas from MySQL server:</strong>
+              <p style={{ color: '#5f6368', margin: '4px 0 0 0', fontSize: '0.9rem' }}>{apiError}</p>
+            </div>
+            <button type="button" className="button button--small" onClick={loadData}>
+              🔄 Retry Connection
+            </button>
+          </div>
+        )}
+
         {/* SERVICE AREAS TABLE */}
         <div className="card-panel admin-orders__table-wrap">
-          <table className="admin-orders__table">
-            <thead>
-              <tr>
-                <th>Pincode</th>
-                <th>City / Area</th>
-                <th>Serviceability</th>
-                <th>Last Updated</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {serviceAreas.map((area) => (
-                <tr key={area.id}>
-                  <td><strong>{area.pincode}</strong></td>
-                  <td>{area.city}</td>
-                  <td>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '4px 12px',
-                        borderRadius: '12px',
-                        fontSize: '0.82rem',
-                        fontWeight: '700',
-                        backgroundColor: area.serviceable ? '#e6f4ea' : '#fce8e6',
-                        color: area.serviceable ? '#137333' : '#c5221f',
-                      }}
-                    >
-                      {area.serviceable ? '🟢 Serviceable' : '🔴 Non-Serviceable'}
-                    </span>
-                  </td>
-                  <td>{formatLastUpdated(area.updatedAt)}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        type="button"
-                        className="button button--small button--ghost"
-                        onClick={() => handleOpenEditForm(area)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--small button--ghost"
-                        onClick={() => handleDelete(area)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+              <p>Loading service areas from MySQL database...</p>
+            </div>
+          ) : serviceAreas.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+              <p>No service areas configured in MySQL database.</p>
+              <button type="button" className="button button--small" style={{ marginTop: '12px' }} onClick={handleOpenAddForm}>
+                + Add First Service Area
+              </button>
+            </div>
+          ) : (
+            <table className="admin-orders__table">
+              <thead>
+                <tr>
+                  <th>Pincode</th>
+                  <th>City / Area</th>
+                  <th>Serviceability</th>
+                  <th>Last Updated</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {serviceAreas.map((area) => (
+                  <tr key={area.id || area.pincode}>
+                    <td><strong>{area.pincode}</strong></td>
+                    <td>{area.city || '—'}</td>
+                    <td>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '0.82rem',
+                          fontWeight: '700',
+                          backgroundColor: area.serviceable ? '#e6f4ea' : '#fce8e6',
+                          color: area.serviceable ? '#137333' : '#c5221f',
+                        }}
+                      >
+                        {area.serviceable ? '🟢 Serviceable' : '🔴 Non-Serviceable'}
+                      </span>
+                    </td>
+                    <td>{formatLastUpdated(area.updatedAt || area.createdAt)}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="button button--small button--ghost"
+                          onClick={() => handleOpenEditForm(area)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--small button--ghost"
+                          onClick={() => handleDelete(area)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
     </main>

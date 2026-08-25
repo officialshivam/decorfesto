@@ -1,12 +1,41 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import CartItem from '../components/CartItem';
 import { useCart } from '../context/CartContext';
-import { getEnabledCharges, calculateTotalCharges } from '../services/mockSettings';
+import { fetchEnabledChargesApi } from '../services/chargeService';
 
 function Cart() {
   const { items } = useCart();
-  const enabledCharges = getEnabledCharges();
-  const serviceCharges = calculateTotalCharges();
+  const [enabledCharges, setEnabledCharges] = useState([]);
+  const [chargesLoading, setChargesLoading] = useState(true);
+  const [chargesError, setChargesError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCharges() {
+      try {
+        setChargesLoading(true);
+        setChargesError(null);
+        const data = await fetchEnabledChargesApi();
+        if (isMounted) {
+          setEnabledCharges(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching charges for cart:', err);
+          setChargesError('Unable to load service fees. Please try again.');
+        }
+      } finally {
+        if (isMounted) setChargesLoading(false);
+      }
+    }
+    loadCharges();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const serviceCharges = enabledCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
 
   const subtotal = items.reduce((sum, item) => {
     const basePrice = item.basePrice || item.price || 0;

@@ -1,43 +1,60 @@
 import { getApiBaseUrl } from './apiConfig.js';
+import { getAdminAuthHeaders } from './adminAuthService.js';
 
-function resolveApiBases() {
-  const base = getApiBaseUrl();
-  return base ? [base] : [''];
-}
+const API_BASE_URL = getApiBaseUrl();
 
-async function postJson(path, payload, extraHeaders = {}) {
-  const bases = resolveApiBases();
-  let lastError;
-
-  for (const base of bases) {
-    try {
-      const response = await fetch(`${base}${path}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...extraHeaders,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        lastError = new Error(`Request to ${base}${path} failed with status ${response.status}.`);
-        continue;
-      }
-
-      return await response.json();
-    } catch (error) {
-      lastError = error;
+export async function fetchServiceAreasApi() {
+  const response = await fetch(`${API_BASE_URL}/service-areas`, {
+    headers: getAdminAuthHeaders(),
+    credentials: 'include',
+  });
+  if (response.ok) {
+    const result = await response.json();
+    if (Array.isArray(result.serviceAreas)) {
+      return result.serviceAreas;
     }
   }
-
-  throw lastError;
+  const errData = await response.json().catch(() => ({}));
+  throw new Error(errData.error || `Failed to fetch service areas from server (HTTP ${response.status}).`);
 }
 
 export async function checkAvailabilityOnServer(pincode) {
-  return postJson('/availability/check', { pincode });
+  const response = await fetch(`${API_BASE_URL}/availability/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pincode }),
+  });
+  if (response.ok) {
+    return await response.json();
+  }
+  const errData = await response.json().catch(() => ({}));
+  throw new Error(errData.error || `Availability check failed (HTTP ${response.status}).`);
 }
 
 export async function saveServiceAreaOnServer(serviceArea) {
-  return postJson('/service-areas', serviceArea, { 'X-User-Role': 'admin' });
+  const response = await fetch(`${API_BASE_URL}/service-areas`, {
+    method: 'POST',
+    headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(serviceArea),
+    credentials: 'include',
+  });
+  if (response.ok) {
+    const result = await response.json();
+    return result.serviceArea || result;
+  }
+  const errData = await response.json().catch(() => ({}));
+  throw new Error(errData.error || `Failed to save service area (HTTP ${response.status}).`);
+}
+
+export async function deleteServiceAreaApi(pincode) {
+  const response = await fetch(`${API_BASE_URL}/service-areas/${pincode}`, {
+    method: 'DELETE',
+    headers: getAdminAuthHeaders(),
+    credentials: 'include',
+  });
+  if (response.ok) {
+    return await response.json();
+  }
+  const errData = await response.json().catch(() => ({}));
+  throw new Error(errData.error || `Failed to delete service area (HTTP ${response.status}).`);
 }
