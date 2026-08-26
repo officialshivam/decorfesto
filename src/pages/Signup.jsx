@@ -52,7 +52,7 @@ function Signup() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitError('');
 
@@ -64,7 +64,7 @@ function Signup() {
     setIsSubmitting(true);
 
     const mobileValidation = validate10DigitMobile(mobile);
-    const result = signup({
+    const result = await signup({
       fullName: fullName.trim(),
       mobile: mobileValidation.clean,
       email: email ? email.trim().toLowerCase() : '',

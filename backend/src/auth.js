@@ -156,6 +156,7 @@ function extractTokenFromHeaders(headers = {}) {
     if (lowerKey === 'cookie') {
       const cookieHeader = String(headers[key] || '');
       const match =
+        cookieHeader.match(/decorfesto_customer_session=([^;\s]+)/) ||
         cookieHeader.match(/decorfesto_vendor_session=([^;\s]+)/) ||
         cookieHeader.match(/decorfesto_admin_session=([^;\s]+)/) ||
         cookieHeader.match(/decorfesto_session=([^;\s]+)/);
@@ -382,5 +383,174 @@ export async function vendorLogin({ req }) {
         status: matched.status || 'active',
       },
     },
+  };
+}
+
+function sanitizeCustomerProfile(c) {
+  if (!c) return null;
+  const fullName = String(c.fullName || c.name || 'Customer').trim();
+  const phone = String(c.phone || c.mobile || '').replace(/\D/g, '').slice(-10);
+  const fullPhone = phone ? `+91${phone}` : '';
+  const email = String(c.email || '').trim().toLowerCase();
+  const address = String(c.savedAddress || c.address || (Array.isArray(c.addresses) ? c.addresses[0] : '') || '').trim();
+
+  return {
+    id: String(c.id).trim(),
+    fullName,
+    name: fullName,
+    email,
+    phone: fullPhone,
+    mobile: fullPhone,
+    savedAddress: address,
+    address,
+    role: 'CUSTOMER',
+    createdAt: c.createdAt || new Date().toISOString(),
+  };
+}
+
+export async function customerSignup({ req }) {
+  const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+  const name = String(payload.name || payload.fullName || '').trim();
+  const rawMobile = String(payload.mobile || payload.phone || '').trim();
+  const rawEmail = String(payload.email || '').trim().toLowerCase();
+  const password = String(payload.password || '').trim();
+
+  if (!name) {
+    return { statusCode: 400, body: { error: 'Full name is required.' } };
+  }
+
+  const cleanMobile = rawMobile.replace(/\D/g, '').slice(-10);
+  if (cleanMobile.length !== 10) {
+    return { statusCode: 400, body: { error: 'Please enter a valid 10-digit mobile number.' } };
+  }
+
+  if (password.length < 4) {
+    return { statusCode: 400, body: { error: 'Password must be at least 4 characters long.' } };
+  }
+
+  const repository = createRepository('customers');
+  const allCustomers = await repository.list();
+
+  // Check duplicate phone
+  const existingByPhone = allCustomers.find((c) => {
+    const p = String(c.phone || c.mobile || '').replace(/\D/g, '').slice(-10);
+    return p === cleanMobile;
+  });
+
+  if (existingByPhone) {
+    return { statusCode: 400, body: { error: 'An account with this mobile number already exists.' } };
+  }
+
+  // Check duplicate non-empty email
+  if (rawEmail) {
+    const existingByEmail = allCustomers.find((c) => {
+      const e = String(c.email || '').trim().toLowerCase();
+      return e === rawEmail;
+    });
+    if (existingByEmail) {
+      return { statusCode: 400, body: { error: 'An account with this email address already exists.' } };
+    }
+  }
+
+  const newId = `cust_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const formattedPhone = `+91${cleanMobile}`;
+  const newCustomer = {
+    id: newId,
+    fullName: name,
+    name,
+    email: rawEmail,
+    phone: formattedPhone,
+    mobile: formattedPhone,
+    password_hash: hashPassword(password),
+    password: hashPassword(password),
+    role: 'CUSTOMER',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  await repository.create(newCustomer);
+
+  const safeProfile = sanitizeCustomerProfile(newCustomer);
+  const token = createUserSessionToken(safeProfile);
+  const isSecure = (req && req.headers && req.headers['x-forwarded-proto'] === 'https') || process.env.NODE_ENV === 'production';
+  const cookieFlags = `Path=/; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+
+  return {
+    statusCode: 201,
+    headers: { 'Set-Cookie': `decorfesto_customer_session=${token}; ${cookieFlags}` },
+    body: { success: true, token, user: safeProfile },
+  };
+}
+
+export async function customerLogin({ req }) {
+  const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+  const identifier = String(payload.identifier || payload.mobile || payload.email || '').trim().toLowerCase();
+  const password = String(payload.password || '').trim();
+
+  if (!identifier || !password) {
+    return { statusCode: 400, body: { error: 'Mobile/email and password are required.' } };
+  }
+
+  const cleanMobile = identifier.replace(/\D/g, '').slice(-10);
+  const repository = createRepository('customers');
+  const allCustomers = await repository.list();
+
+  const matched = allCustomers.find((c) => {
+    const cEmail = String(c.email || '').trim().toLowerCase();
+    const cPhone = String(c.phone || c.mobile || '').replace(/\D/g, '').slice(-10);
+    return (cEmail && cEmail === identifier) || (cleanMobile.length === 10 && cPhone === cleanMobile);
+  });
+
+  if (!matched) {
+    return { statusCode: 401, body: { error: 'Account not found. Please check your mobile/email or sign up.' } };
+  }
+
+  if (matched.disabled || matched.status === 'DISABLED') {
+    return { statusCode: 403, body: { error: 'This account has been disabled. Please contact DecorFesto support.' } };
+  }
+
+  const storedHash = matched.password_hash || matched.password;
+  if (!storedHash || !verifyPassword(password, storedHash)) {
+    return { statusCode: 401, body: { error: 'Incorrect password. Please try again.' } };
+  }
+
+  const safeProfile = sanitizeCustomerProfile(matched);
+  const token = createUserSessionToken(safeProfile);
+  const isSecure = (req && req.headers && req.headers['x-forwarded-proto'] === 'https') || process.env.NODE_ENV === 'production';
+  const cookieFlags = `Path=/; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+
+  return {
+    statusCode: 200,
+    headers: { 'Set-Cookie': `decorfesto_customer_session=${token}; ${cookieFlags}` },
+    body: { success: true, token, user: safeProfile },
+  };
+}
+
+export async function getCustomerMe({ req }) {
+  const userAuth = getAuthenticatedUser(req.headers);
+  if (!userAuth || !userAuth.id) {
+    return { statusCode: 401, body: { authenticated: false, error: 'Not authenticated.' } };
+  }
+
+  const repository = createRepository('customers');
+  const customer = await repository.getById(userAuth.id);
+
+  if (!customer || customer.disabled || customer.status === 'DISABLED') {
+    return { statusCode: 401, body: { authenticated: false, error: 'Account not found or disabled.' } };
+  }
+
+  return {
+    statusCode: 200,
+    body: { authenticated: true, user: sanitizeCustomerProfile(customer) },
+  };
+}
+
+export async function customerLogout({ req }) {
+  const isSecure = (req && req.headers && req.headers['x-forwarded-proto'] === 'https') || process.env.NODE_ENV === 'production';
+  const cookieFlags = `Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+  return {
+    statusCode: 200,
+    headers: { 'Set-Cookie': `decorfesto_customer_session=; ${cookieFlags}` },
+    body: { success: true, message: 'Logged out successfully.' },
   };
 }

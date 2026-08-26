@@ -5,8 +5,9 @@ import { createServiceArea, getServiceArea, listServiceAreaVendors, listServiceA
 import { createOrder, getOrder, listOrders, updateOrderStatus } from './handlers/orders.js';
 import { checkAvailability } from './handlers/availability.js';
 import { getDashboard } from './handlers/dashboard.js';
+import { getCustomerDuplicatesDiagnostic } from './handlers/adminDiagnostics.js';
 import { seedBackendData } from './seedData.js';
-import { adminLogin, adminLogout, getAdminMe, vendorLogin, validateActiveUserSession } from './auth.js';
+import { adminLogin, adminLogout, getAdminMe, vendorLogin, validateActiveUserSession, customerSignup, customerLogin, customerLogout, getCustomerMe } from './auth.js';
 import { getCorsHeaders } from './config.js';
 import { listEnabledCharges, listAdminCharges, createAdminCharge, updateAdminCharge, deleteAdminCharge } from './handlers/charges.js';
 import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdminUserPassword } from './handlers/users.js';
@@ -27,6 +28,8 @@ function healthCheck() {
 const routeHandlers = {
   GET: {
     '/health': healthCheck,
+    '/admin/diagnostics/customer-duplicates': getCustomerDuplicatesDiagnostic,
+    '/auth/customer-me': getCustomerMe,
     '/auth/admin-me': getAdminMe,
     '/admin/me': getAdminMe,
     '/admin/dashboard': getDashboard,
@@ -49,6 +52,9 @@ const routeHandlers = {
     '/vendor/profile': getVendorProfile,
   },
   POST: {
+    '/auth/customer-signup': customerSignup,
+    '/auth/customer-login': customerLogin,
+    '/auth/customer-logout': customerLogout,
     '/auth/admin-login': adminLogin,
     '/auth/admin-logout': adminLogout,
     '/auth/vendor-login': vendorLogin,

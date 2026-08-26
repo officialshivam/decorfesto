@@ -152,7 +152,7 @@ function Checkout() {
       const order = {
         id: orderId,
         orderId,
-        customerId: user?.id || `customer-${Date.now()}`,
+        customerId: user?.id || null,
         customerName: form.fullName.trim(),
         customerMobile: mobileVal.fullMobile,
         customerEmail: form.email.trim(),

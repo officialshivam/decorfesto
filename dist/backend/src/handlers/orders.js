@@ -35,41 +35,27 @@ export async function createOrder({ req }) {
     };
   }
 
-  // Ensure customer record exists in customers table to satisfy foreign key fk_orders_customer
-  let validCustomerId = null;
-  const rawCustId = payload.customerId || payload.userId;
-  if (rawCustId) {
-    try {
-      const cust = await customerRepo.getById(rawCustId);
-      if (cust) validCustomerId = cust.id;
-    } catch {}
+  // Derive customer identity strictly from authenticated server session
+  const userAuth = getAuthenticatedUser(req.headers);
+  if (!userAuth || !userAuth.id) {
+    return {
+      statusCode: 401,
+      body: { error: 'Authentication required. Please log in to complete your booking.' },
+    };
   }
 
-  if (!validCustomerId && (payload.customerEmail || payload.email || payload.customerPhone || payload.mobile)) {
-    try {
-      const emailVal = payload.customerEmail || payload.email || '';
-      const phoneVal = payload.customerPhone || payload.customerMobile || payload.mobile || '';
-      const allCustomers = await customerRepo.list();
-      const match = (allCustomers || []).find((c) => (emailVal && c.email === emailVal) || (phoneVal && c.phone === phoneVal));
-      if (match) validCustomerId = match.id;
-    } catch {}
+  const customer = await customerRepo.getById(userAuth.id);
+  if (!customer) {
+    return {
+      statusCode: 401,
+      body: { error: 'Authenticated customer account not found. Please log in again.' },
+    };
   }
 
-  if (!validCustomerId) {
-    try {
-      const newCustId = rawCustId || `cust-${Date.now()}`;
-      const newCust = await customerRepo.create({
-        id: newCustId,
-        fullName: payload.customerName || payload.fullName || 'Customer',
-        email: payload.customerEmail || payload.email || '',
-        phone: payload.customerPhone || payload.customerMobile || payload.mobile || '',
-        createdAt: new Date().toISOString(),
-      });
-      if (newCust) validCustomerId = newCust.id;
-    } catch {
-      validCustomerId = null;
-    }
-  }
+  const validCustomerId = customer.id;
+  const customerName = customer.fullName || customer.name || payload.customerName || 'Customer';
+  const customerEmail = customer.email || payload.customerEmail || payload.email || '';
+  const customerPhone = customer.phone || customer.mobile || payload.customerPhone || payload.customerMobile || payload.mobile || '';
 
   // Ensure vendor record exists if vendorId passed to satisfy fk_orders_vendor
   let validVendorId = null;
@@ -86,10 +72,10 @@ export async function createOrder({ req }) {
     id: targetId,
     orderId: targetId,
     customerId: validCustomerId,
-    customerName: payload.customerName || payload.fullName || 'Guest Customer',
-    customerEmail: payload.customerEmail || payload.email || '',
-    customerPhone: payload.customerPhone || payload.customerMobile || payload.mobile || '',
-    customerMobile: payload.customerPhone || payload.customerMobile || payload.mobile || '',
+    customerName,
+    customerEmail,
+    customerPhone,
+    customerMobile: customerPhone,
     decorationId: payload.decorationId || payload.productId || payload.items?.[0]?.id || '1',
     decorationName: payload.decorationName || payload.items?.[0]?.productName || 'DecorFesto Package',
     customization: payload.customization || payload.items?.[0]?.customization || {},
@@ -215,7 +201,7 @@ export async function listOrders({ req }) {
     const oMobile = String(o.customerPhone || o.customerMobile || '').replace(/\D/g, '').slice(-10);
     return (
       (cleanTokenId && oCustId && (oCustId === cleanTokenId || oCustId.replace(/^(cust|customer)-/, '') === cleanTokenId.replace(/^(cust|customer)-/, ''))) ||
-      (cleanTokenEmail && oEmail && oEmail === cleanEmail) ||
+      (cleanTokenEmail && oEmail && oEmail === cleanTokenEmail) ||
       (cleanTokenMobile && oMobile && oMobile === cleanTokenMobile)
     );
   });

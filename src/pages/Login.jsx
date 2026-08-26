@@ -41,7 +41,7 @@ function Login() {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitError('');
 
@@ -57,7 +57,7 @@ function Login() {
       identifier = email.trim().toLowerCase();
     }
 
-    const result = login({ identifier, password });
+    const result = await login({ identifier, password });
 
     setIsSubmitting(false);
 

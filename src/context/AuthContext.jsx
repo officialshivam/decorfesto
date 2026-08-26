@@ -1,34 +1,51 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { addOrderToUser, clearStoredSession, getStoredUser, loginWithCredentials, signupWithDetails, updateStoredUser } from '../services/mockAuth';
+import {
+  customerLoginApi,
+  customerLogoutApi,
+  customerSignupApi,
+  getCustomerMeApi,
+} from '../services/customerAuthService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => getStoredUser());
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
 
   useEffect(() => {
-    const syncUserStatus = () => {
-      const currentUser = getStoredUser();
-      setUser(currentUser);
-      if (!currentUser) {
-        setAuthError('');
+    let isMounted = true;
+    async function checkAuth() {
+      try {
+        const res = await getCustomerMeApi();
+        if (isMounted) {
+          if (res.ok && res.user) {
+            setUser(res.user);
+          } else {
+            setUser(null);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    };
-
-    syncUserStatus();
-    window.addEventListener('storage', syncUserStatus);
-    window.addEventListener('focus', syncUserStatus);
+    }
+    checkAuth();
     return () => {
-      window.removeEventListener('storage', syncUserStatus);
-      window.removeEventListener('focus', syncUserStatus);
+      isMounted = false;
     };
   }, []);
 
-  const login = ({ identifier, password }) => {
-    const result = loginWithCredentials({ identifier, password });
+  const login = async ({ identifier, password }) => {
+    setAuthError('');
+    const result = await customerLoginApi({ identifier, password });
     if (!result.ok) {
-      setAuthError(result.error);
+      setAuthError(result.error || 'Login failed.');
       return result;
     }
 
@@ -37,10 +54,11 @@ export function AuthProvider({ children }) {
     return result;
   };
 
-  const signup = (payload) => {
-    const result = signupWithDetails(payload);
+  const signup = async (payload) => {
+    setAuthError('');
+    const result = await customerSignupApi(payload);
     if (!result.ok) {
-      setAuthError(result.error);
+      setAuthError(result.error || 'Signup failed.');
       return result;
     }
 
@@ -49,27 +67,24 @@ export function AuthProvider({ children }) {
     return result;
   };
 
-  const logout = () => {
-    clearStoredSession();
+  const logout = async () => {
+    await customerLogoutApi();
     setUser(null);
     setAuthError('');
   };
 
   const updateProfile = (payload) => {
-    const nextUser = updateStoredUser({ ...user, ...payload });
-    setUser(nextUser);
-    return nextUser;
+    setUser((curr) => (curr ? { ...curr, ...payload } : null));
   };
 
-  const addOrder = (order, profileUpdates = {}) => {
-    const nextUser = addOrderToUser({ ...user, ...profileUpdates }, order);
-    setUser(nextUser);
-    return nextUser;
+  const addOrder = (order) => {
+    setUser((curr) => (curr ? { ...curr, orders: [order, ...(curr.orders || [])] } : null));
   };
 
   const value = useMemo(
     () => ({
       user,
+      loading,
       isAuthenticated: Boolean(user),
       authError,
       login,
@@ -78,7 +93,7 @@ export function AuthProvider({ children }) {
       updateProfile,
       addOrder,
     }),
-    [authError, user],
+    [authError, loading, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
