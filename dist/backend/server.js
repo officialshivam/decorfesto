@@ -57,7 +57,7 @@ function isApiRequest(pathname, req) {
     return true;
   }
 
-  if (pathname === '/admin/dashboard' || pathname.startsWith('/admin/charges') || pathname.startsWith('/admin/users')) {
+  if (pathname.startsWith('/admin/')) {
     return true;
   }
 
