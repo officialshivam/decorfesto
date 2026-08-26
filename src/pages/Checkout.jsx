@@ -144,8 +144,8 @@ function Checkout() {
       const calculatedSubtotal = subtotal > 0
         ? subtotal
         : items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
-      const activeChargesList = getEnabledCharges();
-      const chargesTotal = calculateTotalCharges();
+      const activeChargesList = enabledCharges;
+      const chargesTotal = serviceCharges;
       const finalTotal = calculatedSubtotal + chargesTotal;
 
       const orderId = `DFC-${Date.now().toString().slice(-6)}`;
