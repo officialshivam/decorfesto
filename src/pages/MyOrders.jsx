@@ -48,12 +48,7 @@ function MyOrders() {
     let isMounted = true;
     async function loadOrders() {
       try {
-        let fetchedOrders = [];
-        if (user) {
-          fetchedOrders = await getUserOrdersApi(user);
-        } else {
-          fetchedOrders = await getOrdersApi();
-        }
+        const fetchedOrders = await getUserOrdersApi();
         if (isMounted) {
           setOrders(Array.isArray(fetchedOrders) ? fetchedOrders : []);
         }

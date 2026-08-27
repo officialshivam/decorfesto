@@ -37,6 +37,7 @@ export const columnMaps = {
   },
   orders: {
     id: 'id',
+    orderId: 'order_id',
     customerId: 'customer_id',
     customerName: 'customer_name',
     customerEmail: 'customer_email',

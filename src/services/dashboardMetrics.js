@@ -218,6 +218,9 @@ export function unassignedOrders(orders) {
 
 export function deriveDashboard(payload) {
   const { client, backend, health, fetchedAt } = payload;
+  if (!backend && payload?.backendError) {
+    return null;
+  }
 
   const orders = mergeOrders(client.orders, backend?.orders?.list);
   const orderStats = computeOrderStats(orders);

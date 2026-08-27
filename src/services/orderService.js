@@ -269,21 +269,6 @@ export async function createOrderApi(orderData, userFields = {}) {
 
 import { getAdminAuthHeaders } from './adminAuthService';
 
-function createCustomerAuthToken(userObj) {
-  if (!userObj || typeof userObj !== 'object') return '';
-  const payload = {
-    id: userObj.id || userObj.customerId || '',
-    role: 'CUSTOMER',
-    email: userObj.email || userObj.customerEmail || '',
-    mobile: userObj.mobile || userObj.phone || userObj.customerMobile || '',
-    name: userObj.fullName || userObj.name || 'User',
-    exp: Date.now() + 24 * 3600 * 1000,
-  };
-  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  // Match backend session token format
-  return `${payloadB64}.customer_sig`;
-}
-
 export async function getOrdersApi() {
   try {
     const response = await fetch(`${API_BASE_URL}/orders`, {
@@ -302,20 +287,10 @@ export async function getOrdersApi() {
   return [];
 }
 
-export async function getUserOrdersApi(userOrId) {
-  if (!userOrId) return [];
-  const userObj = typeof userOrId === 'object' ? userOrId : getCurrentUser();
-
+export async function getUserOrdersApi() {
   try {
-    const headers = {
-      Accept: 'application/json',
-    };
-    if (userObj) {
-      const token = createCustomerAuthToken(userObj);
-      headers.Authorization = `Bearer ${token}`;
-    }
     const response = await fetch(`${API_BASE_URL}/orders`, {
-      headers,
+      headers: { Accept: 'application/json' },
       credentials: 'include',
     });
     if (response.ok) {
@@ -332,14 +307,8 @@ export async function getUserOrdersApi(userOrId) {
 
 export async function getOrderByIdApi(orderId) {
   try {
-    const userObj = getCurrentUser();
-    const headers = getAdminAuthHeaders({ Accept: 'application/json' });
-    if (userObj && !headers.Authorization) {
-      headers.Authorization = `Bearer ${createCustomerAuthToken(userObj)}`;
-    }
-
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-      headers,
+      headers: getAdminAuthHeaders({ Accept: 'application/json' }),
       credentials: 'include',
     });
     if (response.ok) {

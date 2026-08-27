@@ -3,7 +3,14 @@ import { getApiBaseUrl } from './apiConfig.js';
 const API_BASE_URL = getApiBaseUrl();
 
 export function getAdminAuthHeaders(extraHeaders = {}) {
-  return { Accept: 'application/json', ...extraHeaders };
+  const headers = { Accept: 'application/json', ...extraHeaders };
+  if (typeof sessionStorage !== 'undefined') {
+    const token = sessionStorage.getItem('decorfesto_admin_token');
+    if (token && !headers.Authorization) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return headers;
 }
 
 export async function checkAdminSessionApi() {
