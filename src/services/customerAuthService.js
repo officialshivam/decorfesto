@@ -6,6 +6,7 @@ export async function customerSignupApi(payload) {
   const response = await fetch(`${API_BASE_URL}/auth/customer-signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload),
   });
   const data = await response.json();
@@ -19,6 +20,7 @@ export async function customerLoginApi(payload) {
   const response = await fetch(`${API_BASE_URL}/auth/customer-login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload),
   });
   const data = await response.json();
@@ -30,7 +32,9 @@ export async function customerLoginApi(payload) {
 
 export async function getCustomerMeApi() {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/customer-me`);
+    const response = await fetch(`${API_BASE_URL}/auth/customer-me`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
       return { ok: false, user: null };
     }
@@ -46,7 +50,10 @@ export async function getCustomerMeApi() {
 
 export async function customerLogoutApi() {
   try {
-    await fetch(`${API_BASE_URL}/auth/customer-logout`, { method: 'POST' });
+    await fetch(`${API_BASE_URL}/auth/customer-logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
   } catch {}
   return { ok: true };
 }

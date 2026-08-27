@@ -1,12 +1,26 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileNumberInput, { validate10DigitMobile } from '../components/MobileNumberInput';
 
 function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signup } = useAuth();
+  const { signup, isAuthenticated, loading } = useAuth();
+
+  const from = location.state?.from?.pathname || '/my-orders';
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+        <p>Verifying customer session...</p>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to={from} replace />;
+  }
 
   const [fullName, setFullName] = useState('');
   const [mobile, setMobile] = useState('');
@@ -19,7 +33,6 @@ function Signup() {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const from = location.state?.from?.pathname || '/';
   const isCheckoutFlow = from === '/checkout';
 
   const validate = () => {

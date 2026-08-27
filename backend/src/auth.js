@@ -145,26 +145,7 @@ export function verifyUserSessionToken(token) {
   }
 }
 
-function extractTokenFromHeaders(headers = {}) {
-  for (const key of Object.keys(headers)) {
-    const lowerKey = key.toLowerCase();
-    if (lowerKey === 'authorization') {
-      const authHeader = String(headers[key] || '');
-      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-      if (token) return token;
-    }
-    if (lowerKey === 'cookie') {
-      const cookieHeader = String(headers[key] || '');
-      const match =
-        cookieHeader.match(/decorfesto_customer_session=([^;\s]+)/) ||
-        cookieHeader.match(/decorfesto_vendor_session=([^;\s]+)/) ||
-        cookieHeader.match(/decorfesto_admin_session=([^;\s]+)/) ||
-        cookieHeader.match(/decorfesto_session=([^;\s]+)/);
-      if (match) return match[1];
-    }
-  }
-  return null;
-}
+
 
 import { createRepository } from './dataAccess/repository.js';
 
@@ -229,31 +210,102 @@ export async function validateActiveUserSession(headers = {}) {
   return { valid: true, role: userPayload.role || 'CUSTOMER', user: userPayload };
 }
 
+function extractTokenFromHeaders(headers = {}, targetRole = null) {
+  for (const key of Object.keys(headers || {})) {
+    if (key.toLowerCase() === 'cookie') {
+      const cookieHeader = String(headers[key] || '');
+      if (targetRole === 'admin') {
+        const m = cookieHeader.match(/decorfesto_admin_session=([^;\s]+)/);
+        if (m) return m[1];
+      }
+      if (targetRole === 'vendor') {
+        const m = cookieHeader.match(/decorfesto_vendor_session=([^;\s]+)/);
+        if (m) return m[1];
+      }
+      if (targetRole === 'customer') {
+        const m = cookieHeader.match(/decorfesto_customer_session=([^;\s]+)/);
+        if (m) return m[1];
+      }
+      const generalMatch =
+        cookieHeader.match(/decorfesto_admin_session=([^;\s]+)/) ||
+        cookieHeader.match(/decorfesto_customer_session=([^;\s]+)/) ||
+        cookieHeader.match(/decorfesto_vendor_session=([^;\s]+)/) ||
+        cookieHeader.match(/decorfesto_session=([^;\s]+)/);
+      if (generalMatch) return generalMatch[1];
+    }
+  }
+
+  for (const key of Object.keys(headers || {})) {
+    if (key.toLowerCase() === 'authorization') {
+      const authHeader = String(headers[key] || '');
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      if (token) return token;
+    }
+  }
+
+  return null;
+}
+
 export function getUserRole(headers = {}) {
-  const token = extractTokenFromHeaders(headers);
-  if (!token) return 'CUSTOMER';
-  const adminPayload = verifyAdminSessionToken(token);
+  const adminToken = extractTokenFromHeaders(headers, 'admin');
+  if (adminToken && verifyAdminSessionToken(adminToken)) {
+    return 'admin';
+  }
+
+  const vendorToken = extractTokenFromHeaders(headers, 'vendor');
+  if (vendorToken && verifyVendorSessionToken(vendorToken)) {
+    return 'VENDOR';
+  }
+
+  const customerToken = extractTokenFromHeaders(headers, 'customer');
+  if (customerToken) {
+    const userPayload = verifyUserSessionToken(customerToken);
+    if (userPayload) return userPayload.role || 'CUSTOMER';
+  }
+
+  const fallbackToken = extractTokenFromHeaders(headers);
+  if (!fallbackToken) return 'CUSTOMER';
+  const adminPayload = verifyAdminSessionToken(fallbackToken);
   if (adminPayload) return 'admin';
-  const vendorPayload = verifyVendorSessionToken(token);
+  const vendorPayload = verifyVendorSessionToken(fallbackToken);
   if (vendorPayload) return 'VENDOR';
-  const userPayload = verifyUserSessionToken(token);
+  const userPayload = verifyUserSessionToken(fallbackToken);
   if (userPayload) return userPayload.role || 'CUSTOMER';
+
   return 'CUSTOMER';
 }
 
 export function getAuthenticatedVendor(headers = {}) {
-  const token = extractTokenFromHeaders(headers);
-  if (!token) return null;
-  return verifyVendorSessionToken(token);
+  const vendorToken = extractTokenFromHeaders(headers, 'vendor');
+  if (vendorToken) {
+    const v = verifyVendorSessionToken(vendorToken);
+    if (v) return v;
+  }
+  const fallbackToken = extractTokenFromHeaders(headers);
+  if (!fallbackToken) return null;
+  return verifyVendorSessionToken(fallbackToken);
 }
 
 export function getAuthenticatedUser(headers = {}) {
-  const token = extractTokenFromHeaders(headers);
-  if (!token) return null;
-  const adminPayload = verifyAdminSessionToken(token);
+  const adminToken = extractTokenFromHeaders(headers, 'admin');
+  if (adminToken) {
+    const adminPayload = verifyAdminSessionToken(adminToken);
+    if (adminPayload) return { ...adminPayload, role: 'ADMIN' };
+  }
+
+  const customerToken = extractTokenFromHeaders(headers, 'customer');
+  if (customerToken) {
+    const userPayload = verifyUserSessionToken(customerToken);
+    if (userPayload) return userPayload;
+  }
+
+  const fallbackToken = extractTokenFromHeaders(headers);
+  if (!fallbackToken) return null;
+  const adminPayload = verifyAdminSessionToken(fallbackToken);
   if (adminPayload) return { ...adminPayload, role: 'ADMIN' };
-  const userPayload = verifyUserSessionToken(token);
+  const userPayload = verifyUserSessionToken(fallbackToken);
   if (userPayload) return userPayload;
+
   return null;
 }
 

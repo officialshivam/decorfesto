@@ -338,6 +338,21 @@ export class MySqlRepository {
     return mapForRead(rows[0], this.columnMap);
   }
 
+  async getByIdOrOrderId(targetOrderId) {
+    const hasOrderIdCol = Boolean(this.columnMap.orderId && this.columnMap.orderId !== '__ignore__');
+    let rows;
+    if (hasOrderIdCol) {
+      rows = await this.query(
+        `SELECT * FROM ${this.table} WHERE id = ? OR ${this.columnMap.orderId} = ? LIMIT 1`,
+        [targetOrderId, targetOrderId]
+      );
+    } else {
+      rows = await this.query(`SELECT * FROM ${this.table} WHERE id = ? LIMIT 1`, [targetOrderId]);
+    }
+    if (rows.length === 0) return null;
+    return mapForRead(rows[0], this.columnMap);
+  }
+
   async create(item) {
     const record = mapForWrite(item, this.columnMap);
     const columns = Object.keys(record);
@@ -542,6 +557,11 @@ export class LocalJsonRepository {
   async getById(id) {
     const items = await this.readAll();
     return items.find((item) => item.id === id) || null;
+  }
+
+  async getByIdOrOrderId(targetOrderId) {
+    const items = await this.readAll();
+    return items.find((item) => item.id === targetOrderId || item.orderId === targetOrderId) || null;
   }
 
   async list() {

@@ -124,11 +124,7 @@ export async function getOrder({ req, params }) {
   }
 
   const repository = createRepository('orders');
-  let order = await repository.getById(targetOrderId);
-  if (!order) {
-    const allOrders = await repository.list();
-    order = (allOrders || []).find((o) => o.id === targetOrderId || o.orderId === targetOrderId) || null;
-  }
+  const order = await repository.getByIdOrOrderId(targetOrderId);
 
   if (!order) {
     return {

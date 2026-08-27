@@ -1,12 +1,26 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileNumberInput, { validate10DigitMobile } from '../components/MobileNumberInput';
 
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
+
+  const from = location.state?.from?.pathname || '/my-orders';
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+        <p>Verifying customer session...</p>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to={from} replace />;
+  }
 
   const [identifierType, setIdentifierType] = useState('mobile'); // 'mobile' | 'email'
   const [mobile, setMobile] = useState('');
@@ -17,7 +31,7 @@ function Login() {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const from = location.state?.from?.pathname || '/';
+  const isCheckoutFlow = from === '/checkout';
 
   const validate = () => {
     const nextErrors = {};
@@ -68,8 +82,6 @@ function Login() {
 
     navigate(from, { replace: true });
   };
-
-  const isCheckoutFlow = from === '/checkout';
 
   return (
     <main className="page page--auth">
