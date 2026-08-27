@@ -1,10 +1,14 @@
+import { getApiBaseUrl } from './apiConfig.js';
+
+const API_BASE_URL = getApiBaseUrl();
+
 export function getAdminAuthHeaders(extraHeaders = {}) {
   return { Accept: 'application/json', ...extraHeaders };
 }
 
 export async function checkAdminSessionApi() {
   try {
-    const res = await fetch('/auth/admin-me', {
+    const res = await fetch(`${API_BASE_URL}/auth/admin-me`, {
       method: 'GET',
       headers: getAdminAuthHeaders(),
       credentials: 'include',
@@ -23,7 +27,7 @@ export async function checkAdminSessionApi() {
 
 export async function loginAdminApi({ username, password }) {
   try {
-    const res = await fetch('/auth/admin-login', {
+    const res = await fetch(`${API_BASE_URL}/auth/admin-login`, {
       method: 'POST',
       headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ username, password }),
@@ -49,7 +53,7 @@ export async function loginAdminApi({ username, password }) {
 
 export async function logoutAdminApi() {
   try {
-    await fetch('/auth/admin-logout', {
+    await fetch(`${API_BASE_URL}/auth/admin-logout`, {
       method: 'POST',
       headers: getAdminAuthHeaders(),
       credentials: 'include',
@@ -58,3 +62,4 @@ export async function logoutAdminApi() {
     console.warn('logoutAdminApi network error', err);
   }
 }
+

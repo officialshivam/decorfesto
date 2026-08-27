@@ -50,7 +50,7 @@ export function createAdminSessionToken() {
   const payload = {
     role: 'ADMIN',
     user: adminUsername,
-    exp: Date.now() + 8 * 3600 * 1000,
+    exp: Date.now() + 30 * 60 * 1000,
     nonce: crypto.randomBytes(8).toString('hex'),
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -303,7 +303,7 @@ export async function adminLogin({ req }) {
   }
   const token = createAdminSessionToken();
   const isSecure = (req && req.headers && req.headers['x-forwarded-proto'] === 'https') || process.env.NODE_ENV === 'production';
-  const cookieFlags = `Path=/; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+  const cookieFlags = `Path=/; Max-Age=1800; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
   return {
     statusCode: 200,
     headers: { 'Set-Cookie': `decorfesto_admin_session=${token}; ${cookieFlags}` },

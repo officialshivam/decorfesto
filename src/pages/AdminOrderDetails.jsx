@@ -1,23 +1,56 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getStoredCharges } from '../services/chargeService';
-import { getOrders, getOrderById, updateAdminOrderStatusApi } from '../services/orderService';
+import { getOrders, getOrderById, getOrderByIdApi, updateAdminOrderStatusApi } from '../services/orderService';
 import { getVendorsApi } from '../services/vendorAuthService';
 
 function AdminOrderDetails() {
   const { id } = useParams();
-  const [order, setOrder] = useState(() => getOrderById(id));
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [vendors, setVendors] = useState([]);
   const activeVendors = vendors.filter((v) => v.status === 'active' && v.accountStatus !== 'disabled');
-  const [vendorId, setVendorId] = useState(order?.vendorId || '');
+  const [vendorId, setVendorId] = useState('');
 
   useEffect(() => {
-    async function loadVendors() {
-      const vList = await getVendorsApi();
-      setVendors(vList || []);
+    async function loadData() {
+      setLoading(true);
+      try {
+        const [ord, vList] = await Promise.all([
+          getOrderByIdApi(id),
+          getVendorsApi(),
+        ]);
+        const finalOrder = ord || getOrderById(id);
+        setOrder(finalOrder);
+        if (finalOrder?.vendorId) {
+          setVendorId(finalOrder.vendorId);
+        }
+        setVendors(vList || []);
+      } catch (err) {
+        console.error('Failed to load order details:', err);
+        const fallback = getOrderById(id);
+        setOrder(fallback);
+        if (fallback?.vendorId) {
+          setVendorId(fallback.vendorId);
+        }
+      } finally {
+        setLoading(false);
+      }
     }
-    loadVendors();
-  }, []);
+    loadData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <main className="page">
+        <section className="container section">
+          <div className="card-panel text-center">
+            <p>Loading order details...</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (!order) {
     return (
