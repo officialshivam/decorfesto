@@ -1,18 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   createAdminUser,
-  getAllUsersForAdmin,
   resetUserPassword,
   toggleUserStatus,
   verifyAdminReauthPassword,
 } from '../services/mockAuth';
+import { getAllUsersForAdminApi } from '../services/userService';
 
 function AdminUsers() {
   const [isVerified, setIsVerified] = useState(false);
   const [reauthPassword, setReauthPassword] = useState('');
   const [reauthError, setReauthError] = useState('');
 
-  const [users, setUsers] = useState(() => getAllUsersForAdmin());
+  const [users, setUsers] = useState([]);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -24,9 +24,21 @@ function AdminUsers() {
   const [resetError, setResetError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const refreshUsers = () => {
-    setUsers(getAllUsersForAdmin());
+  const refreshUsers = async () => {
+    try {
+      const data = await getAllUsersForAdminApi();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load admin users:', err);
+      setUsers([]);
+    }
   };
+
+  useEffect(() => {
+    if (isVerified) {
+      refreshUsers();
+    }
+  }, [isVerified]);
 
   const handleVerify = (e) => {
     e.preventDefault();

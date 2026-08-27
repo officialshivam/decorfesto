@@ -208,18 +208,25 @@ import { getApiBaseUrl } from './apiConfig.js';
 const API_BASE_URL = getApiBaseUrl();
 
 export async function getAllUsersForAdminApi() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/admin/users`, {
-      headers: { Authorization: 'Bearer admin-token-placeholder' },
-    });
-    if (response.ok) {
-      const result = await response.json();
-      if (Array.isArray(result.users)) return result.users;
+  const base = getApiBaseUrl();
+  const bases = base ? [base, ''] : [''];
+
+  for (const b of bases) {
+    try {
+      const response = await fetch(`${b}/admin/users`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (Array.isArray(result.users)) return result.users;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch admin users from backend API:', error);
     }
-  } catch (error) {
-    console.debug('Backend API unavailable, using local repository fallback for users list.', error);
   }
-  return getAllUsersForAdmin();
+  return [];
 }
 
 export async function verifyAdminReauthPasswordApi(password) {

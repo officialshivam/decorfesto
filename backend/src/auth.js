@@ -468,7 +468,21 @@ export async function customerSignup({ req }) {
     updatedAt: new Date().toISOString(),
   };
 
-  await repository.create(newCustomer);
+  try {
+    await repository.create(newCustomer);
+  } catch (dbErr) {
+    if (dbErr.code === 'ER_DUP_ENTRY' || dbErr.errno === 1062) {
+      const msg = String(dbErr.message || dbErr.sqlMessage || '');
+      if (msg.includes('phone') || msg.includes('mobile')) {
+        return { statusCode: 400, body: { error: 'An account with this mobile number already exists.' } };
+      }
+      if (msg.includes('email')) {
+        return { statusCode: 400, body: { error: 'An account with this email address already exists.' } };
+      }
+      return { statusCode: 400, body: { error: 'An account with this mobile number or email address already exists.' } };
+    }
+    throw dbErr;
+  }
 
   const safeProfile = sanitizeCustomerProfile(newCustomer);
   const token = createUserSessionToken(safeProfile);

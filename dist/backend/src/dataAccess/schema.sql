@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS customers (
   id            VARCHAR(64)  NOT NULL PRIMARY KEY,
   full_name     VARCHAR(255) NOT NULL,
-  email         VARCHAR(255) NOT NULL DEFAULT '',
+  email         VARCHAR(255) NULL DEFAULT NULL,
   phone         VARCHAR(32)  NOT NULL DEFAULT '',
   addresses     TEXT         NULL,
   default_pincode VARCHAR(16) NULL,
@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS customers (
   password      VARCHAR(255) NULL,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_customers_phone (phone),
+  UNIQUE KEY uq_customers_email (email),
   INDEX idx_customers_email (email),
   INDEX idx_customers_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

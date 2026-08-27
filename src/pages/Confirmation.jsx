@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getStoredLastOrder, getStoredUser } from '../services/mockAuth';
+import { getStoredLastOrder } from '../services/mockAuth';
 import { calculateItemSubtotal } from '../services/mockSettings';
 
 function Confirmation() {
@@ -18,10 +18,6 @@ function Confirmation() {
     }
     if (user?.orders?.[0] && typeof user.orders[0].total === 'number' && user.orders[0].total > 0) {
       return user.orders[0];
-    }
-    const activeUser = getStoredUser();
-    if (activeUser?.orders?.[0] && typeof activeUser.orders[0].total === 'number' && activeUser.orders[0].total > 0) {
-      return activeUser.orders[0];
     }
     return null;
   });
