@@ -37,7 +37,7 @@ export const columnMaps = {
   },
   orders: {
     id: 'id',
-    orderId: 'order_id',
+    orderId: '__ignore__',
     customerId: 'customer_id',
     customerName: 'customer_name',
     customerEmail: 'customer_email',
@@ -297,11 +297,15 @@ function mapForRead(row, columnMap) {
       record[camelKey] = deserializeJson(row[column]);
       continue;
     }
+
     if (DATE_COLUMNS.has(column) && row[column] instanceof Date) {
       record[camelKey] = row[column].toISOString();
       continue;
     }
     record[camelKey] = row[column];
+  }
+  if (columnMap === columnMaps.orders && record.id && !record.orderId) {
+    record.orderId = record.id;
   }
   return record;
 }
