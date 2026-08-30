@@ -10,20 +10,42 @@ export function hashPassword(password) {
 
 export function verifyPassword(password, storedCombinedHash) {
   if (!password || !storedCombinedHash) return false;
-  if (!storedCombinedHash.includes(':')) {
-    // Fallback for legacy plain passwords during local dev/migration
-    return password === storedCombinedHash;
+
+  // 1. Standard PBKDF2 salt:hash format
+  if (storedCombinedHash.includes(':')) {
+    const [salt, expectedHash] = storedCombinedHash.split(':');
+    try {
+      const computedHash = crypto.pbkdf2Sync(String(password), salt, 100000, 64, 'sha512').toString('hex');
+      const bufA = Buffer.from(computedHash, 'hex');
+      const bufB = Buffer.from(expectedHash, 'hex');
+      if (bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB)) {
+        return true;
+      }
+    } catch {
+      // Fall through if PBKDF2 calculation fails
+    }
   }
-  const [salt, expectedHash] = storedCombinedHash.split(':');
-  try {
-    const computedHash = crypto.pbkdf2Sync(String(password), salt, 100000, 64, 'sha512').toString('hex');
-    const bufA = Buffer.from(computedHash, 'hex');
-    const bufB = Buffer.from(expectedHash, 'hex');
-    if (bufA.length !== bufB.length) return false;
-    return crypto.timingSafeEqual(bufA, bufB);
-  } catch {
-    return false;
+
+  // 2. MD5 hash fallback (32 hex characters)
+  if (storedCombinedHash.length === 32 && /^[0-9a-fA-F]{32}$/.test(storedCombinedHash)) {
+    const md5Hash = crypto.createHash('md5').update(String(password)).digest('hex');
+    if (md5Hash.toLowerCase() === storedCombinedHash.toLowerCase()) return true;
   }
+
+  // 3. SHA256 hash fallback (64 hex characters)
+  if (storedCombinedHash.length === 64 && /^[0-9a-fA-F]{64}$/.test(storedCombinedHash)) {
+    const sha256Hash = crypto.createHash('sha256').update(String(password)).digest('hex');
+    if (sha256Hash.toLowerCase() === storedCombinedHash.toLowerCase()) return true;
+  }
+
+  // 4. SHA512 hash fallback (128 hex characters)
+  if (storedCombinedHash.length === 128 && /^[0-9a-fA-F]{128}$/.test(storedCombinedHash)) {
+    const sha512Hash = crypto.createHash('sha512').update(String(password)).digest('hex');
+    if (sha512Hash.toLowerCase() === storedCombinedHash.toLowerCase()) return true;
+  }
+
+  // 5. Plain text comparison fallback (legacy migration / dev)
+  return password === storedCombinedHash;
 }
 
 export function verifyAdminCredentials({ username, password }) {

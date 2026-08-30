@@ -32,6 +32,8 @@ export const columnMaps = {
     addresses: 'addresses',
     defaultPincode: 'default_pincode',
     password: 'password',
+    password_hash: 'password',
+    passwordHash: 'password',
     createdAt: 'created_at',
     updatedAt: 'updated_at',
   },
