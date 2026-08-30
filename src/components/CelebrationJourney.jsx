@@ -108,13 +108,12 @@ export default function CelebrationJourney({ order }) {
   const paymentStatus = String(order.paymentStatus || 'PENDING').toUpperCase();
 
   const isPaid = paymentStatus.includes('PAID') || paymentStatus.includes('SUCCESS');
-  const isApproved = ['APPROVED', 'ADMIN_APPROVED', 'VENDOR_ASSIGNED', 'ASSIGNED_TO_VENDOR', 'VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
   const isVendorAccepted = Boolean(order.vendorId) || ['VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
   const isDecorationStarted = ['IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
   const isCompleted = bookingStatus === 'COMPLETED';
   const isCancelled = ['CANCELLED', 'REJECTED'].includes(bookingStatus);
 
-  // Authoritative Date, Time & Venue extraction from real database order fields
+  // Authoritative Date & Time extraction from real database order fields
   const firstItem = order.items?.[0] || {};
   const rawDate =
     order.scheduledDate ||
@@ -139,14 +138,12 @@ export default function CelebrationJourney({ order }) {
   const eventDateText = rawDate ? formatDisplayDate(rawDate) : 'Event date not scheduled yet';
   const eventTimeText = rawTime ? String(rawTime).trim() : 'Time slot not scheduled yet';
 
-  // Determine current active milestone index (0 to 5 for 6 milestones)
+  // Determine current active milestone index (0 to 4 for 5 milestones)
   let currentIndex = 0;
   if (isCompleted) {
-    currentIndex = 5;
-  } else if (isDecorationStarted || isVendorAccepted) {
     currentIndex = 4;
-  } else if (isApproved) {
-    currentIndex = 2;
+  } else if (isDecorationStarted || isVendorAccepted) {
+    currentIndex = 3;
   } else if (isPaid) {
     currentIndex = 2;
   } else {
@@ -159,8 +156,8 @@ export default function CelebrationJourney({ order }) {
       ? 'Decoration In Progress'
       : isVendorAccepted
         ? 'Decoration Pending'
-        : isApproved || isPaid
-          ? 'Booking Approved'
+        : isPaid
+          ? 'Vendor Assignment Pending'
           : 'Booking Placed';
 
   const milestones = [
@@ -177,28 +174,20 @@ export default function CelebrationJourney({ order }) {
       shortTitle: 'Payment',
       desc: 'Payment successfully received.',
       icon: '✓',
-      explanation: 'Payment confirmed. Our team is initializing your order.',
-      nextText: 'Admin Approval & Plan Review',
-    },
-    {
-      title: 'Booking Approved',
-      shortTitle: 'Approval',
-      desc: 'Celebration plan approved.',
-      icon: '❀',
-      explanation: 'Celebration setup plan verified by DecorFesto Admin.',
+      explanation: 'Payment confirmed. Sourcing assigned decoration vendor.',
       nextText: 'Vendor Partner Assignment',
     },
     {
-      title: 'Vendor Assigned',
-      shortTitle: 'Vendor',
-      desc: 'Decoration partner assigned.',
+      title: isVendorAccepted ? 'Vendor Assigned' : 'Vendor Assignment',
+      shortTitle: 'Vendor Assignment',
+      desc: isVendorAccepted ? `Assigned to ${order.vendorName || 'your professional decorator'}.` : 'Assigning expert decorator partner.',
       icon: '♡',
       explanation: `Assigned to ${order.vendorName || 'your professional decorator'}.`,
-      nextText: 'Decoration Setup',
+      nextText: 'Start Decoration',
     },
     {
-      title: isDecorationStarted ? 'Decoration In Progress' : 'Decoration Pending',
-      shortTitle: 'Decoration',
+      title: isDecorationStarted ? 'Decoration In Progress' : 'Start Decoration',
+      shortTitle: 'Start Decoration',
       desc: isDecorationStarted ? 'Decorators are crafting and arranging your setup.' : 'Awaiting decorator arrival.',
       icon: '🎨',
       explanation: isDecorationStarted ? 'Decorators are crafting and arranging your balloons & props.' : `Scheduled for setup on ${eventDateText} • ${eventTimeText}.`,
