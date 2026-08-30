@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getOrderByIdApi } from '../services/orderService';
+import { getCustomerOrderByIdApi } from '../services/orderService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
 import CelebrationJourney from '../components/CelebrationJourney';
 
@@ -48,6 +48,7 @@ function MyOrderDetail() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [statusCode, setStatusCode] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,24 +57,21 @@ function MyOrderDetail() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getOrderByIdApi(id);
+        setStatusCode(null);
+        const res = await getCustomerOrderByIdApi(id);
         if (isMounted) {
-          if (!data) {
-            setError('The requested booking could not be found.');
-            setOrder(null);
+          if (res.ok && res.order) {
+            setOrder(res.order);
+            setStatusCode(200);
           } else {
-            // Customer Security / Isolation check:
-            // Verify order email/mobile matches authenticated customer user
-            const orderEmail = (data.email || data.customerEmail || '').toLowerCase().trim();
-            const userEmail = (user?.email || '').toLowerCase().trim();
-            const orderMobile = String(data.mobile || data.customerMobile || '').replace(/\D/g, '');
-            const userMobile = String(user?.mobile || '').replace(/\D/g, '');
-
-            if (user && userEmail && orderEmail && userEmail !== orderEmail && userMobile && orderMobile && userMobile !== orderMobile) {
-              setError('You do not have permission to view this booking.');
-              setOrder(null);
+            setOrder(null);
+            setStatusCode(res.statusCode || 404);
+            if (res.statusCode === 403) {
+              setError("You don't have permission to view this booking.");
+            } else if (res.statusCode === 401) {
+              setError('Please log in to view this booking.');
             } else {
-              setOrder(data);
+              setError(res.error || 'The requested booking could not be found.');
             }
           }
         }
@@ -81,6 +79,7 @@ function MyOrderDetail() {
         if (isMounted) {
           console.error('Error loading order details:', err);
           setError('Unable to load booking details from server. Please try again.');
+          setStatusCode(500);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -91,7 +90,7 @@ function MyOrderDetail() {
     return () => {
       isMounted = false;
     };
-  }, [id, user]);
+  }, [id]);
 
   if (!user) {
     return (
@@ -112,6 +111,25 @@ function MyOrderDetail() {
         <section className="container section section--tight">
           <div className="card-panel empty-state" style={{ padding: '40px', textAlign: 'center' }}>
             <p style={{ color: '#64748b', fontSize: '16px' }}>Loading booking details from server...</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (statusCode === 403 || error === "You don't have permission to view this booking.") {
+    return (
+      <main className="page">
+        <section className="container section section--tight">
+          <div className="card-panel empty-state" style={{ padding: '40px 28px', textAlign: 'center', borderRadius: '16px', border: '1px solid #fecdd3', background: '#fff1f2' }}>
+            <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '12px' }}>🔒</span>
+            <h1 style={{ fontSize: '1.4rem', color: '#9f1239', margin: '0 0 8px' }}>Access Denied</h1>
+            <p style={{ color: '#be123c', fontSize: '0.98rem', fontWeight: '600', margin: '0 0 20px', lineHeight: '1.5' }}>
+              You don't have permission to view this booking.
+            </p>
+            <Link to="/my-orders" className="button" style={{ background: '#be123c', color: '#ffffff', border: 'none', padding: '10px 24px', borderRadius: '10px', fontWeight: '700', textDecoration: 'none' }}>
+              ← Back to My Orders
+            </Link>
           </div>
         </section>
       </main>

@@ -112,11 +112,10 @@ export async function createOrder({ req }) {
 
 export async function getOrder({ req, params }) {
   const targetOrderId = params[0];
-  const role = getUserRole(req.headers);
-  const userAuth = getAuthenticatedUser(req.headers);
+  const customerAuth = getAuthenticatedCustomer(req.headers);
 
-  // Unauthenticated requests are rejected with 401 immediately
-  if (role !== 'admin' && !userAuth) {
+  // Customer endpoint requires valid customer authentication
+  if (!customerAuth || !customerAuth.id) {
     return {
       statusCode: 401,
       body: { error: 'Authentication required. Please log in to view this order.' },
@@ -144,29 +143,19 @@ export async function getOrder({ req, params }) {
     } catch {}
   }
 
-  // Admin access allows viewing any order
-  if (role === 'admin') {
-    return {
-      statusCode: 200,
-      body: { order },
-    };
-  }
-
-  // Verify order ownership against trusted session identity (ignoring untrusted client headers)
-  const cleanTokenId = String(userAuth.id || userAuth.vendorId || '').trim().toLowerCase();
-  const cleanTokenEmail = String(userAuth.email || '').trim().toLowerCase();
-  const cleanTokenMobile = String(userAuth.mobile || userAuth.phone || '').replace(/\D/g, '').slice(-10);
+  // Enforce strict customer ownership (Admin session token/cookie CANNOT override customer ownership on this endpoint)
+  const cleanTokenId = String(customerAuth.id || '').trim().toLowerCase();
+  const cleanTokenEmail = String(customerAuth.email || '').trim().toLowerCase();
+  const cleanTokenMobile = String(customerAuth.mobile || customerAuth.phone || '').replace(/\D/g, '').slice(-10);
 
   const oCustId = String(order.customerId || '').trim().toLowerCase();
   const oEmail = String(order.customerEmail || '').trim().toLowerCase();
   const oMobile = String(order.customerPhone || order.customerMobile || '').replace(/\D/g, '').slice(-10);
-  const oVendorId = String(order.vendorId || '').trim().toLowerCase();
 
   const isOwner = (
     (cleanTokenId && oCustId && (oCustId === cleanTokenId || oCustId.replace(/^(cust|customer)-/, '') === cleanTokenId.replace(/^(cust|customer)-/, ''))) ||
     (cleanTokenEmail && oEmail && oEmail === cleanTokenEmail) ||
-    (cleanTokenMobile && oMobile && oMobile === cleanTokenMobile) ||
-    (role === 'VENDOR' && cleanTokenId && oVendorId && oVendorId === cleanTokenId)
+    (cleanTokenMobile && oMobile && oMobile === cleanTokenMobile)
   );
 
   if (!isOwner) {
@@ -174,6 +163,40 @@ export async function getOrder({ req, params }) {
       statusCode: 403,
       body: { error: 'Forbidden. You do not have permission to view this order.' },
     };
+  }
+
+  return {
+    statusCode: 200,
+    body: { order },
+  };
+}
+
+export async function getAdminOrderDetails({ req, params }) {
+  const auth = requireRole('ADMIN', req);
+  if (!auth.allowed) {
+    return { statusCode: 403, body: { error: auth.message } };
+  }
+
+  const targetOrderId = params[0];
+  const repository = createRepository('orders');
+  const order = await repository.getByIdOrOrderId(targetOrderId);
+
+  if (!order) {
+    return {
+      statusCode: 404,
+      body: { error: 'Order not found.' },
+    };
+  }
+
+  if (order && order.customerId && (!order.customerPhone || !order.customerMobile)) {
+    try {
+      const customerRepo = createRepository('customers');
+      const customer = await customerRepo.getById(order.customerId);
+      if (customer && (customer.phone || customer.mobile)) {
+        order.customerPhone = customer.phone || customer.mobile;
+        order.customerMobile = customer.phone || customer.mobile;
+      }
+    } catch {}
   }
 
   return {

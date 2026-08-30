@@ -305,9 +305,33 @@ export async function getUserOrdersApi() {
   return [];
 }
 
-export async function getOrderByIdApi(orderId) {
+export async function getCustomerOrderByIdApi(orderId) {
   try {
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+      headers: { Accept: 'application/json' },
+      credentials: 'include',
+    });
+    if (response.ok) {
+      const result = await response.json();
+      if (result.order) {
+        return { ok: true, statusCode: 200, order: sanitizeOrder(result.order) };
+      }
+    }
+    const errData = await response.json().catch(() => ({}));
+    return {
+      ok: false,
+      statusCode: response.status,
+      error: errData.error || `Failed to fetch booking details (HTTP ${response.status}).`,
+    };
+  } catch (error) {
+    console.debug('Unable to fetch backend customer order:', error);
+    return { ok: false, statusCode: 500, error: 'Network error fetching booking details.' };
+  }
+}
+
+export async function getAdminOrderByIdApi(orderId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}`, {
       headers: getAdminAuthHeaders({ Accept: 'application/json' }),
       credentials: 'include',
     });
@@ -318,9 +342,14 @@ export async function getOrderByIdApi(orderId) {
       }
     }
   } catch (error) {
-    console.debug('Unable to fetch backend order:', error);
+    console.debug('Unable to fetch backend admin order:', error);
   }
   return null;
+}
+
+export async function getOrderByIdApi(orderId) {
+  const res = await getCustomerOrderByIdApi(orderId);
+  return res.ok ? res.order : null;
 }
 
 export async function updateAdminOrderStatusApi(orderId, updates) {

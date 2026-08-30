@@ -34,6 +34,7 @@ const routeHandlers = {
     '/admin/charges': listAdminCharges,
     '/admin/users': listAdminUsers,
     '/admin/orders': listAdminOrders,
+    '/admin/orders/:id': getAdminOrderDetails,
     '/charges/enabled': listEnabledCharges,
     '/decorations': listDecorations,
     '/decorations/:id': getDecoration,

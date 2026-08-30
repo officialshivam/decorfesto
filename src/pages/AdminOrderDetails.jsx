@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getStoredCharges } from '../services/chargeService';
-import { getOrderById, getOrderByIdApi, updateAdminOrderStatusApi } from '../services/orderService';
+import { getOrderById, getAdminOrderByIdApi, updateAdminOrderStatusApi } from '../services/orderService';
 import { getAllUsersForAdminApi } from '../services/userService';
 import { getVendorsApi } from '../services/vendorAuthService';
 
@@ -29,7 +29,7 @@ function AdminOrderDetails() {
       setLoading(true);
       try {
         const [ord, vList, uList] = await Promise.all([
-          getOrderByIdApi(id),
+          getAdminOrderByIdApi(id),
           getVendorsApi(),
           getAllUsersForAdminApi(),
         ]);
