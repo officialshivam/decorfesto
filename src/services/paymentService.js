@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './apiConfig.js';
+import { getCustomerAuthHeaders } from './customerAuthService.js';
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -18,10 +19,11 @@ function loadRazorpayScript() {
 
 export async function initiateRazorpayPayment({ order, customer, onSuccess, onError, onDismiss }) {
   try {
+    const headers = getCustomerAuthHeaders({ 'Content-Type': 'application/json' });
     // 1. Create Razorpay order server-side
     const res = await fetch(`${API_BASE_URL}/payments/create-razorpay-order`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ orderId: order.id, total: order.total }),
     });
 

@@ -194,7 +194,7 @@ function Checkout() {
       } catch (orderErr) {
         console.error('Production order creation failed:', orderErr);
         setIsSubmitting(false);
-        setSubmitError('Failed to initialize booking on server. Please try again.');
+        setSubmitError(orderErr?.message || 'Failed to initialize booking on server. Please try again.');
         return;
       }
 
