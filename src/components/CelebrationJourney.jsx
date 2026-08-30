@@ -184,7 +184,7 @@ export default function CelebrationJourney({ order }) {
       nextText: 'Vendor Partner Assignment',
     },
     {
-      title: 'Vendor Assigned',
+      title: 'Vendor Assignment',
       shortTitle: 'Vendor',
       desc: 'Decoration partner assigned.',
       icon: '♡',
@@ -192,7 +192,7 @@ export default function CelebrationJourney({ order }) {
       nextText: 'Decoration Setup',
     },
     {
-      title: 'Decoration',
+      title: 'Decoration In Progress',
       shortTitle: 'Decoration',
       desc: 'Setup being prepared.',
       icon: '🎨',
@@ -208,7 +208,7 @@ export default function CelebrationJourney({ order }) {
       nextText: 'Celebration Completion',
     },
     {
-      title: 'Celebration Complete',
+      title: 'Celebration Completed',
       shortTitle: 'Celebration',
       desc: 'Your decoration journey is complete!',
       icon: '✨',
@@ -265,57 +265,17 @@ export default function CelebrationJourney({ order }) {
         }
       `}</style>
 
-      {/* SECTION HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px', borderBottom: '1px stroke #e5dace', paddingBottom: '14px' }}>
+      {/* SECTION HEADER & CURRENT STATUS LINE */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #eae2d6', paddingBottom: '14px' }}>
         <div>
           <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#d97706', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            🚂 Your Celebration Journey
+            🚂 Celebration Journey Progress Tracker
           </span>
           <h3 style={{ margin: '4px 0 0', fontSize: '1.25rem', fontWeight: '800', color: '#1e293b' }}>
-            Decoration Express Progress Tracker
+            Current Status: <span style={{ color: '#be123c', fontWeight: '800' }}>{isCompleted ? 'Celebration Completed' : currentMilestone.title}</span>
           </h3>
         </div>
-        <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#991b1b', background: '#fef2f2', padding: '6px 14px', borderRadius: '20px', border: '1px solid #fecdd3' }}>
-          ● {isCompleted ? 'Celebration Completed' : currentMilestone.title}
-        </div>
       </div>
-
-      {/* CURRENT STEP EMPHASIS CALLOUT WITH TRAIN BADGE */}
-      {!isCompleted && (
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #fecdd3',
-          borderRadius: '16px',
-          padding: '16px 20px',
-          marginBottom: '28px',
-          boxShadow: '0 4px 12px rgba(225, 29, 72, 0.06)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.1rem' }}>🚂</span>
-            <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#be123c', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              CURRENT JOURNEY — YOUR DECORATION IS CURRENTLY HERE
-            </span>
-          </div>
-
-          <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>
-            {currentMilestone.title}
-          </h4>
-
-          <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: '1.4' }}>
-            {currentMilestone.explanation}
-          </p>
-
-          {currentMilestone.nextText && (
-            <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#d97706', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>↓ NEXT UP:</span>
-              <span>{currentMilestone.nextText}</span>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* DESKTOP HORIZONTAL TRAIN TRACK (Shown on Desktop >= 768px) */}
       {!isMobile && (
@@ -484,39 +444,6 @@ export default function CelebrationJourney({ order }) {
           </div>
         </div>
       )}
-
-      {/* DESTINATION CARD: EVENT DAY & VENUE */}
-      <div style={{
-        background: isCompleted ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)',
-        border: isCompleted ? '1px solid #bbf7d0' : '1px solid #fecdd3',
-        padding: '20px',
-        borderRadius: '16px',
-        marginTop: '28px',
-      }}>
-        <h4 style={{ margin: 0, color: isCompleted ? '#166534' : '#be123c', fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {isCompleted ? '✨ CELEBRATION COMPLETE' : '✦ EVENT DAY DESTINATION'}
-        </h4>
-
-        <div style={{ fontSize: '1rem', color: '#0f172a', fontWeight: '800', marginTop: '8px' }}>
-          📅 {eventDateText} • {eventTimeText}
-        </div>
-
-        {deliveryAddress ? (
-          <div style={{ fontSize: '0.88rem', color: '#475569', marginTop: '6px', fontWeight: '600' }}>
-            📍 Venue: {deliveryAddress} {pincode ? `(${pincode})` : ''}
-          </div>
-        ) : (
-          <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>
-            📍 Venue address provided on order record
-          </div>
-        )}
-
-        <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: isCompleted ? '#15803d' : '#9f1239' }}>
-          {isCompleted
-            ? 'Your decoration journey is complete. Thank you for celebrating with DecorFesto!'
-            : 'Our decoration setup team will arrive at your venue prior to the event time slot.'}
-        </p>
-      </div>
     </div>
   );
 }
