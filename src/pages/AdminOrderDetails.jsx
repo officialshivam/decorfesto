@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getStoredCharges } from '../services/chargeService';
-import { getOrders, getOrderById, getOrderByIdApi, updateAdminOrderStatusApi } from '../services/orderService';
+import { getOrderById, getOrderByIdApi, updateAdminOrderStatusApi } from '../services/orderService';
+import { getAllUsersForAdminApi } from '../services/userService';
 import { getVendorsApi } from '../services/vendorAuthService';
 
 function AdminOrderDetails() {
@@ -9,16 +10,28 @@ function AdminOrderDetails() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [vendors, setVendors] = useState([]);
+  const [users, setUsers] = useState([]);
   const activeVendors = vendors.filter((v) => v.status === 'active' && v.accountStatus !== 'disabled');
   const [vendorId, setVendorId] = useState('');
+
+  // Modals & Action States
+  const [confirmModal, setConfirmModal] = useState(null); // 'APPROVE' | 'REJECT' | null
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  const [isSubmittingVendor, setIsSubmittingVendor] = useState(false);
+  const [vendorSuccess, setVendorSuccess] = useState('');
+  const [vendorError, setVendorError] = useState('');
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const [ord, vList] = await Promise.all([
+        const [ord, vList, uList] = await Promise.all([
           getOrderByIdApi(id),
           getVendorsApi(),
+          getAllUsersForAdminApi(),
         ]);
         const finalOrder = ord || getOrderById(id);
         setOrder(finalOrder);
@@ -26,6 +39,7 @@ function AdminOrderDetails() {
           setVendorId(finalOrder.vendorId);
         }
         setVendors(vList || []);
+        setUsers(uList || []);
       } catch (err) {
         console.error('Failed to load order details:', err);
         const fallback = getOrderById(id);
@@ -44,7 +58,7 @@ function AdminOrderDetails() {
     return (
       <main className="page">
         <section className="container section">
-          <div className="card-panel text-center">
+          <div className="card-panel text-center" style={{ padding: '40px', color: '#64748b' }}>
             <p>Loading order details...</p>
           </div>
         </section>
@@ -69,72 +83,113 @@ function AdminOrderDetails() {
   const customization = order.customization || {};
   const remarks = order.remarks || customization.remarks || '';
 
-  const updateStatus = async (bookingStatus, adminReviewStatus = 'REVIEWED') => {
+  // Linked customer record phone resolution
+  const linkedUser = users.find((u) => u.id === order.customerId || (u.email && u.email === order.customerEmail));
+  const customerPhone = order.customerPhone || order.customerMobile || order.phone || order.mobile || linkedUser?.mobile || linkedUser?.phone || 'Not provided';
+  const customerEmail = order.customerEmail || order.email || linkedUser?.email || 'Not provided';
+
+  const handleConfirmAction = async () => {
+    if (!confirmModal) return;
+    setIsSubmittingAction(true);
+    setActionError('');
+    setActionSuccess('');
+
+    const targetStatus = confirmModal === 'APPROVE' ? 'APPROVED' : 'CANCELLED';
+    const targetReviewStatus = confirmModal === 'APPROVE' ? 'APPROVED' : 'REJECTED';
     const now = new Date().toISOString();
     const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
 
-    const updated = await updateAdminOrderStatusApi(order.id, {
-      bookingStatus,
-      adminReviewStatus,
-      updatedAt: now,
-      statusHistory: [
-        ...history,
-        {
-          status: bookingStatus,
-          updatedByRole: 'ADMIN',
-          updatedByName: 'DecorFesto Admin',
-          timestamp: now,
-        },
-      ],
-    });
+    try {
+      const updated = await updateAdminOrderStatusApi(order.id, {
+        bookingStatus: targetStatus,
+        adminReviewStatus: targetReviewStatus,
+        updatedAt: now,
+        statusHistory: [
+          ...history,
+          {
+            status: targetStatus,
+            updatedByRole: 'ADMIN',
+            updatedByName: 'DecorFesto Admin',
+            timestamp: now,
+          },
+        ],
+      });
 
-    setOrder(updated);
+      if (updated) {
+        setOrder(updated);
+        setActionSuccess(`Order ${order.id} ${confirmModal === 'APPROVE' ? 'approved' : 'rejected'} successfully.`);
+        setConfirmModal(null);
+      } else {
+        setActionError('Unable to update order status. Please try again.');
+      }
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+      setActionError('Unable to update order status. Please try again.');
+    } finally {
+      setIsSubmittingAction(false);
+    }
   };
 
   const handleVendorAssignment = async () => {
     if (!selectedVendor) return;
+    setIsSubmittingVendor(true);
+    setVendorError('');
+    setVendorSuccess('');
+
     const now = new Date().toISOString();
     const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
 
-    const withWorkflowStatus = await updateAdminOrderStatusApi(order.id, {
-      vendorId: selectedVendor.id,
-      vendorName: selectedVendor.name,
-      bookingStatus: 'VENDOR_ASSIGNED',
-      vendorAssignedAt: now,
-      updatedAt: now,
-      statusHistory: [
-        ...history,
-        {
-          status: 'VENDOR_ASSIGNED',
-          updatedByRole: 'ADMIN',
-          updatedByName: 'DecorFesto Admin',
-          timestamp: now,
-          note: `Assigned to ${selectedVendor.name}`,
-        },
-      ],
-    });
+    try {
+      const withWorkflowStatus = await updateAdminOrderStatusApi(order.id, {
+        vendorId: selectedVendor.id,
+        vendorName: selectedVendor.name,
+        bookingStatus: 'VENDOR_ASSIGNED',
+        vendorAssignedAt: now,
+        updatedAt: now,
+        statusHistory: [
+          ...history,
+          {
+            status: 'VENDOR_ASSIGNED',
+            updatedByRole: 'ADMIN',
+            updatedByName: 'DecorFesto Admin',
+            timestamp: now,
+            note: `Assigned to ${selectedVendor.name}`,
+          },
+        ],
+      });
 
-    setOrder(withWorkflowStatus);
-  };
-
-  const handleReject = () => {
-    updateStatus('CANCELLED', 'REJECTED');
+      if (withWorkflowStatus) {
+        setOrder(withWorkflowStatus);
+        setVendorSuccess(`Vendor Partner updated to ${selectedVendor.name}.`);
+      } else {
+        setVendorError('Unable to assign vendor. Please try again.');
+      }
+    } catch (err) {
+      console.error('Failed to assign vendor:', err);
+      setVendorError('Unable to assign vendor. Please try again.');
+    } finally {
+      setIsSubmittingVendor(false);
+    }
   };
 
   return (
     <main className="page">
       <section className="container section section--tight">
-        <div className="section__heading section__heading--left">
-          <span className="eyebrow">Admin</span>
+        <div className="section__heading section__heading--left" style={{ marginBottom: '24px' }}>
+          <span className="eyebrow">Admin Panel</span>
           <h1>Order #{order.id}</h1>
-          <p>Review customer decoration requirements, vendor workflow progress, and assignment history.</p>
+          <p>Review customer decoration requirements, vendor partner status, and manage booking workflow actions.</p>
         </div>
 
-        <div className="card-panel">
+        {/* SUMMARY CARD */}
+        <div className="card-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+            Customer & Booking Summary
+          </h3>
           <div className="summary-box">
             <div className="summary-box__row"><span>Customer Name</span><strong>{order.customerName || 'Guest Customer'}</strong></div>
-            <div className="summary-box__row"><span>Phone Number</span><strong>{order.customerPhone || 'Not provided'}</strong></div>
-            <div className="summary-box__row"><span>Email</span><strong>{order.customerEmail || 'Not provided'}</strong></div>
+            <div className="summary-box__row"><span>Phone Number</span><strong style={{ color: '#0f172a', fontWeight: '700' }}>{customerPhone}</strong></div>
+            <div className="summary-box__row"><span>Email Address</span><strong>{customerEmail}</strong></div>
             <div className="summary-box__row"><span>Decoration Package</span><strong>{order.decorationName || 'Decoration Setup'}</strong></div>
             <div className="summary-box__row"><span>Scheduled Date</span><strong>{order.scheduledDate || order.date || 'TBD'}</strong></div>
             <div className="summary-box__row"><span>Time Slot</span><strong>{order.scheduledTime || order.time || 'TBD'}</strong></div>
@@ -158,7 +213,12 @@ function AdminOrderDetails() {
 
             <div className="summary-box__row pricing-row--total"><span>Total Amount</span><strong>₹{Number(order.total || 0).toLocaleString('en-IN')}</strong></div>
             <div className="summary-box__row"><span>Payment Status</span><strong>{order.paymentStatus || 'Pending'}</strong></div>
-            <div className="summary-box__row"><span>Booking Status</span><strong style={{ color: '#e11d48' }}>{order.bookingStatus || 'CREATED'}</strong></div>
+            <div className="summary-box__row">
+              <span>Booking Status</span>
+              <span className="status-pill" style={{ fontSize: '0.82rem', fontWeight: '800', padding: '4px 12px', borderRadius: '12px', background: order.bookingStatus === 'APPROVED' ? '#dcfce7' : order.bookingStatus === 'CANCELLED' ? '#fee2e2' : '#fef3c7', color: order.bookingStatus === 'APPROVED' ? '#15803d' : order.bookingStatus === 'CANCELLED' ? '#b91c1c' : '#b45309' }}>
+                {order.bookingStatus || 'CREATED'}
+              </span>
+            </div>
             <div className="summary-box__row"><span>Assigned Vendor</span><strong>{order.vendorName || 'Not assigned'}</strong></div>
 
             {order.vendorDeclineReason && (
@@ -177,73 +237,194 @@ function AdminOrderDetails() {
               </div>
             )}
           </div>
+        </div>
 
-          {/* VENDOR ASSIGNMENT CARD */}
-          <div className="payment-card" style={{ marginTop: '24px' }}>
-            <h3>Vendor Partner Assignment</h3>
-            {activeVendors.length === 0 ? (
-              <p>No active vendors are available.</p>
-            ) : (
-              <>
-                <label className="search-field">
-                  <span>Active vendor partners</span>
-                  <select value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
-                    <option value="">Select a vendor partner</option>
-                    {activeVendors.map((vendor) => {
-                      const allOrds = getOrders();
-                      const activeCount = allOrds.filter((o) => o.vendorId === vendor.id && ['VENDOR_ASSIGNED', 'VENDOR_ACCEPTED', 'IN_PROGRESS', 'READY_FOR_SETUP'].includes(o.bookingStatus)).length;
-                      const servesPincode = order.pincode && (vendor.servicePincodes || []).includes(order.pincode);
-                      return (
-                        <option key={vendor.id} value={vendor.id}>
-                          {vendor.name} ({vendor.id}) — Active: {activeCount} {servesPincode ? '✓ Serves Pincode' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-                {selectedVendor ? (
-                  <div className="summary-box admin-order-vendor-summary" style={{ marginTop: '12px' }}>
-                    <div className="summary-box__row"><span>Vendor</span><strong>{selectedVendor.name} ({selectedVendor.id})</strong></div>
-                    <div className="summary-box__row"><span>Specialities</span><strong>{selectedVendor.specialties?.join(', ') || 'Not provided'}</strong></div>
-                    <div className="summary-box__row"><span>Service Pincodes</span><strong>{selectedVendor.servicePincodes?.join(', ') || 'Not provided'}</strong></div>
-                    <div className="summary-box__row">
-                      <span>Booking Pincode Match</span>
-                      <strong style={{ color: order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode) ? '#166534' : '#b91c1c' }}>
-                        {order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode)
-                          ? `✓ Serves booking pincode ${order.pincode}`
-                          : `⚠️ Outside service area (Booking Pincode: ${order.pincode || 'N/A'})`}
-                      </strong>
-                    </div>
-                  </div>
-                ) : null}
-                <button type="button" className="button" onClick={handleVendorAssignment} disabled={!selectedVendor} style={{ marginTop: '12px' }}>
-                  {order.vendorId ? 'Reassign / Change Vendor Partner' : 'Assign Vendor Partner'}
-                </button>
-              </>
-            )}
+        {/* DEDICATED ORDER ACTIONS CARD */}
+        <div className="card-panel" style={{ marginTop: '24px', padding: '24px', borderRadius: '16px', border: '1px solid #cbd5e1', background: '#ffffff' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#0f172a' }}>Order Actions</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: '#64748b' }}>Approve or reject this booking to update order workflow status.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Current Booking Status:</span>
+              <span className="status-pill" style={{ fontSize: '0.88rem', fontWeight: '800', padding: '6px 14px', borderRadius: '20px', background: order.bookingStatus === 'APPROVED' ? '#dcfce7' : order.bookingStatus === 'CANCELLED' ? '#fee2e2' : '#fef3c7', color: order.bookingStatus === 'APPROVED' ? '#15803d' : order.bookingStatus === 'CANCELLED' ? '#b91c1c' : '#b45309' }}>
+                {order.bookingStatus || 'CREATED'}
+              </span>
+            </div>
           </div>
 
-          {/* AUDIT TIMELINE */}
-          {Array.isArray(order.statusHistory) && order.statusHistory.length > 0 && (
-            <div style={{ marginTop: '24px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: '800', color: '#0f172a' }}>Order Status Timeline</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {order.statusHistory.map((item, idx) => (
-                  <div key={idx} style={{ fontSize: '0.88rem' }}>
-                    <strong>{item.status?.replace('_', ' ')}</strong> — {item.updatedByName || item.updatedByRole} ({new Date(item.timestamp).toLocaleString()})
-                    {item.note && <span style={{ color: '#b91c1c', fontStyle: 'italic' }}> — "{item.note}"</span>}
-                  </div>
-                ))}
-              </div>
+          {actionSuccess && (
+            <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '12px 16px' }}>
+              ✓ {actionSuccess}
             </div>
           )}
 
-          <div className="confirmation-actions" style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button type="button" className="button" onClick={() => updateStatus('APPROVED')}>Approve Order</button>
-            <button type="button" className="button button--ghost" onClick={handleReject}>Reject Order</button>
-            <Link to="/admin/orders" className="text-link">Back to orders</Link>
+          {actionError && (
+            <div className="admin-error-banner" style={{ marginBottom: '16px', padding: '12px 16px' }}>
+              ✕ {actionError}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginTop: '16px' }}>
+            <button
+              type="button"
+              className="button"
+              style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', color: '#ffffff', border: 'none', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)', cursor: 'pointer' }}
+              onClick={() => { setConfirmModal('APPROVE'); setActionError(''); setActionSuccess(''); }}
+              disabled={isSubmittingAction}
+            >
+              ✓ Approve Order
+            </button>
+
+            <button
+              type="button"
+              className="button"
+              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', cursor: 'pointer' }}
+              onClick={() => { setConfirmModal('REJECT'); setActionError(''); setActionSuccess(''); }}
+              disabled={isSubmittingAction}
+            >
+              ✕ Reject Order
+            </button>
+
+            <Link to="/admin/orders" style={{ marginLeft: 'auto', fontSize: '0.9rem', color: '#475569', textDecoration: 'none', fontWeight: '600' }}>
+              ← Back to orders
+            </Link>
           </div>
         </div>
+
+        {/* VENDOR ASSIGNMENT CARD (SEPARATE) */}
+        <div className="payment-card" style={{ marginTop: '24px', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>Vendor Partner Assignment</h3>
+          {vendorSuccess && (
+            <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '10px 14px' }}>
+              ✓ {vendorSuccess}
+            </div>
+          )}
+          {vendorError && (
+            <div className="admin-error-banner" style={{ marginBottom: '16px', padding: '10px 14px' }}>
+              ✕ {vendorError}
+            </div>
+          )}
+          {activeVendors.length === 0 ? (
+            <p>No active vendors are available.</p>
+          ) : (
+            <>
+              <label className="search-field">
+                <span>Active vendor partners</span>
+                <select value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
+                  <option value="">Select a vendor partner</option>
+                  {activeVendors.map((vendor) => {
+                    const servesPincode = order.pincode && (vendor.servicePincodes || []).includes(order.pincode);
+                    return (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.name} ({vendor.id}) {servesPincode ? '✓ Serves Pincode' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              {selectedVendor ? (
+                <div className="summary-box admin-order-vendor-summary" style={{ marginTop: '12px', background: '#ffffff' }}>
+                  <div className="summary-box__row"><span>Vendor</span><strong>{selectedVendor.name} ({selectedVendor.id})</strong></div>
+                  <div className="summary-box__row"><span>Specialities</span><strong>{selectedVendor.specialties?.join(', ') || 'Not provided'}</strong></div>
+                  <div className="summary-box__row"><span>Service Pincodes</span><strong>{selectedVendor.servicePincodes?.join(', ') || 'Not provided'}</strong></div>
+                  <div className="summary-box__row">
+                    <span>Booking Pincode Match</span>
+                    <strong style={{ color: order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode) ? '#166534' : '#b91c1c' }}>
+                      {order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode)
+                        ? `✓ Serves booking pincode ${order.pincode}`
+                        : `⚠️ Outside service area (Booking Pincode: ${order.pincode || 'N/A'})`}
+                    </strong>
+                  </div>
+                </div>
+              ) : null}
+              <button type="button" className="button" onClick={handleVendorAssignment} disabled={!selectedVendor || isSubmittingVendor} style={{ marginTop: '12px' }}>
+                {isSubmittingVendor
+                  ? 'Updating vendor…'
+                  : (order.vendorId ? 'Reassign / Change Vendor Partner' : 'Assign Vendor Partner')}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* AUDIT TIMELINE */}
+        {Array.isArray(order.statusHistory) && order.statusHistory.length > 0 && (
+          <div style={{ marginTop: '24px', background: '#ffffff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: '800', color: '#0f172a' }}>Order Status Timeline</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {order.statusHistory.map((item, idx) => (
+                <div key={idx} style={{ fontSize: '0.88rem' }}>
+                  <strong>{item.status?.replace('_', ' ')}</strong> — {item.updatedByName || item.updatedByRole} ({new Date(item.timestamp).toLocaleString()})
+                  {item.note && <span style={{ color: '#b91c1c', fontStyle: 'italic' }}> — "{item.note}"</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CONFIRMATION MODALS */}
+        {confirmModal && (
+          <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 1000, padding: '16px' }}>
+            <div className="modal-card" style={{ background: '#ffffff', borderRadius: '16px', padding: '28px', maxWidth: '480px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+              <h2 style={{ margin: '0 0 8px', fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
+                {confirmModal === 'APPROVE' ? 'Approve this order?' : 'Reject this order?'}
+              </h2>
+
+              <p style={{ fontSize: '0.92rem', color: '#475569', marginBottom: '20px', lineHeight: '1.5' }}>
+                {confirmModal === 'APPROVE'
+                  ? 'Are you sure you want to approve this order? This will update the booking status to APPROVED.'
+                  : 'Are you sure you want to reject this order? This will update the booking status to CANCELLED.'}
+              </p>
+
+              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', marginBottom: '24px', border: '1px solid #e2e8f0', fontSize: '0.88rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div><span style={{ color: '#64748b' }}>Order ID:</span> <strong>{order.id}</strong></div>
+                <div><span style={{ color: '#64748b' }}>Customer Name:</span> <strong>{order.customerName || 'Customer'}</strong></div>
+                <div><span style={{ color: '#64748b' }}>Total Amount:</span> <strong>₹{Number(order.total || 0).toLocaleString('en-IN')}</strong></div>
+                <div><span style={{ color: '#64748b' }}>Current Status:</span> <strong>{order.bookingStatus || 'CREATED'}</strong></div>
+                <div><span style={{ color: '#64748b' }}>Assigned Vendor:</span> <strong>{order.vendorName || 'Not assigned'}</strong></div>
+              </div>
+
+              {actionError && (
+                <div className="admin-error-banner" style={{ marginBottom: '16px', padding: '10px 14px' }}>
+                  ✕ {actionError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={() => { setConfirmModal(null); setActionError(''); }}
+                  disabled={isSubmittingAction}
+                  style={{ padding: '8px 20px', borderRadius: '10px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button"
+                  style={{
+                    background: confirmModal === 'APPROVE' ? '#16a34a' : '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '8px 24px',
+                    borderRadius: '10px',
+                    fontWeight: '700',
+                    cursor: isSubmittingAction ? 'not-allowed' : 'pointer',
+                    opacity: isSubmittingAction ? 0.7 : 1,
+                  }}
+                  onClick={handleConfirmAction}
+                  disabled={isSubmittingAction}
+                >
+                  {isSubmittingAction
+                    ? (confirmModal === 'APPROVE' ? 'Approving…' : 'Rejecting…')
+                    : (confirmModal === 'APPROVE' ? 'Approve Order' : 'Reject Order')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

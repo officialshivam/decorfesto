@@ -133,6 +133,17 @@ export async function getOrder({ req, params }) {
     };
   }
 
+  if (order && order.customerId && (!order.customerPhone || !order.customerMobile)) {
+    try {
+      const customerRepo = createRepository('customers');
+      const customer = await customerRepo.getById(order.customerId);
+      if (customer && (customer.phone || customer.mobile)) {
+        order.customerPhone = customer.phone || customer.mobile;
+        order.customerMobile = customer.phone || customer.mobile;
+      }
+    } catch {}
+  }
+
   // Admin access allows viewing any order
   if (role === 'admin') {
     return {
