@@ -5,6 +5,7 @@ import { getOrderById, getAdminOrderByIdApi, updateAdminOrderStatusApi } from '.
 import { getAllUsersForAdminApi } from '../services/userService';
 import { getVendorsApi } from '../services/vendorAuthService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
+import { formatBookingStatus } from '../utils/statusUtils';
 
 function AdminOrderDetails() {
   const { id } = useParams();
@@ -241,7 +242,7 @@ function AdminOrderDetails() {
             <div className="summary-box__row">
               <span>Booking Status</span>
               <span className="status-pill" style={{ fontSize: '0.82rem', fontWeight: '800', padding: '4px 12px', borderRadius: '12px', background: order.bookingStatus === 'APPROVED' ? '#dcfce7' : order.bookingStatus === 'CANCELLED' ? '#fee2e2' : '#fef3c7', color: order.bookingStatus === 'APPROVED' ? '#15803d' : order.bookingStatus === 'CANCELLED' ? '#b91c1c' : '#b45309' }}>
-                {order.bookingStatus || 'CREATED'}
+                {formatBookingStatus(order.bookingStatus)}
               </span>
             </div>
             <div className="summary-box__row"><span>Assigned Vendor</span><strong>{order.vendorName || 'Not assigned'}</strong></div>

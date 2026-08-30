@@ -11,7 +11,7 @@ function getStatusBadge(status) {
     case 'VENDOR_ACCEPTED':
       return { label: 'Accepted', bg: '#e0f2fe', text: '#0284c7' };
     case 'IN_PROGRESS':
-      return { label: 'In Preparation', bg: '#e0e7ff', text: '#4338ca' };
+      return { label: 'In Decoration', bg: '#e0e7ff', text: '#4338ca' };
     case 'READY_FOR_SETUP':
       return { label: 'Ready for Setup', bg: '#fef9c3', text: '#ca8a04' };
     case 'COMPLETED':
@@ -50,7 +50,7 @@ export default function VendorDashboard() {
   const assignedCount = orders.length;
   const pendingCount = orders.filter((o) => {
     const s = String(o.bookingStatus || '').toUpperCase();
-    return s === 'VENDOR_ASSIGNED' || s === 'ASSIGNED_TO_VENDOR' || s === 'CONFIRMED' || s === 'CREATED' || s === 'ORDER RECEIVED';
+    return s === 'VENDOR_ASSIGNED' || s === 'ASSIGNED_TO_VENDOR' || s === 'CONFIRMED' || s === 'CREATED' || s === 'ORDER RECEIVED' || s === 'BOOKING PLACED' || s === 'BOOKING_PLACED';
   }).length;
   const inProgressCount = orders.filter((o) => {
     const s = String(o.bookingStatus || '').toUpperCase();

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getOrdersApi } from '../services/orderService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
+import { formatBookingStatus } from '../utils/statusUtils';
 
 function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState('All');
@@ -18,10 +19,10 @@ function AdminOrders() {
     loadOrders();
   }, []);
 
-  const statuses = ['All', ...new Set(orders.map((order) => order.bookingStatus || 'Order Received'))];
+  const statuses = ['All', ...new Set(orders.map((order) => formatBookingStatus(order.bookingStatus)))];
   const visibleOrders = statusFilter === 'All'
     ? orders
-    : orders.filter((order) => (order.bookingStatus || 'Order Received') === statusFilter);
+    : orders.filter((order) => formatBookingStatus(order.bookingStatus) === statusFilter);
 
   return (
     <main className="page">
@@ -87,7 +88,7 @@ function AdminOrders() {
                       <td>{dateDisplay}</td>
                       <td>₹{Number(order.total || 0).toLocaleString('en-IN')}</td>
                       <td>{order.paymentStatus || 'Pending'}</td>
-                      <td><span className="status-pill">{order.bookingStatus || 'Order Received'}</span></td>
+                      <td><span className="status-pill">{formatBookingStatus(order.bookingStatus)}</span></td>
                       <td>{order.vendorName || order.vendorId || 'Unassigned'}</td>
                       <td>
                         <Link to={`/admin/orders/${order.id}`} className="button button--small button--ghost">

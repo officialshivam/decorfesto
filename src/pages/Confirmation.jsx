@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { formatBookingStatus } from '../utils/statusUtils';
 import { getStoredLastOrder } from '../services/mockAuth';
 import { calculateItemSubtotal } from '../services/mockSettings';
 
@@ -108,7 +109,7 @@ function Confirmation() {
                 </div>
                 <div className="summary-box__row">
                   <span>Booking status</span>
-                  <strong>{order.bookingStatus || 'Order Received'}</strong>
+                  <strong>{formatBookingStatus(order.bookingStatus)}</strong>
                 </div>
               </div>
             </div>

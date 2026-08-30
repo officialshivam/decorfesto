@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getCustomerOrderByIdApi } from '../services/orderService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
+import { formatBookingStatus } from '../utils/statusUtils';
 import CelebrationJourney from '../components/CelebrationJourney';
 
 function CopyButton({ text }) {
@@ -210,7 +211,7 @@ function MyOrderDetail() {
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <span className="status-pill" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', fontWeight: '700', padding: '6px 14px', borderRadius: '20px', fontSize: '0.88rem' }}>
-                ● {order.bookingStatus || 'ORDER RECEIVED'}
+                ● {formatBookingStatus(order.bookingStatus)}
               </span>
               <span className="status-pill" style={{ background: isPaid ? '#e0f2fe' : '#fef3c7', color: isPaid ? '#0369a1' : '#92400e', border: isPaid ? '1px solid #bae6fd' : '1px solid #fde68a', fontWeight: '700', padding: '6px 14px', borderRadius: '20px', fontSize: '0.88rem' }}>
                 ● {order.paymentStatus || 'PENDING'}

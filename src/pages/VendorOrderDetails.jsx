@@ -11,7 +11,7 @@ function getStatusBadge(status) {
     case 'VENDOR_ACCEPTED':
       return { label: 'Accepted', bg: '#e0f2fe', text: '#0284c7' };
     case 'IN_PROGRESS':
-      return { label: 'In Preparation', bg: '#e0e7ff', text: '#4338ca' };
+      return { label: 'In Decoration', bg: '#e0e7ff', text: '#4338ca' };
     case 'READY_FOR_SETUP':
       return { label: 'Ready for Setup', bg: '#fef9c3', text: '#ca8a04' };
     case 'COMPLETED':
@@ -140,9 +140,9 @@ export default function VendorOrderDetails() {
             CURRENT SETUP WORKFLOW ACTION
           </div>
           <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
-            {currentStatus === 'VENDOR_ASSIGNED' && 'Order assigned to your studio. Please Accept or Decline.'}
-            {currentStatus === 'VENDOR_ACCEPTED' && 'Order accepted! Start preparation when ready.'}
-            {currentStatus === 'IN_PROGRESS' && 'Preparation in progress. Mark ready once setup elements are prepared.'}
+            {currentStatus === 'VENDOR_ASSIGNED' && 'Booking assigned to your studio. Please Accept or Decline.'}
+            {currentStatus === 'VENDOR_ACCEPTED' && 'Booking accepted! Start decoration when ready.'}
+            {currentStatus === 'IN_PROGRESS' && 'Decoration in progress. Mark ready once setup elements are prepared.'}
             {currentStatus === 'READY_FOR_SETUP' && 'Elements ready. Complete setup at client location.'}
             {currentStatus === 'COMPLETED' && 'Setup Completed successfully!'}
             {currentStatus === 'VENDOR_DECLINED' && 'Order was declined. Waiting for Admin reassignment.'}
@@ -179,7 +179,7 @@ export default function VendorOrderDetails() {
               onClick={() => handleStatusChange('IN_PROGRESS')}
               style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
             >
-              {updating ? 'Updating...' : '▶ Start Preparation'}
+              {updating ? 'Updating...' : '▶ Start Decoration'}
             </button>
           )}
 

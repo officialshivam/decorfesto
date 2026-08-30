@@ -2,7 +2,7 @@ import { createRepository } from '../dataAccess/repository.js';
 import { getUserRole } from '../auth.js';
 import { dataDirectory, localPort, tablePrefix, useAws } from '../config.js';
 
-const _PENDING_STATUSES = new Set(['ORDER RECEIVED', 'CREATED', 'PENDING']);
+const _PENDING_STATUSES = new Set(['BOOKING PLACED', 'BOOKING_PLACED', 'ORDER RECEIVED', 'CREATED', 'PENDING']);
 const CONFIRMED_STATUSES = new Set(['APPROVED', 'ASSIGNED_TO_VENDOR', 'CONFIRMED']);
 const COMPLETED_STATUSES = new Set(['COMPLETED', 'DELIVERED', 'FULFILLED']);
 const CANCELLED_STATUSES = new Set(['REJECTED', 'CANCELLED', 'CANCELED']);

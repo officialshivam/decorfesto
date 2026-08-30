@@ -174,7 +174,7 @@ function Checkout() {
         serviceCharges: chargesTotal,
         charges: [...activeChargesList],
         paymentStatus: 'PAYMENT_INITIATED',
-        bookingStatus: 'Order Received',
+        bookingStatus: 'Booking Placed',
         remarks: orderRemarks,
         reviewMessage: 'DecorFesto will review your booking shortly and confirm the next step with you.',
         createdAt: new Date().toISOString(),

@@ -93,7 +93,7 @@ export async function createOrder({ req }) {
     totalAmount: Number(payload.totalAmount || payload.total || 0),
     total: Number(payload.totalAmount || payload.total || 0),
     paymentStatus: payload.paymentStatus || 'PAYMENT_INITIATED',
-    bookingStatus: payload.bookingStatus || 'Order Received',
+    bookingStatus: payload.bookingStatus || 'Booking Placed',
     adminReviewStatus: 'PENDING',
     vendorId: validVendorId,
     vendorName: payload.vendorName || (validVendorId ? 'Assigned Vendor' : 'Unassigned'),

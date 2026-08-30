@@ -49,7 +49,7 @@ function sanitizeOrder(ord) {
     serviceCharges: chargesTotal,
     total,
     paymentStatus: String(ord.paymentStatus || 'Paid via UPI / Mock').trim(),
-    bookingStatus: String(ord.bookingStatus || 'Order Received').trim(),
+    bookingStatus: String(ord.bookingStatus || 'Booking Placed').trim(),
     vendorId: ord.vendorId || null,
     vendorName: ord.vendorName || 'Unassigned',
     remarks: String(ord.remarks || '').trim(),

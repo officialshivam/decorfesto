@@ -192,7 +192,7 @@ export async function verifyRazorpayPayment({ req }) {
   // Mark payment as verified & update canonical order status in database repository
   const updatedOrder = await orderRepo.update(orderId, {
     paymentStatus: 'PAID',
-    bookingStatus: 'Order Received',
+    bookingStatus: 'Booking Placed',
     razorpayOrderId: razorpay_order_id,
     razorpayPaymentId: razorpay_payment_id,
     updatedAt: new Date().toISOString(),
