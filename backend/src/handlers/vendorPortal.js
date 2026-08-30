@@ -1,28 +1,44 @@
 import { createRepository } from '../dataAccess/repository.js';
 import { getAuthenticatedVendor, getUserRole, hashPassword, verifyPassword } from '../auth.js';
 
-function isOrderAssignedToAuthVendor(order, vendorAuth) {
+export function isOrderAssignedToAuthVendor(order, vendorAuth) {
   if (!order || !vendorAuth) return false;
-  const authId = String(vendorAuth.vendorId || vendorAuth.id || '').trim().toLowerCase();
-  const orderVendorId = String(order.vendorId || order.vendor_id || '').trim().toLowerCase();
-  const authName = String(vendorAuth.name || vendorAuth.contactName || '').trim().toLowerCase();
-  const orderVendorName = String(order.vendorName || order.vendor_name || '').trim().toLowerCase();
 
-  // 1. Direct ID match
+  const orderVendorId = String(order.vendorId || order.vendor_id || '').trim().toLowerCase();
+
+  // 1. Order must have a valid non-empty vendorId
+  if (!orderVendorId || orderVendorId === 'null') {
+    return false;
+  }
+
+  // 2. An order is visible in Vendor Portal ONLY when it is in an active vendor workflow status.
+  // Orders with CREATED, APPROVED, CANCELLED, REJECTED, VENDOR_DECLINED, or DECLINED have no active vendor assignment.
+  const activeVendorStatuses = [
+    'VENDOR_ASSIGNED',
+    'VENDOR_ACCEPTED',
+    'IN_PROGRESS',
+    'READY_FOR_SETUP',
+    'COMPLETED',
+  ];
+
+  const currentStatus = String(order.bookingStatus || '').toUpperCase();
+  if (!activeVendorStatuses.includes(currentStatus)) {
+    return false;
+  }
+
+  // 3. Authenticated Vendor Identity Matching
+  const authId = String(vendorAuth.vendorId || vendorAuth.id || '').trim().toLowerCase();
+
+  // Direct ID match
   if (authId && orderVendorId && authId === orderVendorId) return true;
 
-  // 2. Canonical ID Alias match ('vnd-0001' <-> 'vendor-001', 'vnd-0002' <-> 'vendor-002')
+  // Canonical ID Alias match ('vnd-0001' <-> 'vendor-001', 'vnd-0002' <-> 'vendor-002')
   if (
     (authId === 'vnd-0001' && orderVendorId === 'vendor-001') ||
     (authId === 'vendor-001' && orderVendorId === 'vnd-0001') ||
     (authId === 'vnd-0002' && orderVendorId === 'vendor-002') ||
     (authId === 'vendor-002' && orderVendorId === 'vnd-0002')
   ) {
-    return true;
-  }
-
-  // 3. Deterministic Name Backfill fallback (for legacy orders where vendorId is null)
-  if (!orderVendorId && authName && orderVendorName && authName === orderVendorName) {
     return true;
   }
 

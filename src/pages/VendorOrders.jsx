@@ -95,7 +95,6 @@ export default function VendorOrders() {
             { id: 'IN_PROGRESS', label: 'In Progress' },
             { id: 'READY', label: 'Ready for Setup' },
             { id: 'COMPLETED', label: 'Completed' },
-            { id: 'DECLINED', label: 'Declined' },
           ].map((tab) => (
             <button
               key={tab.id}
