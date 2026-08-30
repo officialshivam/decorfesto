@@ -1,5 +1,5 @@
 import { createRepository } from '../dataAccess/repository.js';
-import { getAuthenticatedUser, getAuthenticatedCustomer, getUserRole, extractTokenFromHeaders, verifyAdminSessionToken } from '../auth.js';
+import { getAuthenticatedUser, getAuthenticatedCustomer, getUserRole, requireRole } from '../auth.js';
 
 function buildOrderId() {
   return `ORD-${Date.now().toString().slice(-8)}`;
@@ -171,71 +171,50 @@ export async function getOrder({ req, params }) {
   };
 }
 
-export async function listOrders({ req }) {
+export async function listAdminOrders({ req }) {
+  const auth = requireRole('ADMIN', req);
+  if (!auth.allowed) {
+    return { statusCode: 403, body: { error: auth.message } };
+  }
+
   const repository = createRepository('orders');
-
-  let adminAuthFromHeader = false;
-  for (const key of Object.keys(req.headers || {})) {
-    if (key.toLowerCase() === 'authorization') {
-      const authHeader = String(req.headers[key] || '');
-      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-      if (token && verifyAdminSessionToken(token)) {
-        adminAuthFromHeader = true;
-        break;
-      }
-    }
-  }
-
-  const adminCookieToken = extractTokenFromHeaders(req.headers, 'admin');
-  const isAdminCookieValid = Boolean(adminCookieToken && verifyAdminSessionToken(adminCookieToken));
-  const customerAuth = getAuthenticatedCustomer(req.headers);
-
-  // 1. Explicit Admin Request: carries an Admin Authorization header OR has valid Admin cookie without Customer session
-  const isAdminRequest = adminAuthFromHeader || (isAdminCookieValid && !customerAuth);
-
-  if (isAdminRequest) {
-    return {
-      statusCode: 200,
-      body: { orders: await repository.list() },
-    };
-  }
-
-  // 2. Customer Request: enforce strict customer order isolation against authenticated customer identity
-  if (customerAuth) {
-    const cleanTokenId = String(customerAuth.id || '').trim().toLowerCase();
-    const cleanTokenEmail = String(customerAuth.email || '').trim().toLowerCase();
-    const cleanTokenMobile = String(customerAuth.mobile || customerAuth.phone || '').replace(/\D/g, '').slice(-10);
-
-    const allOrders = await repository.list();
-    const customerOrders = (allOrders || []).filter((o) => {
-      const oCustId = String(o.customerId || '').trim().toLowerCase();
-      const oEmail = String(o.customerEmail || '').trim().toLowerCase();
-      const oMobile = String(o.customerPhone || o.customerMobile || '').replace(/\D/g, '').slice(-10);
-      return (
-        (cleanTokenId && oCustId && (oCustId === cleanTokenId || oCustId.replace(/^(cust|customer)-/, '') === cleanTokenId.replace(/^(cust|customer)-/, ''))) ||
-        (cleanTokenEmail && oEmail && oEmail === cleanTokenEmail) ||
-        (cleanTokenMobile && oMobile && oMobile === cleanTokenMobile)
-      );
-    });
-
-    return {
-      statusCode: 200,
-      body: { orders: customerOrders },
-    };
-  }
-
-  // 3. Fallback for role-based Admin access
-  const role = getUserRole(req.headers);
-  if (role === 'admin') {
-    return {
-      statusCode: 200,
-      body: { orders: await repository.list() },
-    };
-  }
+  const allOrders = await repository.list();
 
   return {
-    statusCode: 401,
-    body: { error: 'Authentication required. Please log in to view orders.' },
+    statusCode: 200,
+    body: { orders: allOrders || [] },
+  };
+}
+
+export async function listOrders({ req }) {
+  const customerAuth = getAuthenticatedCustomer(req.headers);
+  if (!customerAuth || !customerAuth.id) {
+    return {
+      statusCode: 401,
+      body: { error: 'Authentication required. Please log in to view orders.' },
+    };
+  }
+
+  const cleanTokenId = String(customerAuth.id || '').trim().toLowerCase();
+  const cleanTokenEmail = String(customerAuth.email || '').trim().toLowerCase();
+  const cleanTokenMobile = String(customerAuth.mobile || customerAuth.phone || '').replace(/\D/g, '').slice(-10);
+
+  const repository = createRepository('orders');
+  const allOrders = await repository.list();
+  const customerOrders = (allOrders || []).filter((o) => {
+    const oCustId = String(o.customerId || '').trim().toLowerCase();
+    const oEmail = String(o.customerEmail || '').trim().toLowerCase();
+    const oMobile = String(o.customerPhone || o.customerMobile || '').replace(/\D/g, '').slice(-10);
+    return (
+      (cleanTokenId && oCustId && (oCustId === cleanTokenId || oCustId.replace(/^(cust|customer)-/, '') === cleanTokenId.replace(/^(cust|customer)-/, ''))) ||
+      (cleanTokenEmail && oEmail && oEmail === cleanTokenEmail) ||
+      (cleanTokenMobile && oMobile && oMobile === cleanTokenMobile)
+    );
+  });
+
+  return {
+    statusCode: 200,
+    body: { orders: customerOrders },
   };
 }
 

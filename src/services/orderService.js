@@ -271,7 +271,7 @@ import { getAdminAuthHeaders } from './adminAuthService';
 
 export async function getOrdersApi() {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders`, {
+    const response = await fetch(`${API_BASE_URL}/admin/orders`, {
       headers: getAdminAuthHeaders(),
       credentials: 'include',
     });
