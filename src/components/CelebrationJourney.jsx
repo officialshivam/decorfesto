@@ -108,9 +108,9 @@ export default function CelebrationJourney({ order }) {
   const paymentStatus = String(order.paymentStatus || 'PENDING').toUpperCase();
 
   const isPaid = paymentStatus.includes('PAID') || paymentStatus.includes('SUCCESS');
-  const isApproved = ['APPROVED', 'VENDOR_ASSIGNED', 'VENDOR_ACCEPTED', 'IN_PROGRESS', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
-  const isVendorAssigned = Boolean(order.vendorId) || ['VENDOR_ASSIGNED', 'VENDOR_ACCEPTED', 'IN_PROGRESS', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
-  const isPreparation = ['VENDOR_ACCEPTED', 'IN_PROGRESS', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
+  const isApproved = ['APPROVED', 'ADMIN_APPROVED', 'VENDOR_ASSIGNED', 'ASSIGNED_TO_VENDOR', 'VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
+  const isVendorAssigned = Boolean(order.vendorId) || ['VENDOR_ASSIGNED', 'ASSIGNED_TO_VENDOR', 'VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
+  const isPreparation = ['IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
   const isReady = ['READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
   const isCompleted = bookingStatus === 'COMPLETED';
   const isCancelled = ['CANCELLED', 'REJECTED'].includes(bookingStatus);
@@ -150,12 +150,10 @@ export default function CelebrationJourney({ order }) {
     currentIndex = 5;
   } else if (isPreparation) {
     currentIndex = 4;
-  } else if (isVendorAssigned) {
+  } else if (isVendorAssigned || isApproved) {
     currentIndex = 3;
-  } else if (isApproved) {
-    currentIndex = 2;
   } else if (isPaid) {
-    currentIndex = 1;
+    currentIndex = 2;
   } else {
     currentIndex = 0;
   }
