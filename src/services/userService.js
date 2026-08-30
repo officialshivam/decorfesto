@@ -245,3 +245,26 @@ export async function verifyAdminReauthPasswordApi(password) {
   }
   return verifyAdminReauthPassword(password);
 }
+
+export async function resetUserPasswordApi(userId, newPassword) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/users/${encodeURIComponent(userId)}/password`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ password: newPassword }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data.success) {
+      resetUserPassword(userId, newPassword);
+      return { ok: true };
+    }
+    return { ok: false, error: data.error || 'Failed to reset user password.' };
+  } catch (err) {
+    console.error('resetUserPasswordApi error:', err);
+    return { ok: false, error: 'Failed to reset user password. Network error.' };
+  }
+}

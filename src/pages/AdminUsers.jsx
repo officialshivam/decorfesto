@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   createAdminUser,
-  resetUserPassword,
   toggleUserStatus,
   verifyAdminReauthPassword,
 } from '../services/mockAuth';
-import { getAllUsersForAdminApi } from '../services/userService';
+import { getAllUsersForAdminApi, resetUserPasswordApi } from '../services/userService';
 
 function AdminUsers() {
   const [isVerified, setIsVerified] = useState(false);
@@ -79,14 +78,18 @@ function AdminUsers() {
     setSuccessMsg('New admin user created successfully.');
   };
 
-  const handleResetSubmit = (e) => {
+  const handleResetSubmit = async (e) => {
     e.preventDefault();
     setResetError('');
     if (!newPassword || newPassword.length < 4) {
       setResetError('Password must be at least 4 characters.');
       return;
     }
-    resetUserPassword(resetModalUserId, newPassword);
+    const res = await resetUserPasswordApi(resetModalUserId, newPassword);
+    if (!res.ok) {
+      setResetError(res.error || 'Failed to reset password.');
+      return;
+    }
     setResetModalUserId(null);
     setNewPassword('');
     refreshUsers();
