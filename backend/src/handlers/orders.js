@@ -172,20 +172,35 @@ export async function getOrder({ req, params }) {
 }
 
 export async function listOrders({ req }) {
-  const adminToken = extractTokenFromHeaders(req.headers, 'admin');
-  const isAdminAuthenticated = Boolean(adminToken && verifyAdminSessionToken(adminToken));
   const repository = createRepository('orders');
 
-  // 1. If authenticated as Admin (via admin token in header or cookie), ALWAYS return all orders from MySQL orders table
-  if (isAdminAuthenticated) {
+  let adminAuthFromHeader = false;
+  for (const key of Object.keys(req.headers || {})) {
+    if (key.toLowerCase() === 'authorization') {
+      const authHeader = String(req.headers[key] || '');
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      if (token && verifyAdminSessionToken(token)) {
+        adminAuthFromHeader = true;
+        break;
+      }
+    }
+  }
+
+  const adminCookieToken = extractTokenFromHeaders(req.headers, 'admin');
+  const isAdminCookieValid = Boolean(adminCookieToken && verifyAdminSessionToken(adminCookieToken));
+  const customerAuth = getAuthenticatedCustomer(req.headers);
+
+  // 1. Explicit Admin Request: carries an Admin Authorization header OR has valid Admin cookie without Customer session
+  const isAdminRequest = adminAuthFromHeader || (isAdminCookieValid && !customerAuth);
+
+  if (isAdminRequest) {
     return {
       statusCode: 200,
       body: { orders: await repository.list() },
     };
   }
 
-  // 2. If calling as an authenticated Customer, enforce strict customer order isolation
-  const customerAuth = getAuthenticatedCustomer(req.headers);
+  // 2. Customer Request: enforce strict customer order isolation against authenticated customer identity
   if (customerAuth) {
     const cleanTokenId = String(customerAuth.id || '').trim().toLowerCase();
     const cleanTokenEmail = String(customerAuth.email || '').trim().toLowerCase();
