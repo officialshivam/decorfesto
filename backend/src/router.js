@@ -98,11 +98,28 @@ function matchRoute(pathname, method, routes) {
   return null;
 }
 
+let isInitialized = false;
+
 export async function initializeBackend() {
+  if (isInitialized) return;
+  isInitialized = true;
   try {
     await seedBackendData();
   } catch (error) {
     console.warn('Backend data seed warning (using fallback repository):', error.message);
+  }
+  try {
+    const { getPool } = await import('./dataAccess/mysqlConnection.js');
+    const { useMysql, tablePrefix } = await import('./config.js');
+    if (useMysql) {
+      const pool = getPool();
+      const prefix = tablePrefix || 'decorfesto-dev';
+      const ordersTable = `${prefix}-orders`;
+      await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
+      await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('DB Column Migration Notice:', e?.message || e);
   }
 }
 
@@ -143,6 +160,8 @@ export async function handleApiRequest(req, res) {
     res.end(JSON.stringify({ ok: true }));
     return;
   }
+
+  await initializeBackend().catch(() => {});
 
   try {
     const route = matchRoute(pathname, method, routeHandlers[method] || {});
