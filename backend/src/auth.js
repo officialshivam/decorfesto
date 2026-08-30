@@ -286,6 +286,17 @@ export function getAuthenticatedVendor(headers = {}) {
   return verifyVendorSessionToken(fallbackToken);
 }
 
+export function getAuthenticatedCustomer(headers = {}) {
+  const customerToken = extractTokenFromHeaders(headers, 'customer');
+  if (customerToken) {
+    const userPayload = verifyUserSessionToken(customerToken);
+    if (userPayload) return userPayload;
+  }
+  const fallbackToken = extractTokenFromHeaders(headers);
+  if (!fallbackToken) return null;
+  return verifyUserSessionToken(fallbackToken);
+}
+
 export function getAuthenticatedUser(headers = {}) {
   const adminToken = extractTokenFromHeaders(headers, 'admin');
   if (adminToken) {
@@ -595,7 +606,7 @@ export async function customerLogin({ req }) {
 }
 
 export async function getCustomerMe({ req }) {
-  const userAuth = getAuthenticatedUser(req.headers);
+  const userAuth = getAuthenticatedCustomer(req.headers);
   if (!userAuth || !userAuth.id) {
     return { statusCode: 401, body: { authenticated: false, error: 'Not authenticated.' } };
   }

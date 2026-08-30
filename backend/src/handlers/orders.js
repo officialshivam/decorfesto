@@ -1,5 +1,5 @@
 import { createRepository } from '../dataAccess/repository.js';
-import { getAuthenticatedUser, getUserRole } from '../auth.js';
+import { getAuthenticatedUser, getAuthenticatedCustomer, getUserRole } from '../auth.js';
 
 function buildOrderId() {
   return `ORD-${Date.now().toString().slice(-8)}`;
@@ -172,15 +172,14 @@ export async function getOrder({ req, params }) {
 }
 
 export async function listOrders({ req }) {
-  const role = getUserRole(req.headers);
-  const userAuth = getAuthenticatedUser(req.headers);
+  const customerAuth = getAuthenticatedCustomer(req.headers);
   const repository = createRepository('orders');
 
   // Enforce customer order isolation whenever an authenticated customer session is present
-  if (userAuth && (userAuth.role === 'CUSTOMER' || userAuth.role === 'customer' || role === 'CUSTOMER' || !role)) {
-    const cleanTokenId = String(userAuth.id || '').trim().toLowerCase();
-    const cleanTokenEmail = String(userAuth.email || '').trim().toLowerCase();
-    const cleanTokenMobile = String(userAuth.mobile || userAuth.phone || '').replace(/\D/g, '').slice(-10);
+  if (customerAuth) {
+    const cleanTokenId = String(customerAuth.id || '').trim().toLowerCase();
+    const cleanTokenEmail = String(customerAuth.email || '').trim().toLowerCase();
+    const cleanTokenMobile = String(customerAuth.mobile || customerAuth.phone || '').replace(/\D/g, '').slice(-10);
 
     const allOrders = await repository.list();
     const customerOrders = (allOrders || []).filter((o) => {
@@ -200,7 +199,7 @@ export async function listOrders({ req }) {
     };
   }
 
-  // Admin access (when authenticated as admin and no customer session is active)
+  const role = getUserRole(req.headers);
   if (role === 'admin') {
     return {
       statusCode: 200,
