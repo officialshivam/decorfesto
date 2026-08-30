@@ -44,6 +44,7 @@ function MyOrders() {
             {orders.map((order) => {
               const bookingId = order.orderId || order.id || 'DFC-000000';
               const firstItem = order.items?.[0] || {};
+              const packageName = order.decorationName || firstItem.productName || 'DecorFesto Package';
               const rawDate =
                 order.scheduledDate ||
                 order.eventDate ||
