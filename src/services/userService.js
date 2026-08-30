@@ -94,8 +94,14 @@ export function persistCurrentUser(user) {
     if (user) {
       const safe = sanitizeUser(user);
       window.localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(safe));
+      if (user.token) {
+        window.localStorage.setItem('decorfesto_customer_token', user.token);
+        window.localStorage.setItem('customer_token', user.token);
+      }
     } else {
       window.localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+      window.localStorage.removeItem('decorfesto_customer_token');
+      window.localStorage.removeItem('customer_token');
     }
   }
 }

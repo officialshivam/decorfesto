@@ -5,9 +5,14 @@ const API_BASE_URL = getApiBaseUrl();
 export function getCustomerAuthHeaders(customHeaders = {}) {
   const headers = { Accept: 'application/json', ...customHeaders };
   try {
-    const token = localStorage.getItem('decorfesto_customer_token') || localStorage.getItem('customer_token');
+    const token =
+      localStorage.getItem('decorfesto_customer_token') ||
+      localStorage.getItem('customer_token') ||
+      localStorage.getItem('decorfesto_session') ||
+      localStorage.getItem('customerToken');
     if (token) {
       headers.Authorization = `Bearer ${token}`;
+      headers['X-Customer-Token'] = token;
     }
   } catch {}
   return headers;
@@ -27,6 +32,10 @@ export async function customerSignupApi(payload) {
   if (data.token) {
     try {
       localStorage.setItem('decorfesto_customer_token', data.token);
+      localStorage.setItem('customer_token', data.token);
+      if (data.user) {
+        localStorage.setItem('decorfesto-current-user', JSON.stringify(data.user));
+      }
     } catch {}
   }
   return { ok: true, user: data.user, token: data.token };
@@ -46,6 +55,10 @@ export async function customerLoginApi(payload) {
   if (data.token) {
     try {
       localStorage.setItem('decorfesto_customer_token', data.token);
+      localStorage.setItem('customer_token', data.token);
+      if (data.user) {
+        localStorage.setItem('decorfesto-current-user', JSON.stringify(data.user));
+      }
     } catch {}
   }
   return { ok: true, user: data.user, token: data.token };
@@ -75,6 +88,7 @@ export async function customerLogoutApi() {
   try {
     localStorage.removeItem('decorfesto_customer_token');
     localStorage.removeItem('customer_token');
+    localStorage.removeItem('decorfesto-current-user');
   } catch {}
   try {
     await fetch(`${API_BASE_URL}/auth/customer-logout`, {

@@ -234,6 +234,22 @@ export async function validateActiveUserSession(headers = {}) {
 
 export function extractTokenFromHeaders(headers = {}, targetRole = null) {
   for (const key of Object.keys(headers || {})) {
+    if (key.toLowerCase() === 'authorization') {
+      const authHeader = String(headers[key] || '');
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      if (token) return token;
+    }
+  }
+
+  for (const key of Object.keys(headers || {})) {
+    const k = key.toLowerCase();
+    if (k === 'x-customer-token' || k === 'x-session-token' || k === 'x-auth-token') {
+      const token = String(headers[key] || '').trim();
+      if (token) return token;
+    }
+  }
+
+  for (const key of Object.keys(headers || {})) {
     if (key.toLowerCase() === 'cookie') {
       const cookieHeader = String(headers[key] || '');
       if (targetRole === 'admin') {
@@ -254,14 +270,6 @@ export function extractTokenFromHeaders(headers = {}, targetRole = null) {
         cookieHeader.match(/decorfesto_vendor_session=([^;\s]+)/) ||
         cookieHeader.match(/decorfesto_session=([^;\s]+)/);
       if (generalMatch) return generalMatch[1];
-    }
-  }
-
-  for (const key of Object.keys(headers || {})) {
-    if (key.toLowerCase() === 'authorization') {
-      const authHeader = String(headers[key] || '');
-      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-      if (token) return token;
     }
   }
 

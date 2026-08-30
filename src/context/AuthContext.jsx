@@ -5,6 +5,7 @@ import {
   customerSignupApi,
   getCustomerMeApi,
 } from '../services/customerAuthService';
+import { persistCurrentUser } from '../services/userService';
 
 const AuthContext = createContext(null);
 
@@ -50,6 +51,8 @@ export function AuthProvider({ children }) {
     }
 
     setAuthError('');
+    const userWithToken = { ...result.user, token: result.token };
+    persistCurrentUser(userWithToken);
     setUser(result.user);
     return result;
   };
@@ -63,12 +66,15 @@ export function AuthProvider({ children }) {
     }
 
     setAuthError('');
+    const userWithToken = { ...result.user, token: result.token };
+    persistCurrentUser(userWithToken);
     setUser(result.user);
     return result;
   };
 
   const logout = async () => {
     await customerLogoutApi();
+    persistCurrentUser(null);
     setUser(null);
     setAuthError('');
   };
