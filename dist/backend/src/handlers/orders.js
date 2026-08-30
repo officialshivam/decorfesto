@@ -173,8 +173,34 @@ export async function getOrder({ req, params }) {
 
 export async function listOrders({ req }) {
   const role = getUserRole(req.headers);
+  const userAuth = getAuthenticatedUser(req.headers);
   const repository = createRepository('orders');
 
+  // Enforce customer order isolation whenever an authenticated customer session is present
+  if (userAuth && (userAuth.role === 'CUSTOMER' || userAuth.role === 'customer' || role === 'CUSTOMER' || !role)) {
+    const cleanTokenId = String(userAuth.id || '').trim().toLowerCase();
+    const cleanTokenEmail = String(userAuth.email || '').trim().toLowerCase();
+    const cleanTokenMobile = String(userAuth.mobile || userAuth.phone || '').replace(/\D/g, '').slice(-10);
+
+    const allOrders = await repository.list();
+    const customerOrders = (allOrders || []).filter((o) => {
+      const oCustId = String(o.customerId || '').trim().toLowerCase();
+      const oEmail = String(o.customerEmail || '').trim().toLowerCase();
+      const oMobile = String(o.customerPhone || o.customerMobile || '').replace(/\D/g, '').slice(-10);
+      return (
+        (cleanTokenId && oCustId && (oCustId === cleanTokenId || oCustId.replace(/^(cust|customer)-/, '') === cleanTokenId.replace(/^(cust|customer)-/, ''))) ||
+        (cleanTokenEmail && oEmail && oEmail === cleanTokenEmail) ||
+        (cleanTokenMobile && oMobile && oMobile === cleanTokenMobile)
+      );
+    });
+
+    return {
+      statusCode: 200,
+      body: { orders: customerOrders },
+    };
+  }
+
+  // Admin access (when authenticated as admin and no customer session is active)
   if (role === 'admin') {
     return {
       statusCode: 200,
@@ -182,7 +208,6 @@ export async function listOrders({ req }) {
     };
   }
 
-  const userAuth = getAuthenticatedUser(req.headers);
   if (!userAuth) {
     return {
       statusCode: 401,
