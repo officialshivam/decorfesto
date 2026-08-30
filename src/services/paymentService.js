@@ -106,7 +106,11 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
         source: err.source,
         step: err.step,
       });
-      onError(`Payment Failed: ${err.description || err.reason || 'Transaction could not be completed.'}`);
+      let errMsg = err.description || err.reason || 'Transaction could not be completed.';
+      if (errMsg.toLowerCase().includes('amount exceeds maximum')) {
+        errMsg = `${errMsg} (Note: Razorpay Test Mode card limit is ₹25,000. For test orders above ₹25,000, select Netbanking or UPI in the Razorpay test modal).`;
+      }
+      onError(`Payment Failed: ${errMsg}`);
     });
 
     rzp.open();
@@ -118,9 +122,10 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
 
 async function verifyPaymentOnServer(payload) {
   try {
+    const headers = getCustomerAuthHeaders({ 'Content-Type': 'application/json' });
     const res = await fetch(`${API_BASE_URL}/payments/verify-razorpay-payment`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
     });
     if (res.ok) {
