@@ -11,9 +11,9 @@ function getStatusBadge(status) {
     case 'VENDOR_ACCEPTED':
       return { label: 'Accepted', bg: '#e0f2fe', text: '#0284c7' };
     case 'IN_PROGRESS':
-      return { label: 'In Decoration', bg: '#e0e7ff', text: '#4338ca' };
+      return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'READY_FOR_SETUP':
-      return { label: 'Ready for Setup', bg: '#fef9c3', text: '#ca8a04' };
+      return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'COMPLETED':
       return { label: 'Completed', bg: '#dcfce7', text: '#15803d' };
     case 'VENDOR_DECLINED':
@@ -55,8 +55,7 @@ export default function VendorOrders() {
     // Filter by tab
     if (activeFilter === 'PENDING' && s !== 'VENDOR_ASSIGNED' && s !== 'ASSIGNED_TO_VENDOR' && s !== 'CONFIRMED' && s !== 'CREATED' && s !== 'ORDER RECEIVED' && s !== 'BOOKING PLACED' && s !== 'BOOKING_PLACED') return false;
     if (activeFilter === 'ACCEPTED' && s !== 'VENDOR_ACCEPTED') return false;
-    if (activeFilter === 'IN_PROGRESS' && s !== 'IN_PROGRESS') return false;
-    if (activeFilter === 'READY' && s !== 'READY_FOR_SETUP') return false;
+    if (activeFilter === 'IN_PROGRESS' && s !== 'IN_PROGRESS' && s !== 'READY_FOR_SETUP' && s !== 'START_PREPARATION') return false;
     if (activeFilter === 'COMPLETED' && s !== 'COMPLETED') return false;
     if (activeFilter === 'DECLINED' && s !== 'VENDOR_DECLINED') return false;
 
@@ -92,8 +91,7 @@ export default function VendorOrders() {
             { id: 'ALL', label: 'All' },
             { id: 'PENDING', label: 'Pending Acceptance' },
             { id: 'ACCEPTED', label: 'Accepted' },
-            { id: 'IN_PROGRESS', label: 'In Progress' },
-            { id: 'READY', label: 'Ready for Setup' },
+            { id: 'IN_PROGRESS', label: 'Decoration In Progress' },
             { id: 'COMPLETED', label: 'Completed' },
           ].map((tab) => (
             <button

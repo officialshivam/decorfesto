@@ -11,11 +11,11 @@ function getStatusBadge(status) {
     case 'VENDOR_ACCEPTED':
       return { label: 'Accepted', bg: '#e0f2fe', text: '#0284c7' };
     case 'IN_PROGRESS':
-      return { label: 'In Decoration', bg: '#e0e7ff', text: '#4338ca' };
+      return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'READY_FOR_SETUP':
-      return { label: 'Ready for Setup', bg: '#fef9c3', text: '#ca8a04' };
+      return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'COMPLETED':
-      return { label: 'Completed', bg: '#dcfce7', text: '#15803d' };
+      return { label: 'Celebration Completed', bg: '#dcfce7', text: '#15803d' };
     case 'VENDOR_DECLINED':
       return { label: 'Declined by Vendor', bg: '#fee2e2', text: '#b91c1c' };
     default:
@@ -142,8 +142,7 @@ export default function VendorOrderDetails() {
           <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
             {currentStatus === 'VENDOR_ASSIGNED' && 'Booking assigned to your studio. Please Accept or Decline.'}
             {currentStatus === 'VENDOR_ACCEPTED' && 'Booking accepted! Start decoration when ready.'}
-            {currentStatus === 'IN_PROGRESS' && 'Decoration in progress. Mark ready once setup elements are prepared.'}
-            {currentStatus === 'READY_FOR_SETUP' && 'Elements ready. Complete setup at client location.'}
+            {(currentStatus === 'IN_PROGRESS' || currentStatus === 'READY_FOR_SETUP') && 'Decoration in progress. Mark completed once celebration setup is finished.'}
             {currentStatus === 'COMPLETED' && 'Setup Completed successfully!'}
             {currentStatus === 'VENDOR_DECLINED' && 'Order was declined. Waiting for Admin reassignment.'}
           </div>
@@ -183,18 +182,7 @@ export default function VendorOrderDetails() {
             </button>
           )}
 
-          {currentStatus === 'IN_PROGRESS' && (
-            <button
-              type="button"
-              disabled={updating}
-              onClick={() => handleStatusChange('READY_FOR_SETUP')}
-              style={{ background: '#ca8a04', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
-            >
-              {updating ? 'Updating...' : '✨ Mark Ready for Setup'}
-            </button>
-          )}
-
-          {currentStatus === 'READY_FOR_SETUP' && (
+          {(currentStatus === 'IN_PROGRESS' || currentStatus === 'READY_FOR_SETUP') && (
             <button
               type="button"
               disabled={updating}
@@ -327,6 +315,18 @@ export default function VendorOrderDetails() {
               )}
             </div>
           </div>
+
+          {/* SPECIAL REQUESTS / CUSTOMER REMARKS */}
+          {(order.remarks || customization.remarks) ? (
+            <div style={{ background: '#fefce8', border: '1px solid #fef08a', padding: '16px 20px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#854d0e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                💬 Special Instructions / Customer Remarks
+              </span>
+              <p style={{ margin: '6px 0 0', fontSize: '0.95rem', fontWeight: '700', color: '#713f12' }}>
+                "{order.remarks || customization.remarks}"
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
 

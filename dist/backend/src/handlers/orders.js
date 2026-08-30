@@ -92,6 +92,7 @@ export async function createOrder({ req }) {
     timeSlot: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
     deliveryAddress: payload.deliveryAddress || payload.address || '',
     address: payload.deliveryAddress || payload.address || '',
+    remarks: String(payload.remarks || payload.items?.[0]?.remarks || payload.items?.[0]?.customization?.remarks || '').trim(),
     subtotal: Number(payload.subtotal || 0),
     serviceCharge: Number(payload.serviceCharge || payload.serviceCharges || 299),
     serviceCharges: Number(payload.serviceCharge || payload.serviceCharges || 299),

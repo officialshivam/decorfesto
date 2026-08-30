@@ -11,9 +11,9 @@ function getStatusBadge(status) {
     case 'VENDOR_ACCEPTED':
       return { label: 'Accepted', bg: '#e0f2fe', text: '#0284c7' };
     case 'IN_PROGRESS':
-      return { label: 'In Decoration', bg: '#e0e7ff', text: '#4338ca' };
+      return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'READY_FOR_SETUP':
-      return { label: 'Ready for Setup', bg: '#fef9c3', text: '#ca8a04' };
+      return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'COMPLETED':
       return { label: 'Completed', bg: '#dcfce7', text: '#15803d' };
     case 'VENDOR_DECLINED':
@@ -54,9 +54,8 @@ export default function VendorDashboard() {
   }).length;
   const inProgressCount = orders.filter((o) => {
     const s = String(o.bookingStatus || '').toUpperCase();
-    return s === 'VENDOR_ACCEPTED' || s === 'IN_PROGRESS';
+    return s === 'VENDOR_ACCEPTED' || s === 'IN_PROGRESS' || s === 'READY_FOR_SETUP';
   }).length;
-  const readyCount = orders.filter((o) => String(o.bookingStatus || '').toUpperCase() === 'READY_FOR_SETUP').length;
   const completedCount = orders.filter((o) => String(o.bookingStatus || '').toUpperCase() === 'COMPLETED').length;
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -139,11 +138,6 @@ export default function VendorDashboard() {
         <div style={{ background: '#fff', padding: '20px', borderRadius: '14px', border: '1px solid #c7d2fe', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#4338ca', textTransform: 'uppercase' }}>In Progress</span>
           <div style={{ fontSize: '2rem', fontWeight: '900', color: '#3730a3', marginTop: '4px' }}>{inProgressCount}</div>
-        </div>
-
-        <div style={{ background: '#fff', padding: '20px', borderRadius: '14px', border: '1px solid #fef08a', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#ca8a04', textTransform: 'uppercase' }}>Ready for Setup</span>
-          <div style={{ fontSize: '2rem', fontWeight: '900', color: '#a16207', marginTop: '4px' }}>{readyCount}</div>
         </div>
 
         <div style={{ background: '#fff', padding: '20px', borderRadius: '14px', border: '1px solid #bbf7d0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>

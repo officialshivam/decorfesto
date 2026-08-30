@@ -193,6 +193,8 @@ function MyOrderDetail() {
     ? orderDateObj.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
     : 'Recently';
 
+  const customerRemarks = String(order.remarks || firstItem.remarks || firstItem.customization?.remarks || '').trim();
+
   return (
     <main className="page">
       <section className="container section section--tight">
@@ -239,14 +241,14 @@ function MyOrderDetail() {
               </div>
             </div>
 
-            {/* 2. EVENT & DELIVERY DETAILS */}
+            {/* 2. EVENT & LOCATION DETAILS */}
             <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px' }}>
               <h3 style={{ fontSize: '1.05rem', color: '#0f172a', marginTop: 0, marginBottom: '14px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
                 Event & Location
               </h3>
               <div className="summary-box__row">
                 <span>Event Date</span>
-                <strong>{formatDisplayDate(eventDate)}</strong>
+                <strong>{eventDate}</strong>
               </div>
               <div className="summary-box__row">
                 <span>Time Slot</span>
@@ -257,11 +259,23 @@ function MyOrderDetail() {
                 <strong>{pincode}</strong>
               </div>
               <div className="summary-box__row" style={{ alignItems: 'flex-start', marginTop: '4px' }}>
-                <span>Delivery Address</span>
+                <span>Venue Address</span>
                 <strong style={{ textAlign: 'right', maxWidth: '180px' }}>{deliveryAddress}</strong>
               </div>
             </div>
           </div>
+
+          {/* SPECIAL REQUESTS / CUSTOMER REMARKS */}
+          {customerRemarks ? (
+            <div style={{ background: '#fefce8', border: '1px solid #fef08a', padding: '16px 20px', borderRadius: '12px', marginBottom: '24px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#854d0e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                💬 Special Requests / Customer Remarks
+              </span>
+              <p style={{ margin: '6px 0 0', fontSize: '0.95rem', fontWeight: '700', color: '#713f12' }}>
+                "{customerRemarks}"
+              </p>
+            </div>
+          ) : null}
 
           {/* 3. FINANCIAL & TRANSACTION DETAILS */}
           <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '24px' }}>
