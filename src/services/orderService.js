@@ -255,6 +255,7 @@ export async function createOrderApi(orderData, userFields = {}) {
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ ...orderData, ...userFields }),
   });
   if (response.ok) {
