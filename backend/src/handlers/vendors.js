@@ -53,12 +53,13 @@ export async function createVendor({ req }) {
   const repository = createRepository('vendors');
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
   const vendor = {
-    id: payload.vendorId || `vendor-${Date.now()}`,
+    id: payload.vendorId || payload.id || `vendor-${Date.now()}`,
     name: payload.name || 'New Vendor',
     contactName: payload.contactName || '',
     email: payload.email || '',
     phone: payload.phone || '',
     specialties: payload.specialties || [],
+    servicePincodes: payload.servicePincodes || [],
     status: payload.status || 'active',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

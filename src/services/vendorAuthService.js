@@ -150,6 +150,23 @@ export async function updateVendorApi(vendorId, updates) {
   }
 }
 
+export async function createVendorApi(vendorData) {
+  try {
+    const res = await fetch('/vendors', {
+      method: 'POST',
+      headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(vendorData),
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`Failed to create vendor (${res.status})`);
+    const data = await res.json();
+    return data.vendor || null;
+  } catch (err) {
+    console.error('createVendorApi Error:', err);
+    throw err;
+  }
+}
+
 export async function fetchVendorProfileApi() {
   try {
     const headers = { Accept: 'application/json' };

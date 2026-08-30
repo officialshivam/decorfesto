@@ -228,6 +228,7 @@ export async function updateVendorProfile({ req }) {
     contactName: payload.contactName !== undefined ? String(payload.contactName).trim() : vendor.contactName,
     phone: payload.phone !== undefined ? String(payload.phone).trim() : vendor.phone,
     specialties: Array.isArray(payload.specialties) ? payload.specialties : vendor.specialties,
+    servicePincodes: Array.isArray(payload.servicePincodes) ? payload.servicePincodes : vendor.servicePincodes,
     updatedAt: new Date().toISOString(),
   };
 

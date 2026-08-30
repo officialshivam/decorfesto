@@ -2,9 +2,55 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PRESET_SPECIALTIES,
+  saveStoredVendor,
+  resetVendorPassword,
+  updateVendorStatus,
+  forceLogoutVendor,
+  validateVendorUnique,
 } from '../services/mockVendors';
-import { getVendorsApi } from '../services/vendorAuthService';
+import { getVendorsApi, updateVendorApi, createVendorApi } from '../services/vendorAuthService';
 import { getOrdersApi } from '../services/orderService';
+
+function normalizeServicePincodesInput(raw) {
+  if (!raw) return '';
+  if (Array.isArray(raw)) return raw.join(', ');
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.join(', ');
+      } catch {
+        // fallback
+      }
+    }
+    return trimmed;
+  }
+  return '';
+}
+
+function parseServicePincodesOutput(input) {
+  if (Array.isArray(input)) {
+    return [...new Set(input.map((s) => String(s).trim()).filter(Boolean))];
+  }
+  if (typeof input === 'string') {
+    let items = input;
+    const trimmed = input.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) items = parsed;
+      } catch {
+        // fallback
+      }
+    }
+    if (Array.isArray(items)) {
+      return [...new Set(items.map((s) => String(s).trim()).filter(Boolean))];
+    }
+    return [...new Set(input.split(',').map((s) => s.trim()).filter(Boolean))];
+  }
+  return [];
+}
 
 function AdminVendors() {
   const [vendors, setVendors] = useState([]);
@@ -178,8 +224,8 @@ function AdminVendors() {
     setSelectedVendor(vendor);
     setForm({
       ...vendor,
-      servicePincodes: (vendor.servicePincodes || []).join(', '),
-      specialties: vendor.specialties || [],
+      servicePincodes: normalizeServicePincodesInput(vendor.servicePincodes),
+      specialties: Array.isArray(vendor.specialties) ? vendor.specialties : [],
     });
     setFormError('');
     setActiveModal('edit');
@@ -198,7 +244,7 @@ function AdminVendors() {
     setActiveModal('statusReason');
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
 
@@ -213,16 +259,31 @@ function AdminVendors() {
       return;
     }
 
-    const saved = saveStoredVendor({
+    const payload = {
       ...form,
-      servicePincodes: typeof form.servicePincodes === 'string'
-        ? form.servicePincodes.split(',').map((s) => s.trim()).filter(Boolean)
-        : form.servicePincodes,
-    });
+      servicePincodes: parseServicePincodesOutput(form.servicePincodes),
+    };
 
-    refreshData();
-    setActiveModal(null);
-    showToast(activeModal === 'create' ? `Vendor account ${saved.id} (${saved.name}) created successfully!` : `Vendor profile updated for ${saved.name}`);
+    try {
+      let savedVendor = null;
+      if (activeModal === 'edit' && selectedVendor) {
+        savedVendor = await updateVendorApi(selectedVendor.id, payload);
+      } else {
+        savedVendor = await createVendorApi(payload);
+      }
+
+      // Also sync to local mock storage for dev fallback compatibility
+      saveStoredVendor(payload);
+
+      refreshData();
+      setActiveModal(null);
+      const vName = savedVendor?.name || form.name || 'Vendor';
+      const vId = savedVendor?.id || selectedVendor?.id || form.id || '';
+      showToast(activeModal === 'create' ? `Vendor account ${vId} (${vName}) created successfully!` : `Vendor profile updated for ${vName}`);
+    } catch (err) {
+      console.error('Failed to save vendor via API', err);
+      setFormError(err.message || 'Failed to save vendor details via backend API.');
+    }
   };
 
   const handlePasswordResetSubmit = (e) => {

@@ -99,12 +99,53 @@ function AdminVendorDetails() {
     .filter((o) => o.bookingStatus === 'COMPLETED')
     .reduce((sum, o) => sum + (o.total || 0), 0);
 
+function normalizeServicePincodesInput(raw) {
+  if (!raw) return '';
+  if (Array.isArray(raw)) return raw.join(', ');
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.join(', ');
+      } catch {
+        // fallback
+      }
+    }
+    return trimmed;
+  }
+  return '';
+}
+
+function parseServicePincodesOutput(input) {
+  if (Array.isArray(input)) {
+    return [...new Set(input.map((s) => String(s).trim()).filter(Boolean))];
+  }
+  if (typeof input === 'string') {
+    let items = input;
+    const trimmed = input.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) items = parsed;
+      } catch {
+        // fallback
+      }
+    }
+    if (Array.isArray(items)) {
+      return [...new Set(items.map((s) => String(s).trim()).filter(Boolean))];
+    }
+    return [...new Set(input.split(',').map((s) => s.trim()).filter(Boolean))];
+  }
+  return [];
+}
+
   // Handlers for Modals
   const openEditModal = () => {
     setEditForm({
       ...vendor,
-      servicePincodes: (vendor.servicePincodes || []).join(', '),
-      specialties: vendor.specialties || [],
+      servicePincodes: normalizeServicePincodesInput(vendor.servicePincodes),
+      specialties: Array.isArray(vendor.specialties) ? vendor.specialties : [],
     });
     setFormError('');
     setActiveModal('edit');
@@ -117,9 +158,7 @@ function AdminVendorDetails() {
     try {
       const updated = await updateVendorApi(vendor.id, {
         ...editForm,
-        servicePincodes: typeof editForm.servicePincodes === 'string'
-          ? editForm.servicePincodes.split(',').map((s) => s.trim()).filter(Boolean)
-          : editForm.servicePincodes,
+        servicePincodes: parseServicePincodesOutput(editForm.servicePincodes),
       });
 
       if (updated) {
