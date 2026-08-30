@@ -370,7 +370,7 @@ export async function adminLogin({ req }) {
   return {
     statusCode: 200,
     headers: { 'Set-Cookie': `decorfesto_admin_session=${token}; ${cookieFlags}` },
-    body: { success: true, role: 'ADMIN', user: { username, role: 'ADMIN' } },
+    body: { success: true, role: 'ADMIN', token, user: { username, role: 'ADMIN' } },
   };
 }
 

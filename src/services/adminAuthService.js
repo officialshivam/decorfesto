@@ -47,6 +47,10 @@ export async function loginAdminApi({ username, password }) {
     }
 
     if (data.success) {
+      if (data.token) {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('decorfesto_admin_token', data.token);
+        if (typeof localStorage !== 'undefined') localStorage.setItem('decorfesto_admin_token', data.token);
+      }
       const user = data.user || { username: username || 'admin', role: 'ADMIN' };
       return { ok: true, user };
     }
@@ -59,6 +63,8 @@ export async function loginAdminApi({ username, password }) {
 }
 
 export async function logoutAdminApi() {
+  if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('decorfesto_admin_token');
+  if (typeof localStorage !== 'undefined') localStorage.removeItem('decorfesto_admin_token');
   try {
     await fetch(`${API_BASE_URL}/auth/admin-logout`, {
       method: 'POST',
