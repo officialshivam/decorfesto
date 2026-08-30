@@ -8,6 +8,15 @@ function Login() {
   const location = useLocation();
   const { login, isAuthenticated, loading } = useAuth();
 
+  const [identifierType, setIdentifierType] = useState('mobile'); // 'mobile' | 'email'
+  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const from = location.state?.from?.pathname || '/my-orders';
 
   if (loading) {
@@ -21,15 +30,6 @@ function Login() {
   if (isAuthenticated) {
     return <Navigate to={from} replace />;
   }
-
-  const [identifierType, setIdentifierType] = useState('mobile'); // 'mobile' | 'email'
-  const [mobile, setMobile] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [submitError, setSubmitError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isCheckoutFlow = from === '/checkout';
 
