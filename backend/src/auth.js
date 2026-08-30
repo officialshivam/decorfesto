@@ -610,7 +610,7 @@ export async function customerLogin({ req }) {
     return { statusCode: 403, body: { error: 'This account has been disabled. Please contact DecorFesto support.' } };
   }
 
-  const storedHash = matched.password_hash || matched.password;
+  const storedHash = matched.password_hash || matched.password || matched.passwordHash;
   if (!storedHash || !verifyPassword(password, storedHash)) {
     return { statusCode: 401, body: { error: 'Incorrect password. Please try again.' } };
   }

@@ -114,6 +114,7 @@ export async function resetAdminUserPassword({ req, params }) {
   const updatedUser = await repository.update(userId, {
     password: hashedPass,
     password_hash: hashedPass,
+    passwordHash: hashedPass,
     updatedAt: new Date().toISOString(),
   });
 
