@@ -68,6 +68,11 @@ export async function createOrder({ req }) {
     }
   }
 
+  const rawBookingStatus = String(payload.bookingStatus || '').trim().toUpperCase();
+  const normalizedBookingStatus = (rawBookingStatus === 'BOOKING PLACED' || rawBookingStatus === 'BOOKING_PLACED' || !rawBookingStatus)
+    ? 'ORDER_RECEIVED'
+    : (payload.bookingStatus || 'ORDER_RECEIVED');
+
   const order = {
     id: targetId,
     orderId: targetId,
@@ -93,7 +98,7 @@ export async function createOrder({ req }) {
     totalAmount: Number(payload.totalAmount || payload.total || 0),
     total: Number(payload.totalAmount || payload.total || 0),
     paymentStatus: payload.paymentStatus || 'PAYMENT_INITIATED',
-    bookingStatus: payload.bookingStatus || 'Booking Placed',
+    bookingStatus: normalizedBookingStatus,
     adminReviewStatus: 'PENDING',
     vendorId: validVendorId,
     vendorName: payload.vendorName || (validVendorId ? 'Assigned Vendor' : 'Unassigned'),
