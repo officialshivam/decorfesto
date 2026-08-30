@@ -24,7 +24,7 @@ function getStatusBadge(status) {
 }
 
 export default function VendorDashboard() {
-  const { vendorUser } = useVendorAuth();
+  const { vendorUser, logoutVendor } = useVendorAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,7 +71,13 @@ export default function VendorDashboard() {
       {error && (
         <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', color: '#be123c', padding: '16px 20px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{error}</span>
-          <Link to="/vendor/login" style={{ background: '#be123c', color: '#fff', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700' }}>Re-login</Link>
+          <Link
+            to="/vendor/login"
+            onClick={() => logoutVendor()}
+            style={{ background: '#be123c', color: '#fff', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700' }}
+          >
+            Re-login
+          </Link>
         </div>
       )}
       {/* HEADER SECTION */}

@@ -24,7 +24,7 @@ function getStatusBadge(status) {
 }
 
 export default function VendorOrders() {
-  const { vendorUser } = useVendorAuth();
+  const { vendorUser, logoutVendor } = useVendorAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -142,7 +142,13 @@ export default function VendorOrders() {
         {error ? (
           <div style={{ padding: '32px', textAlign: 'center', color: '#be123c', background: '#fff1f2' }}>
             <p style={{ margin: '0 0 12px 0', fontWeight: '700' }}>{error}</p>
-            <Link to="/vendor/login" style={{ background: '#be123c', color: '#fff', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700' }}>Re-login to Vendor Portal</Link>
+            <Link
+              to="/vendor/login"
+              onClick={() => logoutVendor()}
+              style={{ background: '#be123c', color: '#fff', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700' }}
+            >
+              Re-login to Vendor Portal
+            </Link>
           </div>
         ) : loading ? (
           <div style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>Loading assigned orders...</div>
