@@ -114,43 +114,42 @@ function AdminOrderDetails() {
   const dateDisplay = rawDate ? formatDisplayDate(rawDate) : 'TBD';
   const timeDisplay = rawTime ? String(rawTime).trim() : 'TBD';
 
-  const handleConfirmAction = async () => {
-    if (!confirmModal) return;
+  const handleCancelOrder = async () => {
+    if (confirmModal !== 'CANCEL') return;
     setIsSubmittingAction(true);
     setActionError('');
     setActionSuccess('');
 
-    const targetStatus = confirmModal === 'APPROVE' ? 'APPROVED' : 'CANCELLED';
-    const targetReviewStatus = confirmModal === 'APPROVE' ? 'APPROVED' : 'REJECTED';
     const now = new Date().toISOString();
     const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
 
     try {
       const updated = await updateAdminOrderStatusApi(order.id, {
-        bookingStatus: targetStatus,
-        adminReviewStatus: targetReviewStatus,
+        bookingStatus: 'CANCELLED',
+        adminReviewStatus: 'CANCELLED',
         updatedAt: now,
         statusHistory: [
           ...history,
           {
-            status: targetStatus,
+            status: 'CANCELLED',
             updatedByRole: 'ADMIN',
             updatedByName: 'DecorFesto Admin',
             timestamp: now,
+            note: 'Order cancelled by Admin',
           },
         ],
       });
 
       if (updated) {
         setOrder(updated);
-        setActionSuccess(`Order ${order.id} ${confirmModal === 'APPROVE' ? 'approved' : 'rejected'} successfully.`);
+        setActionSuccess(`Order ${order.id} cancelled successfully.`);
         setConfirmModal(null);
       } else {
-        setActionError('Unable to update order status. Please try again.');
+        setActionError('Unable to cancel order. Please try again.');
       }
     } catch (err) {
-      console.error('Failed to update order status:', err);
-      setActionError('Unable to update order status. Please try again.');
+      console.error('Failed to cancel order:', err);
+      setActionError('Unable to cancel order. Please try again.');
     } finally {
       setIsSubmittingAction(false);
     }
@@ -278,13 +277,13 @@ function AdminOrderDetails() {
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#0f172a' }}>Order Actions</h3>
                     <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: '#64748b' }}>
-                      {isTerminal ? 'Booking workflow status is locked in terminal state.' : 'Approve or reject this booking to update order workflow status.'}
+                      {isTerminal ? 'Booking workflow status is locked in terminal state.' : 'Manage booking status and cancellations.'}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Current Booking Status:</span>
-                    <span className="status-pill" style={{ fontSize: '0.88rem', fontWeight: '800', padding: '6px 14px', borderRadius: '20px', background: isCompleted ? '#dcfce7' : isTerminal ? '#fee2e2' : order.bookingStatus === 'APPROVED' ? '#dcfce7' : '#fef3c7', color: isCompleted ? '#15803d' : isTerminal ? '#b91c1c' : order.bookingStatus === 'APPROVED' ? '#15803d' : '#b45309' }}>
-                      {order.bookingStatus || 'CREATED'}
+                    <span className="status-pill" style={{ fontSize: '0.88rem', fontWeight: '800', padding: '6px 14px', borderRadius: '20px', background: isCompleted ? '#dcfce7' : isTerminal ? '#fee2e2' : '#fef3c7', color: isCompleted ? '#15803d' : isTerminal ? '#b91c1c' : '#b45309' }}>
+                      {formatBookingStatus(order.bookingStatus)}
                     </span>
                   </div>
                 </div>
@@ -314,7 +313,7 @@ function AdminOrderDetails() {
                     <p style={{ margin: '6px 0 0', fontSize: '0.92rem', color: isCompleted ? '#15803d' : '#be123c', lineHeight: '1.5' }}>
                       {isCompleted
                         ? 'This decoration booking has been fully completed. No further workflow changes or status updates are allowed.'
-                        : `This booking is in terminal state "${order.bookingStatus}". No further status actions are permitted.`}
+                        : `This booking is in terminal state "${formatBookingStatus(order.bookingStatus)}". No further status actions are permitted.`}
                     </p>
                   </div>
                 ) : (
@@ -322,21 +321,11 @@ function AdminOrderDetails() {
                     <button
                       type="button"
                       className="button"
-                      style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', color: '#ffffff', border: 'none', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)', cursor: 'pointer' }}
-                      onClick={() => { setConfirmModal('APPROVE'); setActionError(''); setActionSuccess(''); }}
-                      disabled={isSubmittingAction}
-                    >
-                      ✓ Approve Order
-                    </button>
-
-                    <button
-                      type="button"
-                      className="button"
                       style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', cursor: 'pointer' }}
-                      onClick={() => { setConfirmModal('REJECT'); setActionError(''); setActionSuccess(''); }}
+                      onClick={() => { setConfirmModal('CANCEL'); setActionError(''); setActionSuccess(''); }}
                       disabled={isSubmittingAction}
                     >
-                      ✕ Reject Order
+                      Cancel Order
                     </button>
 
                     <Link to="/admin/orders" style={{ marginLeft: 'auto', fontSize: '0.9rem', color: '#475569', textDecoration: 'none', fontWeight: '600' }}>
@@ -428,25 +417,23 @@ function AdminOrderDetails() {
           </div>
         )}
 
-        {/* CONFIRMATION MODALS */}
-        {confirmModal && (
+        {/* CONFIRMATION MODAL */}
+        {confirmModal === 'CANCEL' && (
           <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', zIndex: 1000, padding: '16px' }}>
             <div className="modal-card" style={{ background: '#ffffff', borderRadius: '16px', padding: '28px', maxWidth: '480px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-              <h2 style={{ margin: '0 0 8px', fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
-                {confirmModal === 'APPROVE' ? 'Approve this order?' : 'Reject this order?'}
+              <h2 style={{ margin: '0 0 8px', fontSize: '1.4rem', fontWeight: '800', color: '#9f1239' }}>
+                Cancel this order?
               </h2>
 
               <p style={{ fontSize: '0.92rem', color: '#475569', marginBottom: '20px', lineHeight: '1.5' }}>
-                {confirmModal === 'APPROVE'
-                  ? 'Are you sure you want to approve this order? This will update the booking status to APPROVED.'
-                  : 'Are you sure you want to reject this order? This will update the booking status to CANCELLED.'}
+                Are you sure you want to cancel this order? This will update the booking status to CANCELLED and block any further vendor assignments or decoration progress.
               </p>
 
               <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', marginBottom: '24px', border: '1px solid #e2e8f0', fontSize: '0.88rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div><span style={{ color: '#64748b' }}>Order ID:</span> <strong>{order.id}</strong></div>
                 <div><span style={{ color: '#64748b' }}>Customer Name:</span> <strong>{order.customerName || 'Customer'}</strong></div>
                 <div><span style={{ color: '#64748b' }}>Total Amount:</span> <strong>₹{Number(order.total || 0).toLocaleString('en-IN')}</strong></div>
-                <div><span style={{ color: '#64748b' }}>Current Status:</span> <strong>{order.bookingStatus || 'CREATED'}</strong></div>
+                <div><span style={{ color: '#64748b' }}>Current Status:</span> <strong>{formatBookingStatus(order.bookingStatus)}</strong></div>
                 <div><span style={{ color: '#64748b' }}>Assigned Vendor:</span> <strong>{order.vendorName || 'Not assigned'}</strong></div>
               </div>
 
@@ -464,13 +451,13 @@ function AdminOrderDetails() {
                   disabled={isSubmittingAction}
                   style={{ padding: '8px 20px', borderRadius: '10px' }}
                 >
-                  Cancel
+                  Keep Order
                 </button>
                 <button
                   type="button"
                   className="button"
                   style={{
-                    background: confirmModal === 'APPROVE' ? '#16a34a' : '#dc2626',
+                    background: '#dc2626',
                     color: '#ffffff',
                     border: 'none',
                     padding: '8px 24px',
@@ -479,12 +466,10 @@ function AdminOrderDetails() {
                     cursor: isSubmittingAction ? 'not-allowed' : 'pointer',
                     opacity: isSubmittingAction ? 0.7 : 1,
                   }}
-                  onClick={handleConfirmAction}
+                  onClick={handleCancelOrder}
                   disabled={isSubmittingAction}
                 >
-                  {isSubmittingAction
-                    ? (confirmModal === 'APPROVE' ? 'Approving…' : 'Rejecting…')
-                    : (confirmModal === 'APPROVE' ? 'Approve Order' : 'Reject Order')}
+                  {isSubmittingAction ? 'Cancelling…' : 'Confirm Cancel Order'}
                 </button>
               </div>
             </div>
