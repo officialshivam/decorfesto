@@ -154,8 +154,25 @@ function MyOrderDetail() {
   const bookingId = order.orderId || order.id || 'DFC-000000';
   const transactionId = order.razorpayPaymentId || order.transactionId || (order.paymentStatus?.includes('PAID') ? `pay_test_${bookingId.replace(/\D/g, '') || '18413697'}` : 'Pending');
   const packageName = order.decorationName || firstItem.productName || 'DecorFesto Package';
-  const rawDate = order.scheduledDate || order.eventDate || order.date || firstItem.date;
-  const rawTime = order.scheduledTime || order.timeSlot || order.time || firstItem.time;
+  const rawDate =
+    order.scheduledDate ||
+    order.eventDate ||
+    order.date ||
+    order.event_date ||
+    firstItem.scheduledDate ||
+    firstItem.eventDate ||
+    firstItem.date ||
+    firstItem.event_date;
+
+  const rawTime =
+    order.scheduledTime ||
+    order.timeSlot ||
+    order.time ||
+    order.time_slot ||
+    firstItem.scheduledTime ||
+    firstItem.timeSlot ||
+    firstItem.time ||
+    firstItem.time_slot;
   const eventDate = rawDate ? formatDisplayDate(rawDate) : 'Pending';
   const eventTime = rawTime ? String(rawTime).trim() : 'Pending';
   const deliveryAddress = order.address || order.deliveryAddress || 'Pending';

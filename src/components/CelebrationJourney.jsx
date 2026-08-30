@@ -116,8 +116,26 @@ export default function CelebrationJourney({ order }) {
   const isCancelled = ['CANCELLED', 'REJECTED'].includes(bookingStatus);
 
   // Authoritative Date, Time & Venue extraction from real database order fields
-  const rawDate = order.scheduledDate || order.date || order.items?.[0]?.date;
-  const rawTime = order.scheduledTime || order.time || order.items?.[0]?.time;
+  const firstItem = order.items?.[0] || {};
+  const rawDate =
+    order.scheduledDate ||
+    order.eventDate ||
+    order.date ||
+    order.event_date ||
+    firstItem.scheduledDate ||
+    firstItem.eventDate ||
+    firstItem.date ||
+    firstItem.event_date;
+
+  const rawTime =
+    order.scheduledTime ||
+    order.timeSlot ||
+    order.time ||
+    order.time_slot ||
+    firstItem.scheduledTime ||
+    firstItem.timeSlot ||
+    firstItem.time ||
+    firstItem.time_slot;
   const deliveryAddress = order.deliveryAddress || order.address || order.items?.[0]?.address || '';
   const pincode = order.pincode || order.items?.[0]?.pincode || '';
 

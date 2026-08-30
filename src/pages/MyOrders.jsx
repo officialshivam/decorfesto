@@ -43,9 +43,27 @@ function MyOrders() {
           <div className="orders-list" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             {orders.map((order) => {
               const bookingId = order.orderId || order.id || 'DFC-000000';
-              const packageName = order.decorationName || order.items?.[0]?.productName || 'DecorFesto Package';
-              const rawDate = order.scheduledDate || order.eventDate || order.date || order.items?.[0]?.date;
-              const rawTime = order.scheduledTime || order.timeSlot || order.time || order.items?.[0]?.time;
+              const firstItem = order.items?.[0] || {};
+              const rawDate =
+                order.scheduledDate ||
+                order.eventDate ||
+                order.date ||
+                order.event_date ||
+                firstItem.scheduledDate ||
+                firstItem.eventDate ||
+                firstItem.date ||
+                firstItem.event_date;
+
+              const rawTime =
+                order.scheduledTime ||
+                order.timeSlot ||
+                order.time ||
+                order.time_slot ||
+                firstItem.scheduledTime ||
+                firstItem.timeSlot ||
+                firstItem.time ||
+                firstItem.time_slot;
+
               const eventDateText = rawDate ? formatDisplayDate(rawDate) : 'Pending';
               const eventTimeText = rawTime ? String(rawTime).trim() : 'Pending';
               const isPaid = (order.paymentStatus || '').toUpperCase().includes('PAID');
