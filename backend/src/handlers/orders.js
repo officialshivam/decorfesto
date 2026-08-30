@@ -173,12 +173,11 @@ export async function getOrder({ req, params }) {
 
 export async function listOrders({ req }) {
   const adminToken = extractTokenFromHeaders(req.headers, 'admin');
-  const isAdminAuthenticated = adminToken && verifyAdminSessionToken(adminToken);
-  const customerAuth = getAuthenticatedCustomer(req.headers);
+  const isAdminAuthenticated = Boolean(adminToken && verifyAdminSessionToken(adminToken));
   const repository = createRepository('orders');
 
-  // 1. If explicitly calling as Admin (via admin Authorization header or admin cookie without customer session), return all orders for Admin management
-  if (isAdminAuthenticated && (!customerAuth || req.headers.authorization || req.headers.Authorization)) {
+  // 1. If authenticated as Admin (via admin token in header or cookie), ALWAYS return all orders from MySQL orders table
+  if (isAdminAuthenticated) {
     return {
       statusCode: 200,
       body: { orders: await repository.list() },
@@ -186,6 +185,7 @@ export async function listOrders({ req }) {
   }
 
   // 2. If calling as an authenticated Customer, enforce strict customer order isolation
+  const customerAuth = getAuthenticatedCustomer(req.headers);
   if (customerAuth) {
     const cleanTokenId = String(customerAuth.id || '').trim().toLowerCase();
     const cleanTokenEmail = String(customerAuth.email || '').trim().toLowerCase();
