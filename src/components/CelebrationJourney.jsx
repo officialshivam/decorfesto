@@ -221,8 +221,6 @@ export default function CelebrationJourney({ order }) {
     );
   }
 
-  const currentMilestone = milestones[currentIndex];
-
   // Train position calculation (0% to 100% on desktop, vertical offset on mobile)
   const trainLeftPercent = (currentIndex / (milestones.length - 1)) * 100;
   const trainTopPx = currentIndex * 64;

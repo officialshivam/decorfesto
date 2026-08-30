@@ -248,13 +248,15 @@ export function assignOrderVendor(orderId, vendor, vendorNameParam = '') {
 }
 
 import { getApiBaseUrl } from './apiConfig.js';
+import { getCustomerAuthHeaders } from './customerAuthService.js';
 
 const API_BASE_URL = getApiBaseUrl();
 
 export async function createOrderApi(orderData, userFields = {}) {
+  const headers = getCustomerAuthHeaders({ 'Content-Type': 'application/json' });
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     credentials: 'include',
     body: JSON.stringify({ ...orderData, ...userFields }),
   });
@@ -290,8 +292,9 @@ export async function getOrdersApi() {
 
 export async function getUserOrdersApi() {
   try {
+    const headers = getCustomerAuthHeaders({ Accept: 'application/json' });
     const response = await fetch(`${API_BASE_URL}/orders`, {
-      headers: { Accept: 'application/json' },
+      headers,
       credentials: 'include',
     });
     if (response.ok) {
@@ -308,8 +311,9 @@ export async function getUserOrdersApi() {
 
 export async function getCustomerOrderByIdApi(orderId) {
   try {
+    const headers = getCustomerAuthHeaders({ Accept: 'application/json' });
     const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-      headers: { Accept: 'application/json' },
+      headers,
       credentials: 'include',
     });
     if (response.ok) {

@@ -44,7 +44,22 @@ export async function createOrder({ req }) {
     };
   }
 
-  const customer = await customerRepo.getById(userAuth.id);
+  let customer = await customerRepo.getById(userAuth.id);
+  if (!customer && userAuth.email) {
+    try { customer = await customerRepo.getByEmail(userAuth.email); } catch {}
+  }
+  if (!customer && userAuth.mobile) {
+    try { customer = await customerRepo.getByMobile(userAuth.mobile); } catch {}
+  }
+  if (!customer && userAuth.id) {
+    customer = {
+      id: userAuth.id,
+      fullName: userAuth.fullName || userAuth.name || payload.customerName || 'Customer',
+      email: userAuth.email || payload.customerEmail || payload.email || '',
+      phone: userAuth.mobile || userAuth.phone || payload.customerMobile || payload.mobile || '',
+    };
+  }
+
   if (!customer) {
     return {
       statusCode: 401,
