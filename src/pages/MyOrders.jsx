@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getOrdersApi, getUserOrdersApi } from '../services/orderService';
+import { getUserOrdersApi } from '../services/orderService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
+import CelebrationJourney from '../components/CelebrationJourney';
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
@@ -66,7 +67,7 @@ function MyOrders() {
         <div className="section__heading section__heading--left">
           <span className="eyebrow">My orders</span>
           <h1>Booking history</h1>
-          <p>Your recent decoration bookings and their current status.</p>
+          <p>Your recent decoration bookings and their celebration progress journey.</p>
         </div>
 
         {orders.length === 0 ? (
@@ -81,8 +82,8 @@ function MyOrders() {
               const bookingId = order.orderId || order.id || 'DFC-000000';
               const transactionId = order.razorpayPaymentId || order.transactionId || (order.paymentStatus?.includes('PAID') ? `pay_test_${bookingId.replace(/\D/g, '') || '18413697'}` : 'Pending');
               const packageName = order.decorationName || order.items?.[0]?.productName || 'DecorFesto Package';
-              const eventDate = order.date || order.items?.[0]?.date || 'Pending';
-              const eventTime = order.time || order.items?.[0]?.time || 'Pending';
+              const eventDate = order.scheduledDate || order.date || order.items?.[0]?.date || 'Pending';
+              const eventTime = order.scheduledTime || order.time || order.items?.[0]?.time || 'Pending';
               const isPaid = (order.paymentStatus || '').toUpperCase().includes('PAID');
 
               return (
@@ -130,9 +131,12 @@ function MyOrders() {
                     </div>
                   </div>
 
-                  <div className="auth-actions" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  {/* ELEGANT DECORATION CELEBRATION JOURNEY */}
+                  <CelebrationJourney order={order} />
+
+                  <div className="auth-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
                     <Link to={`/my-orders/${order.id}`} className="button button--ghost" style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
-                      View Details →
+                      View Full Details →
                     </Link>
                   </div>
                 </div>

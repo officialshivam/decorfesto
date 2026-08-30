@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getOrderByIdApi } from '../services/orderService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
+import CelebrationJourney from '../components/CelebrationJourney';
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
@@ -248,8 +249,11 @@ function MyOrderDetail() {
             </div>
           </div>
 
+          {/* CELEBRATION JOURNEY TRACKER */}
+          <CelebrationJourney order={order} />
+
           {/* 4. PRICE BREAKDOWN */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '12px', marginBottom: '24px' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '12px', marginTop: '24px', marginBottom: '24px' }}>
             <h3 style={{ fontSize: '1.05rem', color: '#0f172a', marginTop: 0, marginBottom: '14px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
               Price Details
             </h3>
