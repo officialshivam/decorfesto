@@ -109,9 +109,8 @@ export default function CelebrationJourney({ order }) {
 
   const isPaid = paymentStatus.includes('PAID') || paymentStatus.includes('SUCCESS');
   const isApproved = ['APPROVED', 'ADMIN_APPROVED', 'VENDOR_ASSIGNED', 'ASSIGNED_TO_VENDOR', 'VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
-  const isVendorAssigned = Boolean(order.vendorId) || ['VENDOR_ASSIGNED', 'ASSIGNED_TO_VENDOR', 'VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
-  const isPreparation = ['IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
-  const isReady = ['READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
+  const isVendorAccepted = Boolean(order.vendorId) || ['VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
+  const isDecorationStarted = ['IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
   const isCompleted = bookingStatus === 'COMPLETED';
   const isCancelled = ['CANCELLED', 'REJECTED'].includes(bookingStatus);
 
@@ -136,27 +135,33 @@ export default function CelebrationJourney({ order }) {
     firstItem.timeSlot ||
     firstItem.time ||
     firstItem.time_slot;
-  const deliveryAddress = order.deliveryAddress || order.address || order.items?.[0]?.address || '';
-  const pincode = order.pincode || order.items?.[0]?.pincode || '';
 
   const eventDateText = rawDate ? formatDisplayDate(rawDate) : 'Event date not scheduled yet';
   const eventTimeText = rawTime ? String(rawTime).trim() : 'Time slot not scheduled yet';
 
-  // Determine current active milestone index (0 to 6)
+  // Determine current active milestone index (0 to 5 for 6 milestones)
   let currentIndex = 0;
   if (isCompleted) {
-    currentIndex = 6;
-  } else if (isReady) {
     currentIndex = 5;
-  } else if (isPreparation) {
+  } else if (isDecorationStarted || isVendorAccepted) {
     currentIndex = 4;
-  } else if (isVendorAssigned || isApproved) {
-    currentIndex = 3;
+  } else if (isApproved) {
+    currentIndex = 2;
   } else if (isPaid) {
     currentIndex = 2;
   } else {
     currentIndex = 0;
   }
+
+  const currentStatusTitle = isCompleted
+    ? 'Decoration Completed'
+    : isDecorationStarted
+      ? 'Decoration In Progress'
+      : isVendorAccepted
+        ? 'Decoration Pending'
+        : isApproved || isPaid
+          ? 'Booking Approved'
+          : 'Booking Placed';
 
   const milestones = [
     {
@@ -184,7 +189,7 @@ export default function CelebrationJourney({ order }) {
       nextText: 'Vendor Partner Assignment',
     },
     {
-      title: 'Vendor Assignment',
+      title: 'Vendor Assigned',
       shortTitle: 'Vendor',
       desc: 'Decoration partner assigned.',
       icon: '♡',
@@ -192,25 +197,17 @@ export default function CelebrationJourney({ order }) {
       nextText: 'Decoration Setup',
     },
     {
-      title: 'Decoration In Progress',
+      title: isDecorationStarted ? 'Decoration In Progress' : 'Decoration Pending',
       shortTitle: 'Decoration',
-      desc: 'Setup being prepared.',
+      desc: isDecorationStarted ? 'Decorators are crafting and arranging your setup.' : 'Awaiting decorator arrival.',
       icon: '🎨',
-      explanation: 'Decorators are crafting and arranging your balloons & props.',
-      nextText: `Event Day Setup (${eventDateText} • ${eventTimeText})`,
+      explanation: isDecorationStarted ? 'Decorators are crafting and arranging your balloons & props.' : `Scheduled for setup on ${eventDateText} • ${eventTimeText}.`,
+      nextText: 'Decoration Completion',
     },
     {
-      title: 'Event Day Setup',
-      shortTitle: 'Event Day',
-      desc: `${eventDateText} • ${eventTimeText}`,
-      icon: '✦',
-      explanation: 'Decorator team is arriving at your venue for setup.',
-      nextText: 'Celebration Completion',
-    },
-    {
-      title: 'Celebration Completed',
-      shortTitle: 'Celebration',
-      desc: 'Your decoration journey is complete!',
+      title: 'Decoration Completed',
+      shortTitle: 'Decoration Completed',
+      desc: 'Your decoration setup is fully complete!',
       icon: '✨',
       explanation: 'Your decoration setup is fully ready!',
       nextText: null,
@@ -272,7 +269,7 @@ export default function CelebrationJourney({ order }) {
             🚂 Celebration Journey Progress Tracker
           </span>
           <h3 style={{ margin: '4px 0 0', fontSize: '1.25rem', fontWeight: '800', color: '#1e293b' }}>
-            Current Status: <span style={{ color: '#be123c', fontWeight: '800' }}>{isCompleted ? 'Celebration Completed' : currentMilestone.title}</span>
+            Current Status: <span style={{ color: '#be123c', fontWeight: '800' }}>{currentStatusTitle}</span>
           </h3>
         </div>
       </div>
