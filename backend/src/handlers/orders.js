@@ -88,26 +88,33 @@ export async function createOrder({ req }) {
     ? 'ORDER_RECEIVED'
     : (payload.bookingStatus || 'ORDER_RECEIVED');
 
-  const order = {
-    id: targetId,
-    orderId: targetId,
-    customerId: validCustomerId,
-    customerName,
-    customerEmail,
-    customerPhone,
-    customerMobile: customerPhone,
-    decorationId: payload.decorationId || payload.productId || payload.items?.[0]?.id || '1',
-    decorationName: payload.decorationName || payload.items?.[0]?.productName || 'DecorFesto Package',
-    customization: payload.customization || payload.items?.[0]?.customization || {},
-    items: Array.isArray(payload.items) ? payload.items : [],
-    pincode: String(payload.pincode || '').trim(),
-    scheduledDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
-    eventDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
-    scheduledTime: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
-    timeSlot: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
-    deliveryAddress: payload.deliveryAddress || payload.address || '',
-    address: payload.deliveryAddress || payload.address || '',
-    remarks: String(payload.remarks || payload.items?.[0]?.remarks || payload.items?.[0]?.customization?.remarks || '').trim(),
+    const userRemarks = String(payload.remarks || payload.items?.[0]?.remarks || payload.items?.[0]?.customization?.remarks || '').trim();
+    const rawCustomization = payload.customization || payload.items?.[0]?.customization || {};
+    const customizationObj = typeof rawCustomization === 'object' && rawCustomization !== null ? { ...rawCustomization } : {};
+    if (userRemarks) {
+      customizationObj.remarks = userRemarks;
+    }
+
+    const order = {
+      id: targetId,
+      orderId: targetId,
+      customerId: validCustomerId,
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerMobile: customerPhone,
+      decorationId: payload.decorationId || payload.productId || payload.items?.[0]?.id || '1',
+      decorationName: payload.decorationName || payload.items?.[0]?.productName || 'DecorFesto Package',
+      customization: customizationObj,
+      items: Array.isArray(payload.items) ? payload.items : [],
+      pincode: String(payload.pincode || '').trim(),
+      scheduledDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
+      eventDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
+      scheduledTime: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
+      timeSlot: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
+      deliveryAddress: payload.deliveryAddress || payload.address || '',
+      address: payload.deliveryAddress || payload.address || '',
+      remarks: userRemarks,
     subtotal: Number(payload.subtotal || 0),
     serviceCharge: Number(payload.serviceCharge || payload.serviceCharges || 299),
     serviceCharges: Number(payload.serviceCharge || payload.serviceCharges || 299),

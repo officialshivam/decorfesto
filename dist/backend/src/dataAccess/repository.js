@@ -52,7 +52,7 @@ export const columnMaps = {
     scheduledTime: 'scheduled_time',
     deliveryAddress: 'address',
     address: 'address',
-    remarks: 'remarks',
+    remarks: '__ignore__',
     subtotal: 'subtotal',
     serviceCharge: 'service_charge',
     totalAmount: 'total_amount',
