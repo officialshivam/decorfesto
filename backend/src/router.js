@@ -2,7 +2,7 @@ import { listDecorations, getDecoration } from './handlers/decorations.js';
 import { createCustomer, getCustomer } from './handlers/customers.js';
 import { listVendors, getVendor, createVendor, updateVendor } from './handlers/vendors.js';
 import { createServiceArea, getServiceArea, listServiceAreaVendors, listServiceAreas, deleteServiceArea } from './handlers/serviceAreas.js';
-import { createOrder, getOrder, listOrders, listAdminOrders, updateOrderStatus } from './handlers/orders.js';
+import { createOrder, getOrder, listOrders, listAdminOrders, getAdminOrderDetails, updateOrderStatus } from './handlers/orders.js';
 import { checkAvailability } from './handlers/availability.js';
 import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
