@@ -33,7 +33,7 @@ export async function getVendorOrders({ req }) {
   const role = getUserRole(req.headers);
   const vendorAuth = getAuthenticatedVendor(req.headers);
 
-  if (role !== 'VENDOR' || !vendorAuth || (!vendorAuth.vendorId && !vendorAuth.id)) {
+  if (!vendorAuth || (!vendorAuth.vendorId && !vendorAuth.id)) {
     return { statusCode: 401, body: { error: 'Vendor authentication required.' } };
   }
 
@@ -68,7 +68,7 @@ export async function getVendorOrderDetails({ req, params }) {
   const role = getUserRole(req.headers);
   const vendorAuth = getAuthenticatedVendor(req.headers);
 
-  if (role !== 'VENDOR' || !vendorAuth || (!vendorAuth.vendorId && !vendorAuth.id)) {
+  if (!vendorAuth || (!vendorAuth.vendorId && !vendorAuth.id)) {
     return { statusCode: 401, body: { error: 'Vendor authentication required.' } };
   }
 
@@ -93,7 +93,7 @@ export async function updateVendorOrderStatus({ req, params }) {
   const role = getUserRole(req.headers);
   const vendorAuth = getAuthenticatedVendor(req.headers);
 
-  if (role !== 'VENDOR' || !vendorAuth || (!vendorAuth.vendorId && !vendorAuth.id)) {
+  if (!vendorAuth || (!vendorAuth.vendorId && !vendorAuth.id)) {
     return { statusCode: 401, body: { error: 'Vendor authentication required.' } };
   }
 
@@ -190,7 +190,7 @@ export async function getVendorProfile({ req }) {
   const role = getUserRole(req.headers);
   const vendorAuth = getAuthenticatedVendor(req.headers);
 
-  if (role !== 'VENDOR' || !vendorAuth || !vendorAuth.vendorId) {
+  if (!vendorAuth || (!vendorAuth.vendorId && !vendorAuth.id)) {
     return { statusCode: 401, body: { error: 'Vendor authentication required.' } };
   }
 

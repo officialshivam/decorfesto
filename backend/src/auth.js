@@ -417,9 +417,11 @@ export async function vendorLogin({ req }) {
   }
 
   const token = createVendorSessionToken(matched);
+  const isSecure = (req && req.headers && req.headers['x-forwarded-proto'] === 'https') || process.env.NODE_ENV === 'production';
+  const cookieFlags = `Path=/; Max-Age=86400; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}`;
   return {
     statusCode: 200,
-    headers: { 'Set-Cookie': `decorfesto_vendor_session=${token}; Path=/; HttpOnly; SameSite=Lax` },
+    headers: { 'Set-Cookie': `decorfesto_vendor_session=${token}; ${cookieFlags}` },
     body: {
       success: true,
       role: 'VENDOR',
