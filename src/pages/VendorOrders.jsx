@@ -27,6 +27,7 @@ export default function VendorOrders() {
   const { vendorUser } = useVendorAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -34,8 +35,14 @@ export default function VendorOrders() {
     async function loadData() {
       if (vendorUser?.id) {
         setLoading(true);
+        setError(null);
         const res = await fetchVendorOrdersApi(vendorUser.id);
-        setOrders(res.orders || []);
+        if (res.ok) {
+          setOrders(res.orders || []);
+        } else {
+          setOrders([]);
+          setError(res.error || 'Failed to load assigned orders.');
+        }
         setLoading(false);
       }
     }
@@ -132,7 +139,12 @@ export default function VendorOrders() {
 
       {/* ORDERS TABLE CONTAINER */}
       <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-        {loading ? (
+        {error ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: '#be123c', background: '#fff1f2' }}>
+            <p style={{ margin: '0 0 12px 0', fontWeight: '700' }}>{error}</p>
+            <Link to="/vendor/login" style={{ background: '#be123c', color: '#fff', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700' }}>Re-login to Vendor Portal</Link>
+          </div>
+        ) : loading ? (
           <div style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>Loading assigned orders...</div>
         ) : filteredOrders.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>

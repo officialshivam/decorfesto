@@ -27,13 +27,20 @@ export default function VendorDashboard() {
   const { vendorUser } = useVendorAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function loadData() {
       if (vendorUser?.id) {
         setLoading(true);
+        setError(null);
         const res = await fetchVendorOrdersApi(vendorUser.id);
-        setOrders(res.orders || []);
+        if (res.ok) {
+          setOrders(res.orders || []);
+        } else {
+          setOrders([]);
+          setError(res.error || 'Failed to load assigned orders.');
+        }
         setLoading(false);
       }
     }
@@ -61,6 +68,12 @@ export default function VendorDashboard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {error && (
+        <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', color: '#be123c', padding: '16px 20px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{error}</span>
+          <Link to="/vendor/login" style={{ background: '#be123c', color: '#fff', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700' }}>Re-login</Link>
+        </div>
+      )}
       {/* HEADER SECTION */}
       <div
         style={{

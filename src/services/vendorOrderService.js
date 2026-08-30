@@ -62,8 +62,14 @@ export async function fetchVendorOrdersApi(_vendorInput) {
       const data = await res.json();
       return { ok: true, orders: data.orders || [] };
     }
+    const isUnauth = res.status === 401 || res.status === 403;
     const errData = await res.json().catch(() => ({}));
-    return { ok: false, orders: [], error: errData.error || 'Failed to fetch vendor orders.' };
+    return {
+      ok: false,
+      unauthorized: isUnauth,
+      orders: [],
+      error: errData.error || (isUnauth ? 'Vendor session expired. Please log in again.' : 'Failed to fetch vendor orders.'),
+    };
   } catch (err) {
     return { ok: false, orders: [], error: err.message || 'Unable to connect to vendor orders server.' };
   }
