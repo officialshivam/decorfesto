@@ -80,10 +80,15 @@ export const allowedOrigins = new Set([
 
 export function getCorsOrigin(reqHeaders = {}) {
   const origin = reqHeaders.origin || reqHeaders.Origin;
-  if (origin && allowedOrigins.has(origin)) {
+  if (!origin) return 'https://decorfesto.com';
+  if (
+    allowedOrigins.has(origin) ||
+    origin.endsWith('.hostingersite.com') ||
+    origin.includes('decorfesto')
+  ) {
     return origin;
   }
-  return process.env.DECORFESTO_ALLOWED_ORIGIN || 'https://decorfesto.com';
+  return process.env.DECORFESTO_ALLOWED_ORIGIN || origin;
 }
 
 export function getCorsHeaders(reqHeaders = {}) {

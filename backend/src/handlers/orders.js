@@ -124,11 +124,19 @@ export async function createOrder({ req }) {
     updatedAt: new Date().toISOString(),
   };
 
-  const createdOrder = await repository.create(order);
-  return {
-    statusCode: 201,
-    body: { order: createdOrder || order },
-  };
+  try {
+    const createdOrder = await repository.create(order);
+    return {
+      statusCode: 201,
+      body: { order: createdOrder || order },
+    };
+  } catch (err) {
+    console.error('❌ Failed to insert order into repository/MySQL database:', err);
+    return {
+      statusCode: 500,
+      body: { error: `Database error creating order: ${err?.message || err}` },
+    };
+  }
 }
 
 export async function getOrder({ req, params }) {
