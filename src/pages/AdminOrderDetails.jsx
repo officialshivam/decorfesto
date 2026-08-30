@@ -4,6 +4,7 @@ import { getStoredCharges } from '../services/chargeService';
 import { getOrderById, getAdminOrderByIdApi, updateAdminOrderStatusApi } from '../services/orderService';
 import { getAllUsersForAdminApi } from '../services/userService';
 import { getVendorsApi } from '../services/vendorAuthService';
+import { formatDisplayDate } from '../utils/dateTimeUtils';
 
 function AdminOrderDetails() {
   const { id } = useParams();
@@ -87,6 +88,30 @@ function AdminOrderDetails() {
   const linkedUser = users.find((u) => u.id === order.customerId || (u.email && u.email === order.customerEmail));
   const customerPhone = order.customerPhone || order.customerMobile || order.phone || order.mobile || linkedUser?.mobile || linkedUser?.phone || 'Not provided';
   const customerEmail = order.customerEmail || order.email || linkedUser?.email || 'Not provided';
+
+  const firstItem = order.items?.[0] || {};
+  const rawDate =
+    order.scheduledDate ||
+    order.eventDate ||
+    order.date ||
+    order.event_date ||
+    firstItem.scheduledDate ||
+    firstItem.eventDate ||
+    firstItem.date ||
+    firstItem.event_date;
+
+  const rawTime =
+    order.scheduledTime ||
+    order.timeSlot ||
+    order.time ||
+    order.time_slot ||
+    firstItem.scheduledTime ||
+    firstItem.timeSlot ||
+    firstItem.time ||
+    firstItem.time_slot;
+
+  const dateDisplay = rawDate ? formatDisplayDate(rawDate) : 'TBD';
+  const timeDisplay = rawTime ? String(rawTime).trim() : 'TBD';
 
   const handleConfirmAction = async () => {
     if (!confirmModal) return;
@@ -190,9 +215,9 @@ function AdminOrderDetails() {
             <div className="summary-box__row"><span>Customer Name</span><strong>{order.customerName || 'Guest Customer'}</strong></div>
             <div className="summary-box__row"><span>Phone Number</span><strong style={{ color: '#0f172a', fontWeight: '700' }}>{customerPhone}</strong></div>
             <div className="summary-box__row"><span>Email Address</span><strong>{customerEmail}</strong></div>
-            <div className="summary-box__row"><span>Decoration Package</span><strong>{order.decorationName || 'Decoration Setup'}</strong></div>
-            <div className="summary-box__row"><span>Scheduled Date</span><strong>{order.scheduledDate || order.date || 'TBD'}</strong></div>
-            <div className="summary-box__row"><span>Time Slot</span><strong>{order.scheduledTime || order.time || 'TBD'}</strong></div>
+            <div className="summary-box__row"><span>Decoration Package</span><strong>{order.decorationName || firstItem.productName || 'Decoration Setup'}</strong></div>
+            <div className="summary-box__row"><span>Scheduled Date</span><strong>{dateDisplay}</strong></div>
+            <div className="summary-box__row"><span>Time Slot</span><strong>{timeDisplay}</strong></div>
             <div className="summary-box__row"><span>Delivery Address</span><strong>{order.deliveryAddress || order.address || 'Address provided'}</strong></div>
             <div className="summary-box__row"><span>Pincode</span><strong>{order.pincode || 'N/A'}</strong></div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getOrdersApi } from '../services/orderService';
+import { formatDisplayDate } from '../utils/dateTimeUtils';
 
 function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState('All');
@@ -62,26 +63,40 @@ function AdminOrders() {
                 </tr>
               </thead>
               <tbody>
-                {visibleOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td>{order.id}</td>
-                    <td>
-                      <strong>{order.customerName}</strong>
-                      {order.customerEmail ? <small>{order.customerEmail}</small> : null}
-                    </td>
-                    <td>{order.decorationName || order.items?.[0]?.productName || 'DecorFesto package'}</td>
-                    <td>{order.date || order.items?.[0]?.date || 'Pending'}</td>
-                    <td>₹{Number(order.total || 0).toLocaleString('en-IN')}</td>
-                    <td>{order.paymentStatus || 'Pending'}</td>
-                    <td><span className="status-pill">{order.bookingStatus || 'Order Received'}</span></td>
-                    <td>{order.vendorName || order.vendorId || 'Unassigned'}</td>
-                    <td>
-                      <Link to={`/admin/orders/${order.id}`} className="button button--small button--ghost">
-                        View Details
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {visibleOrders.map((order) => {
+                  const firstItem = order.items?.[0] || {};
+                  const rawDate =
+                    order.scheduledDate ||
+                    order.eventDate ||
+                    order.date ||
+                    order.event_date ||
+                    firstItem.scheduledDate ||
+                    firstItem.eventDate ||
+                    firstItem.date ||
+                    firstItem.event_date;
+                  const dateDisplay = rawDate ? formatDisplayDate(rawDate) : 'Pending';
+
+                  return (
+                    <tr key={order.id}>
+                      <td>{order.id}</td>
+                      <td>
+                        <strong>{order.customerName}</strong>
+                        {order.customerEmail ? <small>{order.customerEmail}</small> : null}
+                      </td>
+                      <td>{order.decorationName || firstItem.productName || 'DecorFesto package'}</td>
+                      <td>{dateDisplay}</td>
+                      <td>₹{Number(order.total || 0).toLocaleString('en-IN')}</td>
+                      <td>{order.paymentStatus || 'Pending'}</td>
+                      <td><span className="status-pill">{order.bookingStatus || 'Order Received'}</span></td>
+                      <td>{order.vendorName || order.vendorId || 'Unassigned'}</td>
+                      <td>
+                        <Link to={`/admin/orders/${order.id}`} className="button button--small button--ghost">
+                          View Details
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

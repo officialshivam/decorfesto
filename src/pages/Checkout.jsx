@@ -148,6 +148,10 @@ function Checkout() {
       const chargesTotal = serviceCharges;
       const finalTotal = calculatedSubtotal + chargesTotal;
 
+      const firstCartItem = items[0] || {};
+      const selectedDate = firstCartItem.date || firstCartItem.scheduledDate || firstCartItem.eventDate || '';
+      const selectedTime = firstCartItem.time || firstCartItem.scheduledTime || firstCartItem.timeSlot || '';
+
       const orderId = `DFC-${Date.now().toString().slice(-6)}`;
       const order = {
         id: orderId,
@@ -158,6 +162,12 @@ function Checkout() {
         customerEmail: form.email.trim(),
         address: `${form.address.trim()}, ${form.city}, ${form.state}`,
         pincode: form.pincode.trim(),
+        scheduledDate: selectedDate,
+        eventDate: selectedDate,
+        date: selectedDate,
+        scheduledTime: selectedTime,
+        timeSlot: selectedTime,
+        time: selectedTime,
         items: JSON.parse(JSON.stringify(items)),
         subtotal: calculatedSubtotal,
         total: finalTotal,
