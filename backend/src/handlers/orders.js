@@ -229,6 +229,12 @@ export async function listOrders({ req }) {
   };
 }
 
+export function isTerminalOrderStatus(status) {
+  if (!status) return false;
+  const s = String(status).toUpperCase().trim();
+  return ['COMPLETED', 'CANCELLED', 'REJECTED'].includes(s);
+}
+
 export async function updateOrderStatus({ req, params }) {
   const role = getUserRole(req.headers);
   if (role !== 'admin') {
@@ -239,6 +245,23 @@ export async function updateOrderStatus({ req, params }) {
   }
 
   const repository = createRepository('orders');
+  const targetId = params[0];
+  const existingOrder = await repository.getByIdOrOrderId(targetId);
+
+  if (!existingOrder) {
+    return {
+      statusCode: 404,
+      body: { error: 'Order not found.' },
+    };
+  }
+
+  if (isTerminalOrderStatus(existingOrder.bookingStatus)) {
+    return {
+      statusCode: 409,
+      body: { error: `Order is in terminal state "${existingOrder.bookingStatus}" and cannot be modified.` },
+    };
+  }
+
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
   const updates = {
     updatedAt: new Date().toISOString(),
@@ -249,17 +272,10 @@ export async function updateOrderStatus({ req, params }) {
   if (payload.vendorName !== undefined) updates.vendorName = payload.vendorName;
   if (payload.vendorId && !payload.vendorAssignedAt) updates.vendorAssignedAt = new Date().toISOString();
 
-  const updatedOrder = await repository.update(params[0], updates);
-
-  if (!updatedOrder) {
-    return {
-      statusCode: 404,
-      body: { error: 'Order not found.' },
-    };
-  }
+  const updatedOrder = await repository.update(existingOrder.id || targetId, updates);
 
   return {
     statusCode: 200,
-    body: { order: updatedOrder },
+    body: { order: updatedOrder || { ...existingOrder, ...updates } },
   };
 }

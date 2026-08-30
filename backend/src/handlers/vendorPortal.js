@@ -129,8 +129,9 @@ export async function updateVendorOrderStatus({ req, params }) {
   const currentStatus = order.bookingStatus || 'CREATED';
   const targetStatus = String(payload.bookingStatus || payload.status || '').toUpperCase();
 
-  if (currentStatus === 'COMPLETED') {
-    return { statusCode: 400, body: { error: 'Completed orders cannot be modified.' } };
+  const terminalStatuses = ['COMPLETED', 'CANCELLED', 'REJECTED'];
+  if (terminalStatuses.includes(String(currentStatus).toUpperCase())) {
+    return { statusCode: 409, body: { error: `Order is in terminal state "${currentStatus}" and cannot be modified.` } };
   }
 
   // Allowed transitions state machine

@@ -239,114 +239,153 @@ function AdminOrderDetails() {
           </div>
         </div>
 
-        {/* DEDICATED ORDER ACTIONS CARD */}
-        <div className="card-panel" style={{ marginTop: '24px', padding: '24px', borderRadius: '16px', border: '1px solid #cbd5e1', background: '#ffffff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#0f172a' }}>Order Actions</h3>
-              <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: '#64748b' }}>Approve or reject this booking to update order workflow status.</p>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Current Booking Status:</span>
-              <span className="status-pill" style={{ fontSize: '0.88rem', fontWeight: '800', padding: '6px 14px', borderRadius: '20px', background: order.bookingStatus === 'APPROVED' ? '#dcfce7' : order.bookingStatus === 'CANCELLED' ? '#fee2e2' : '#fef3c7', color: order.bookingStatus === 'APPROVED' ? '#15803d' : order.bookingStatus === 'CANCELLED' ? '#b91c1c' : '#b45309' }}>
-                {order.bookingStatus || 'CREATED'}
-              </span>
-            </div>
-          </div>
+          {/* DEDICATED ORDER ACTIONS CARD */}
+        {(() => {
+          const currentStatusUpper = String(order.bookingStatus || '').toUpperCase();
+          const isTerminal = ['COMPLETED', 'CANCELLED', 'REJECTED'].includes(currentStatusUpper);
+          const isCompleted = currentStatusUpper === 'COMPLETED';
 
-          {actionSuccess && (
-            <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '12px 16px' }}>
-              ✓ {actionSuccess}
-            </div>
-          )}
-
-          {actionError && (
-            <div className="admin-error-banner" style={{ marginBottom: '16px', padding: '12px 16px' }}>
-              ✕ {actionError}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginTop: '16px' }}>
-            <button
-              type="button"
-              className="button"
-              style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', color: '#ffffff', border: 'none', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)', cursor: 'pointer' }}
-              onClick={() => { setConfirmModal('APPROVE'); setActionError(''); setActionSuccess(''); }}
-              disabled={isSubmittingAction}
-            >
-              ✓ Approve Order
-            </button>
-
-            <button
-              type="button"
-              className="button"
-              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', cursor: 'pointer' }}
-              onClick={() => { setConfirmModal('REJECT'); setActionError(''); setActionSuccess(''); }}
-              disabled={isSubmittingAction}
-            >
-              ✕ Reject Order
-            </button>
-
-            <Link to="/admin/orders" style={{ marginLeft: 'auto', fontSize: '0.9rem', color: '#475569', textDecoration: 'none', fontWeight: '600' }}>
-              ← Back to orders
-            </Link>
-          </div>
-        </div>
-
-        {/* VENDOR ASSIGNMENT CARD (SEPARATE) */}
-        <div className="payment-card" style={{ marginTop: '24px', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>Vendor Partner Assignment</h3>
-          {vendorSuccess && (
-            <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '10px 14px' }}>
-              ✓ {vendorSuccess}
-            </div>
-          )}
-          {vendorError && (
-            <div className="admin-error-banner" style={{ marginBottom: '16px', padding: '10px 14px' }}>
-              ✕ {vendorError}
-            </div>
-          )}
-          {activeVendors.length === 0 ? (
-            <p>No active vendors are available.</p>
-          ) : (
+          return (
             <>
-              <label className="search-field">
-                <span>Active vendor partners</span>
-                <select value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
-                  <option value="">Select a vendor partner</option>
-                  {activeVendors.map((vendor) => {
-                    const servesPincode = order.pincode && (vendor.servicePincodes || []).includes(order.pincode);
-                    return (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.name} ({vendor.id}) {servesPincode ? '✓ Serves Pincode' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-              {selectedVendor ? (
-                <div className="summary-box admin-order-vendor-summary" style={{ marginTop: '12px', background: '#ffffff' }}>
-                  <div className="summary-box__row"><span>Vendor</span><strong>{selectedVendor.name} ({selectedVendor.id})</strong></div>
-                  <div className="summary-box__row"><span>Specialities</span><strong>{selectedVendor.specialties?.join(', ') || 'Not provided'}</strong></div>
-                  <div className="summary-box__row"><span>Service Pincodes</span><strong>{selectedVendor.servicePincodes?.join(', ') || 'Not provided'}</strong></div>
-                  <div className="summary-box__row">
-                    <span>Booking Pincode Match</span>
-                    <strong style={{ color: order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode) ? '#166534' : '#b91c1c' }}>
-                      {order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode)
-                        ? `✓ Serves booking pincode ${order.pincode}`
-                        : `⚠️ Outside service area (Booking Pincode: ${order.pincode || 'N/A'})`}
-                    </strong>
+              <div className="card-panel" style={{ marginTop: '24px', padding: '24px', borderRadius: '16px', border: '1px solid #cbd5e1', background: '#ffffff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#0f172a' }}>Order Actions</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: '#64748b' }}>
+                      {isTerminal ? 'Booking workflow status is locked in terminal state.' : 'Approve or reject this booking to update order workflow status.'}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Current Booking Status:</span>
+                    <span className="status-pill" style={{ fontSize: '0.88rem', fontWeight: '800', padding: '6px 14px', borderRadius: '20px', background: isCompleted ? '#dcfce7' : isTerminal ? '#fee2e2' : order.bookingStatus === 'APPROVED' ? '#dcfce7' : '#fef3c7', color: isCompleted ? '#15803d' : isTerminal ? '#b91c1c' : order.bookingStatus === 'APPROVED' ? '#15803d' : '#b45309' }}>
+                      {order.bookingStatus || 'CREATED'}
+                    </span>
                   </div>
                 </div>
-              ) : null}
-              <button type="button" className="button" onClick={handleVendorAssignment} disabled={!selectedVendor || isSubmittingVendor} style={{ marginTop: '12px' }}>
-                {isSubmittingVendor
-                  ? 'Updating vendor…'
-                  : (order.vendorId ? 'Reassign / Change Vendor Partner' : 'Assign Vendor Partner')}
-              </button>
+
+                {actionSuccess && (
+                  <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '12px 16px' }}>
+                    ✓ {actionSuccess}
+                  </div>
+                )}
+
+                {actionError && (
+                  <div className="admin-error-banner" style={{ marginBottom: '16px', padding: '12px 16px' }}>
+                    ✕ {actionError}
+                  </div>
+                )}
+
+                {isTerminal ? (
+                  <div style={{
+                    background: isCompleted ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : '#fef2f2',
+                    border: isCompleted ? '1px solid #bbf7d0' : '1px solid #fecdd3',
+                    padding: '20px 24px',
+                    borderRadius: '14px',
+                  }}>
+                    <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: isCompleted ? '#166534' : '#9f1239', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {isCompleted ? '✨ ORDER COMPLETED' : '⚠️ ORDER TERMINATED'}
+                    </h4>
+                    <p style={{ margin: '6px 0 0', fontSize: '0.92rem', color: isCompleted ? '#15803d' : '#be123c', lineHeight: '1.5' }}>
+                      {isCompleted
+                        ? 'This decoration booking has been fully completed. No further workflow changes or status updates are allowed.'
+                        : `This booking is in terminal state "${order.bookingStatus}". No further status actions are permitted.`}
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', marginTop: '16px' }}>
+                    <button
+                      type="button"
+                      className="button"
+                      style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', color: '#ffffff', border: 'none', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)', cursor: 'pointer' }}
+                      onClick={() => { setConfirmModal('APPROVE'); setActionError(''); setActionSuccess(''); }}
+                      disabled={isSubmittingAction}
+                    >
+                      ✓ Approve Order
+                    </button>
+
+                    <button
+                      type="button"
+                      className="button"
+                      style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '10px 24px', fontSize: '0.95rem', fontWeight: '700', borderRadius: '10px', cursor: 'pointer' }}
+                      onClick={() => { setConfirmModal('REJECT'); setActionError(''); setActionSuccess(''); }}
+                      disabled={isSubmittingAction}
+                    >
+                      ✕ Reject Order
+                    </button>
+
+                    <Link to="/admin/orders" style={{ marginLeft: 'auto', fontSize: '0.9rem', color: '#475569', textDecoration: 'none', fontWeight: '600' }}>
+                      ← Back to orders
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* VENDOR ASSIGNMENT CARD (SEPARATE) */}
+              <div className="payment-card" style={{ marginTop: '24px', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                <h3 style={{ margin: '0 0 12px', fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>Vendor Partner Assignment</h3>
+                {vendorSuccess && (
+                  <div className="admin-success-banner" style={{ marginBottom: '16px', padding: '10px 14px' }}>
+                    ✓ {vendorSuccess}
+                  </div>
+                )}
+                {vendorError && (
+                  <div className="admin-error-banner" style={{ marginBottom: '16px', padding: '10px 14px' }}>
+                    ✕ {vendorError}
+                  </div>
+                )}
+
+                {isTerminal ? (
+                  <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: '600', display: 'block' }}>Assigned Vendor Partner</span>
+                    <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{order.vendorName || 'No Vendor Assigned'}</strong>
+                    <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#16a34a', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      ✓ Assignment locked after completion/terminal state
+                    </div>
+                  </div>
+                ) : activeVendors.length === 0 ? (
+                  <p>No active vendors are available.</p>
+                ) : (
+                  <>
+                    <label className="search-field">
+                      <span>Active vendor partners</span>
+                      <select value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
+                        <option value="">Select a vendor partner</option>
+                        {activeVendors.map((vendor) => {
+                          const servesPincode = order.pincode && (vendor.servicePincodes || []).includes(order.pincode);
+                          return (
+                            <option key={vendor.id} value={vendor.id}>
+                              {vendor.name} ({vendor.id}) {servesPincode ? '✓ Serves Pincode' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </label>
+                    {selectedVendor ? (
+                      <div className="summary-box admin-order-vendor-summary" style={{ marginTop: '12px', background: '#ffffff' }}>
+                        <div className="summary-box__row"><span>Vendor</span><strong>{selectedVendor.name} ({selectedVendor.id})</strong></div>
+                        <div className="summary-box__row"><span>Specialities</span><strong>{selectedVendor.specialties?.join(', ') || 'Not provided'}</strong></div>
+                        <div className="summary-box__row"><span>Service Pincodes</span><strong>{selectedVendor.servicePincodes?.join(', ') || 'Not provided'}</strong></div>
+                        <div className="summary-box__row">
+                          <span>Booking Pincode Match</span>
+                          <strong style={{ color: order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode) ? '#166534' : '#b91c1c' }}>
+                            {order.pincode && (selectedVendor.servicePincodes || []).includes(order.pincode)
+                              ? `✓ Serves booking pincode ${order.pincode}`
+                              : `⚠️ Outside service area (Booking Pincode: ${order.pincode || 'N/A'})`}
+                          </strong>
+                        </div>
+                      </div>
+                    ) : null}
+                    <button type="button" className="button" onClick={handleVendorAssignment} disabled={!selectedVendor || isSubmittingVendor} style={{ marginTop: '12px' }}>
+                      {isSubmittingVendor
+                        ? 'Updating vendor…'
+                        : (order.vendorId ? 'Reassign / Change Vendor Partner' : 'Assign Vendor Partner')}
+                    </button>
+                  </>
+                )}
+              </div>
             </>
-          )}
-        </div>
+          );
+        })()}
 
         {/* AUDIT TIMELINE */}
         {Array.isArray(order.statusHistory) && order.statusHistory.length > 0 && (
