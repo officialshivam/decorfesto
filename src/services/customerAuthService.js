@@ -3,7 +3,7 @@ import { getApiBaseUrl } from './apiConfig.js';
 const API_BASE_URL = getApiBaseUrl();
 
 export function getCustomerAuthHeaders(customHeaders = {}) {
-  const headers = { ...customHeaders };
+  const headers = { Accept: 'application/json', ...customHeaders };
   try {
     const token = localStorage.getItem('decorfesto_customer_token') || localStorage.getItem('customer_token');
     if (token) {

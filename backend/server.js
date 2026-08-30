@@ -36,11 +36,6 @@ const distRoot = syncFs.existsSync(path.join(distCandidate, 'index.html'))
   : path.resolve(__dirname, '..');
 
 function isApiRequest(pathname, req) {
-  const acceptHeader = req?.headers?.accept || '';
-  if (acceptHeader.includes('text/html')) {
-    return false;
-  }
-
   const explicitApiPrefixes = [
     '/health',
     '/auth',
@@ -67,6 +62,12 @@ function isApiRequest(pathname, req) {
 
   if (pathname === '/orders' || pathname.startsWith('/orders/')) {
     return true;
+  }
+
+  // Non-API fallback only for browser GET document requests
+  const acceptHeader = req?.headers?.accept || '';
+  if (req?.method === 'GET' && acceptHeader.includes('text/html') && !acceptHeader.includes('application/json')) {
+    return false;
   }
 
   return false;
