@@ -5,6 +5,9 @@ const VENDOR_SESSION_KEY = 'decorfesto-vendor-user';
 export function getStoredVendorUser() {
   if (typeof window === 'undefined') return null;
   try {
+    const token = window.sessionStorage.getItem('decorfesto_vendor_token') || window.localStorage.getItem('decorfesto_vendor_token');
+    if (!token) return null;
+
     const raw = window.localStorage.getItem(VENDOR_SESSION_KEY);
     if (!raw) return null;
     const vendor = JSON.parse(raw);
