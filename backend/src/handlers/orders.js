@@ -1,5 +1,5 @@
 import { createRepository } from '../dataAccess/repository.js';
-import { getAuthenticatedUser, getAuthenticatedCustomer, getUserRole } from '../auth.js';
+import { getAuthenticatedUser, getAuthenticatedCustomer, getUserRole, extractTokenFromHeaders, verifyAdminSessionToken } from '../auth.js';
 
 function buildOrderId() {
   return `ORD-${Date.now().toString().slice(-8)}`;
@@ -172,10 +172,20 @@ export async function getOrder({ req, params }) {
 }
 
 export async function listOrders({ req }) {
+  const adminToken = extractTokenFromHeaders(req.headers, 'admin');
+  const isAdminAuthenticated = adminToken && verifyAdminSessionToken(adminToken);
   const customerAuth = getAuthenticatedCustomer(req.headers);
   const repository = createRepository('orders');
 
-  // Enforce customer order isolation whenever an authenticated customer session is present
+  // 1. If explicitly calling as Admin (via admin Authorization header or admin cookie without customer session), return all orders for Admin management
+  if (isAdminAuthenticated && (!customerAuth || req.headers.authorization || req.headers.Authorization)) {
+    return {
+      statusCode: 200,
+      body: { orders: await repository.list() },
+    };
+  }
+
+  // 2. If calling as an authenticated Customer, enforce strict customer order isolation
   if (customerAuth) {
     const cleanTokenId = String(customerAuth.id || '').trim().toLowerCase();
     const cleanTokenEmail = String(customerAuth.email || '').trim().toLowerCase();
@@ -199,6 +209,7 @@ export async function listOrders({ req }) {
     };
   }
 
+  // 3. Fallback for role-based Admin access
   const role = getUserRole(req.headers);
   if (role === 'admin') {
     return {
@@ -207,32 +218,9 @@ export async function listOrders({ req }) {
     };
   }
 
-  if (!userAuth) {
-    return {
-      statusCode: 401,
-      body: { error: 'Authentication required. Please log in to view orders.' },
-    };
-  }
-
-  const cleanTokenId = String(userAuth.id || '').trim().toLowerCase();
-  const cleanTokenEmail = String(userAuth.email || '').trim().toLowerCase();
-  const cleanTokenMobile = String(userAuth.mobile || userAuth.phone || '').replace(/\D/g, '').slice(-10);
-
-  const allOrders = await repository.list();
-  const customerOrders = (allOrders || []).filter((o) => {
-    const oCustId = String(o.customerId || '').trim().toLowerCase();
-    const oEmail = String(o.customerEmail || '').trim().toLowerCase();
-    const oMobile = String(o.customerPhone || o.customerMobile || '').replace(/\D/g, '').slice(-10);
-    return (
-      (cleanTokenId && oCustId && (oCustId === cleanTokenId || oCustId.replace(/^(cust|customer)-/, '') === cleanTokenId.replace(/^(cust|customer)-/, ''))) ||
-      (cleanTokenEmail && oEmail && oEmail === cleanTokenEmail) ||
-      (cleanTokenMobile && oMobile && oMobile === cleanTokenMobile)
-    );
-  });
-
   return {
-    statusCode: 200,
-    body: { orders: customerOrders },
+    statusCode: 401,
+    body: { error: 'Authentication required. Please log in to view orders.' },
   };
 }
 

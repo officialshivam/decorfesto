@@ -210,7 +210,7 @@ export async function validateActiveUserSession(headers = {}) {
   return { valid: true, role: userPayload.role || 'CUSTOMER', user: userPayload };
 }
 
-function extractTokenFromHeaders(headers = {}, targetRole = null) {
+export function extractTokenFromHeaders(headers = {}, targetRole = null) {
   for (const key of Object.keys(headers || {})) {
     if (key.toLowerCase() === 'cookie') {
       const cookieHeader = String(headers[key] || '');
