@@ -213,7 +213,7 @@ function MyOrderDetail() {
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <span className="status-pill" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', fontWeight: '700', padding: '6px 14px', borderRadius: '20px', fontSize: '0.88rem' }}>
-                ● {formatBookingStatus(order.bookingStatus)}
+                ● {formatBookingStatus(order.bookingStatus, 'customer', order.paymentStatus)}
               </span>
               <span className="status-pill" style={{ background: isPaid ? '#e0f2fe' : '#fef3c7', color: isPaid ? '#0369a1' : '#92400e', border: isPaid ? '1px solid #bae6fd' : '1px solid #fde68a', fontWeight: '700', padding: '6px 14px', borderRadius: '20px', fontSize: '0.88rem' }}>
                 ● {order.paymentStatus || 'PENDING'}

@@ -7,17 +7,21 @@ function getStatusBadge(status) {
   const s = String(status || '').toUpperCase();
   switch (s) {
     case 'VENDOR_ASSIGNED':
+    case 'ASSIGNED_TO_VENDOR':
       return { label: 'Pending Acceptance', bg: '#fef3c7', text: '#d97706' };
     case 'VENDOR_ACCEPTED':
-      return { label: 'Accepted', bg: '#e0f2fe', text: '#0284c7' };
+    case 'ACCEPTED':
+      return { label: 'Accepted / Ready to Start', bg: '#e0f2fe', text: '#0284c7' };
     case 'IN_PROGRESS':
-      return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'READY_FOR_SETUP':
+    case 'START_PREPARATION':
       return { label: 'Decoration In Progress', bg: '#e0e7ff', text: '#4338ca' };
     case 'COMPLETED':
-      return { label: 'Celebration Completed', bg: '#dcfce7', text: '#15803d' };
+      return { label: 'Decoration Completed', bg: '#dcfce7', text: '#15803d' };
     case 'VENDOR_DECLINED':
-      return { label: 'Declined by Vendor', bg: '#fee2e2', text: '#b91c1c' };
+    case 'CANCELLED':
+    case 'REJECTED':
+      return { label: 'Cancelled', bg: '#fee2e2', text: '#b91c1c' };
     default:
       return { label: status || 'Assigned', bg: '#f1f5f9', text: '#475569' };
   }

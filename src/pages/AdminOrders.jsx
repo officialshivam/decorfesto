@@ -19,10 +19,10 @@ function AdminOrders() {
     loadOrders();
   }, []);
 
-  const statuses = ['All', ...new Set(orders.map((order) => formatBookingStatus(order.bookingStatus)))];
+  const statuses = ['All', ...new Set(orders.map((order) => formatBookingStatus(order.bookingStatus, 'admin', order.paymentStatus)))];
   const visibleOrders = statusFilter === 'All'
     ? orders
-    : orders.filter((order) => formatBookingStatus(order.bookingStatus) === statusFilter);
+    : orders.filter((order) => formatBookingStatus(order.bookingStatus, 'admin', order.paymentStatus) === statusFilter);
 
   return (
     <main className="page">
@@ -88,7 +88,7 @@ function AdminOrders() {
                       <td>{dateDisplay}</td>
                       <td>₹{Number(order.total || 0).toLocaleString('en-IN')}</td>
                       <td>{order.paymentStatus || 'Pending'}</td>
-                      <td><span className="status-pill">{formatBookingStatus(order.bookingStatus)}</span></td>
+                      <td><span className="status-pill">{formatBookingStatus(order.bookingStatus, 'admin', order.paymentStatus)}</span></td>
                       <td>{order.vendorName || order.vendorId || 'Unassigned'}</td>
                       <td>
                         <Link to={`/admin/orders/${order.id}`} className="button button--small button--ghost">

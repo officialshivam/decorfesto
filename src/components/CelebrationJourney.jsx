@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
+import { formatCustomerBookingStatus } from '../utils/statusUtils';
 
 function CelebrationTrainSVG() {
   return (
@@ -108,7 +109,7 @@ export default function CelebrationJourney({ order }) {
   const paymentStatus = String(order.paymentStatus || 'PENDING').toUpperCase();
 
   const isPaid = paymentStatus.includes('PAID') || paymentStatus.includes('SUCCESS');
-  const isVendorAccepted = Boolean(order.vendorId) || ['VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
+  const isVendorAssigned = ['VENDOR_ASSIGNED', 'ASSIGNED_TO_VENDOR', 'VENDOR_ACCEPTED', 'ACCEPTED', 'IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus) || Boolean(order.vendorId);
   const isDecorationStarted = ['IN_PROGRESS', 'START_PREPARATION', 'READY_FOR_SETUP', 'COMPLETED'].includes(bookingStatus);
   const isCompleted = bookingStatus === 'COMPLETED';
   const isCancelled = ['CANCELLED', 'REJECTED'].includes(bookingStatus);
@@ -142,7 +143,7 @@ export default function CelebrationJourney({ order }) {
   let currentIndex = 0;
   if (isCompleted) {
     currentIndex = 4;
-  } else if (isDecorationStarted || isVendorAccepted) {
+  } else if (isDecorationStarted || isVendorAssigned) {
     currentIndex = 3;
   } else if (isPaid) {
     currentIndex = 2;
@@ -150,15 +151,7 @@ export default function CelebrationJourney({ order }) {
     currentIndex = 0;
   }
 
-  const currentStatusTitle = isCompleted
-    ? 'Decoration Completed'
-    : isDecorationStarted
-      ? 'Decoration In Progress'
-      : isVendorAccepted
-        ? 'Decoration Pending'
-        : isPaid
-          ? 'Vendor Assignment Pending'
-          : 'Booking Placed';
+  const currentStatusTitle = formatCustomerBookingStatus(bookingStatus, paymentStatus);
 
   const milestones = [
     {
@@ -178,9 +171,9 @@ export default function CelebrationJourney({ order }) {
       nextText: 'Vendor Partner Assignment',
     },
     {
-      title: isVendorAccepted ? 'Vendor Assigned' : 'Vendor Assignment',
+      title: isVendorAssigned ? 'Vendor Assigned' : 'Vendor Partner Assignment',
       shortTitle: 'Vendor Assignment',
-      desc: isVendorAccepted ? `Assigned to ${order.vendorName || 'your professional decorator'}.` : 'Assigning expert decorator partner.',
+      desc: isVendorAssigned ? `Assigned to ${order.vendorName || 'your professional decorator'}.` : 'Assigning expert decorator partner.',
       icon: '♡',
       explanation: `Assigned to ${order.vendorName || 'your professional decorator'}.`,
       nextText: 'Start Decoration',

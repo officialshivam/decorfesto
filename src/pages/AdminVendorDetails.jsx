@@ -5,6 +5,7 @@ import {
 } from '../services/mockVendors';
 import { getVendorByIdApi, updateVendorApi } from '../services/vendorAuthService';
 import { getOrdersApi } from '../services/orderService';
+import { formatBookingStatus } from '../utils/statusUtils';
 
 function AdminVendorDetails() {
   const { vendorId } = useParams();
@@ -395,7 +396,7 @@ function parseServicePincodesOutput(input) {
                       <td>₹{(o.total || 0).toLocaleString('en-IN')}</td>
                       <td>
                         <span className={`status-pill status-pill--${String(o.bookingStatus || '').toLowerCase()}`}>
-                          {typeof o.bookingStatus === 'string' ? o.bookingStatus : String(o.bookingStatus?.label || o.bookingStatus || 'VENDOR_ASSIGNED')}
+                          {formatBookingStatus(o.bookingStatus, 'admin', o.paymentStatus)}
                         </span>
                       </td>
                       <td>

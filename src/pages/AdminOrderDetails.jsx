@@ -241,7 +241,7 @@ function AdminOrderDetails() {
             <div className="summary-box__row">
               <span>Booking Status</span>
               <span className="status-pill" style={{ fontSize: '0.82rem', fontWeight: '800', padding: '4px 12px', borderRadius: '12px', background: order.bookingStatus === 'APPROVED' ? '#dcfce7' : order.bookingStatus === 'CANCELLED' ? '#fee2e2' : '#fef3c7', color: order.bookingStatus === 'APPROVED' ? '#15803d' : order.bookingStatus === 'CANCELLED' ? '#b91c1c' : '#b45309' }}>
-                {formatBookingStatus(order.bookingStatus)}
+                {formatBookingStatus(order.bookingStatus, 'admin', order.paymentStatus)}
               </span>
             </div>
             <div className="summary-box__row"><span>Assigned Vendor</span><strong>{order.vendorName || 'Not assigned'}</strong></div>
@@ -283,7 +283,7 @@ function AdminOrderDetails() {
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Current Booking Status:</span>
                     <span className="status-pill" style={{ fontSize: '0.88rem', fontWeight: '800', padding: '6px 14px', borderRadius: '20px', background: isCompleted ? '#dcfce7' : isTerminal ? '#fee2e2' : '#fef3c7', color: isCompleted ? '#15803d' : isTerminal ? '#b91c1c' : '#b45309' }}>
-                      {formatBookingStatus(order.bookingStatus)}
+                      {formatBookingStatus(order.bookingStatus, 'admin', order.paymentStatus)}
                     </span>
                   </div>
                 </div>
@@ -313,7 +313,7 @@ function AdminOrderDetails() {
                     <p style={{ margin: '6px 0 0', fontSize: '0.92rem', color: isCompleted ? '#15803d' : '#be123c', lineHeight: '1.5' }}>
                       {isCompleted
                         ? 'This decoration booking has been fully completed. No further workflow changes or status updates are allowed.'
-                        : `This booking is in terminal state "${formatBookingStatus(order.bookingStatus)}". No further status actions are permitted.`}
+                        : `This booking is in terminal state "${formatBookingStatus(order.bookingStatus, 'admin', order.paymentStatus)}". No further status actions are permitted.`}
                     </p>
                   </div>
                 ) : (
@@ -433,7 +433,7 @@ function AdminOrderDetails() {
                 <div><span style={{ color: '#64748b' }}>Order ID:</span> <strong>{order.id}</strong></div>
                 <div><span style={{ color: '#64748b' }}>Customer Name:</span> <strong>{order.customerName || 'Customer'}</strong></div>
                 <div><span style={{ color: '#64748b' }}>Total Amount:</span> <strong>₹{Number(order.total || 0).toLocaleString('en-IN')}</strong></div>
-                <div><span style={{ color: '#64748b' }}>Current Status:</span> <strong>{formatBookingStatus(order.bookingStatus)}</strong></div>
+                <div><span style={{ color: '#64748b' }}>Current Status:</span> <strong>{formatBookingStatus(order.bookingStatus, 'admin', order.paymentStatus)}</strong></div>
                 <div><span style={{ color: '#64748b' }}>Assigned Vendor:</span> <strong>{order.vendorName || 'Not assigned'}</strong></div>
               </div>
 

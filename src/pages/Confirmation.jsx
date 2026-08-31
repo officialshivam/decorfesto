@@ -109,7 +109,7 @@ function Confirmation() {
                 </div>
                 <div className="summary-box__row">
                   <span>Booking status</span>
-                  <strong>{formatBookingStatus(order.bookingStatus)}</strong>
+                  <strong>{formatBookingStatus(order.bookingStatus, 'customer', order.paymentStatus)}</strong>
                 </div>
               </div>
             </div>
