@@ -70,6 +70,9 @@ const routeHandlers = {
     '/payments/razorpay-webhook': razorpayWebhook,
     '/vendor/change-password': changeVendorPassword,
   },
+  PUT: {
+    '/admin/charges/:id': updateAdminCharge,
+  },
   PATCH: {
     '/admin/charges/:id': updateAdminCharge,
     '/admin/users/:id/status': toggleAdminUserStatus,

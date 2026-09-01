@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './apiConfig.js';
+import { getAdminAuthHeaders } from './adminAuthService.js';
 
 function resolveApiBases() {
   const base = getApiBaseUrl();
@@ -41,9 +42,13 @@ export async function fetchEnabledChargesApi() {
 
   for (const base of bases) {
     try {
-      const response = await fetch(`${base}/charges/enabled`, {
+      const response = await fetch(`${base}/charges/enabled?_t=${Date.now()}`, {
         method: 'GET',
-        headers: { Accept: 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
         credentials: 'include',
       });
 
@@ -54,14 +59,148 @@ export async function fetchEnabledChargesApi() {
 
       const data = await response.json();
       const rawList = Array.isArray(data.charges) ? data.charges : (Array.isArray(data) ? data : []);
-      return rawList.map(sanitizeCharge).filter((c) => c && c.enabled);
+      const sanitized = rawList.map(sanitizeCharge).filter((c) => c && c.enabled);
+      if (sanitized.length > 0) {
+        writeSettings({ charges: sanitized });
+      }
+      return sanitized;
     } catch (err) {
       lastError = err;
     }
   }
 
-  console.error('fetchEnabledChargesApi error:', lastError);
-  throw lastError || new Error('Failed to fetch enabled charges from server.');
+  console.warn('fetchEnabledChargesApi fallback to stored settings:', lastError?.message);
+  return readSettings().charges.filter((c) => c.enabled);
+}
+
+export async function fetchAdminChargesApi() {
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/charges?_t=${Date.now()}`, {
+        method: 'GET',
+        headers: getAdminAuthHeaders({
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status} fetching admin charges`);
+        continue;
+      }
+
+      const data = await response.json();
+      const rawList = Array.isArray(data.charges) ? data.charges : (Array.isArray(data) ? data : []);
+      const sanitized = rawList.map(sanitizeCharge).filter(Boolean);
+      if (sanitized.length > 0) {
+        writeSettings({ charges: sanitized });
+      }
+      return sanitized;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  console.warn('fetchAdminChargesApi fallback to stored settings:', lastError?.message);
+  return readSettings().charges;
+}
+
+export async function updateAdminChargeApi(id, updates) {
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/charges/${id}`, {
+        method: 'PUT',
+        headers: getAdminAuthHeaders({
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        }),
+        body: JSON.stringify(updates),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status} updating admin charge`);
+        continue;
+      }
+
+      const data = await response.json();
+      const updated = sanitizeCharge(data.charge || data);
+      updateCharge(id, updates);
+      return updated;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  console.warn('updateAdminChargeApi local fallback:', lastError?.message);
+  return updateCharge(id, updates);
+}
+
+export async function createAdminChargeApi(chargeData) {
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/charges`, {
+        method: 'POST',
+        headers: getAdminAuthHeaders({
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        }),
+        body: JSON.stringify(chargeData),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status} creating admin charge`);
+        continue;
+      }
+
+      const data = await response.json();
+      const created = sanitizeCharge(data.charge || data);
+      addCharge(chargeData);
+      return created;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  return addCharge(chargeData);
+}
+
+export async function deleteAdminChargeApi(id) {
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/charges/${id}`, {
+        method: 'DELETE',
+        headers: getAdminAuthHeaders({ Accept: 'application/json' }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status} deleting admin charge`);
+        continue;
+      }
+
+      deleteCharge(id);
+      return { ok: true };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  return deleteCharge(id);
 }
 
 export function readSettings() {

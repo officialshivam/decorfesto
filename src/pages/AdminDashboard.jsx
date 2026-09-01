@@ -3,7 +3,13 @@ import { Link } from 'react-router-dom';
 import { fetchAdminDashboard } from '../services/adminDashboardApi';
 import { deriveDashboard } from '../services/dashboardMetrics';
 import { formatDateTime, formatINR, formatUptime } from '../services/format';
-import { addCharge, deleteCharge, getStoredCharges, updateCharge } from '../services/mockSettings';
+import {
+  fetchAdminChargesApi,
+  updateAdminChargeApi,
+  createAdminChargeApi,
+  deleteAdminChargeApi,
+  getStoredCharges,
+} from '../services/chargeService';
 
 function StatusDot({ tone }) {
   return <span className={`dash-dot dash-dot--${tone || 'neutral'}`} aria-hidden="true" />;
@@ -639,8 +645,17 @@ function ChargesManagementCard() {
   const [message, setMessage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const refresh = useCallback(() => {
-    setCharges(getStoredCharges());
+  const refresh = useCallback(async () => {
+    try {
+      const data = await fetchAdminChargesApi();
+      if (Array.isArray(data)) {
+        setCharges(data);
+      } else {
+        setCharges(getStoredCharges());
+      }
+    } catch {
+      setCharges(getStoredCharges());
+    }
   }, []);
 
   useEffect(() => {
@@ -664,7 +679,7 @@ function ChargesManagementCard() {
     setErrorMsg('');
   };
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     if (!editName.trim()) {
@@ -684,26 +699,26 @@ function ChargesManagementCard() {
       return;
     }
 
-    updateCharge(editingId, {
+    await updateAdminChargeApi(editingId, {
       name: editName.trim(),
       amount: parsed,
       enabled: editEnabled,
     });
 
     setEditingId(null);
-    refresh();
+    await refresh();
     setMessage('✓ Charge updated successfully!');
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleQuickToggle = (id, currentEnabled) => {
-    updateCharge(id, { enabled: !currentEnabled });
-    refresh();
+  const handleQuickToggle = async (id, currentEnabled) => {
+    await updateAdminChargeApi(id, { enabled: !currentEnabled });
+    await refresh();
     setMessage('✓ Status updated!');
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     if (!newName.trim()) {
@@ -723,18 +738,18 @@ function ChargesManagementCard() {
       return;
     }
 
-    addCharge({
+    await createAdminChargeApi({
       name: newName.trim(),
       amount: parsed,
-      enabled: newEnabled,
       description: 'Configured checkout charge.',
+      enabled: newEnabled,
     });
 
     setNewName('');
     setNewAmountStr('100');
     setNewEnabled(true);
     setShowAddForm(false);
-    refresh();
+    await refresh();
     setMessage('✓ New charge added successfully!');
     setTimeout(() => setMessage(''), 3000);
   };
