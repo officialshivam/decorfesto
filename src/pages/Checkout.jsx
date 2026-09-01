@@ -22,6 +22,7 @@ function Checkout() {
     mobile: sanitize10DigitMobile(user?.mobile || user?.phone || ''),
     email: user?.email || '',
     address: user?.savedAddress || user?.address || '',
+    landmark: '',
     city: 'Delhi NCR',
     state: 'Delhi',
     pincode: items[0]?.pincode || '',
@@ -104,8 +105,8 @@ function Checkout() {
       nextErrors.address = 'Street address is required.';
     }
 
-    if (!/^[1-9][0-9]{5}$/.test(form.pincode.trim())) {
-      nextErrors.pincode = 'Please enter a valid 6-digit Indian pincode.';
+    if (!form.pincode.trim() || !/^[1-9][0-9]{5}$/.test(form.pincode.trim())) {
+      nextErrors.pincode = 'Please select a valid 6-digit Indian pincode.';
     }
 
     setErrors(nextErrors);
@@ -160,7 +161,11 @@ function Checkout() {
         customerName: form.fullName.trim(),
         customerMobile: mobileVal.fullMobile,
         customerEmail: form.email.trim(),
-        address: `${form.address.trim()}, ${form.city}, ${form.state}`,
+        deliveryAddress: form.address.trim(),
+        address: form.address.trim(),
+        landmark: form.landmark.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
         pincode: form.pincode.trim(),
         scheduledDate: selectedDate,
         eventDate: selectedDate,
@@ -176,6 +181,10 @@ function Checkout() {
         paymentStatus: 'PAYMENT_INITIATED',
         bookingStatus: 'ORDER_RECEIVED',
         remarks: orderRemarks,
+        customization: {
+          landmark: form.landmark.trim(),
+          remarks: orderRemarks,
+        },
         reviewMessage: 'DecorFesto will review your booking shortly and confirm the next step with you.',
         createdAt: new Date().toISOString(),
       };
@@ -339,6 +348,16 @@ function Checkout() {
                 {errors.address && <small className="field-error">{errors.address}</small>}
               </label>
 
+              <label className="search-field">
+                <span>Landmark (Optional)</span>
+                <input
+                  name="landmark"
+                  value={form.landmark}
+                  onChange={handleChange}
+                  placeholder="e.g. Near Metro Station, Opposite Park"
+                />
+              </label>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <label className="search-field">
                   <span>City</span>
@@ -350,8 +369,16 @@ function Checkout() {
                 </label>
                 <label className="search-field">
                   <span>Pincode *</span>
-                  <input name="pincode" value={form.pincode} onChange={handleChange} placeholder="110001" required />
-                  {errors.pincode && <small className="field-error">{errors.pincode}</small>}
+                  <input
+                    name="pincode"
+                    value={form.pincode}
+                    readOnly
+                    disabled
+                    style={{ background: '#f1f5f9', cursor: 'not-allowed', color: '#334155', fontWeight: '700' }}
+                  />
+                  <small style={{ color: '#16a34a', fontWeight: '700', marginTop: '4px', display: 'block' }}>
+                    ✓ Service area available
+                  </small>
                 </label>
               </div>
 
@@ -371,26 +398,68 @@ function Checkout() {
             <div className="cart-list">
               {items.map((item) => {
                 const basePrice = item.basePrice || item.price || 0;
-                const addOnPrice = item.addOnPrice || 0;
+                const itemAddOns = item.customization?.selectedAddOns || item.selectedAddOns || [];
+                const itemRemarks = String(item.remarks || item.customization?.remarks || '').trim();
+
                 return (
-                  <div key={item.key} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
-                      <span>{item.productName} ({item.quantity} {item.quantity === 1 ? 'Pkg' : 'Pkgs'})</span>
-                      <span>₹{(basePrice * item.quantity).toLocaleString('en-IN')}</span>
+                  <div key={item.key} style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
+                    {/* PACKAGE */}
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
+                        Package
+                      </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', marginTop: '2px', color: '#0f172a', fontSize: '0.98rem' }}>
+                        <span>{item.productName}</span>
+                        <span>₹{(basePrice * item.quantity).toLocaleString('en-IN')}</span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      <strong>Date:</strong> {formatDisplayDate(item.date)} • <strong>Slot:</strong> {item.time}
-                    </div>
-                    {addOnPrice > 0 && (
-                      <div style={{ fontSize: '0.84rem', color: '#0284c7', marginTop: '2px', fontWeight: '600' }}>
-                        + Add-ons: ₹{(addOnPrice * item.quantity).toLocaleString('en-IN')}
+
+                    {/* ADD-ONS */}
+                    {Array.isArray(itemAddOns) && itemAddOns.length > 0 && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
+                          Add-ons
+                        </span>
+                        {itemAddOns.map((addon, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#0284c7', fontWeight: '600', marginTop: '3px' }}>
+                            <span>{addon.name || addon.title || addon} × 1</span>
+                            <span>+₹{Number(addon.price || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
-                    {(item.remarks || item.customization?.remarks) && (
-                      <div style={{ fontSize: '0.82rem', color: 'var(--accent-dark)', fontWeight: '600', marginTop: '4px' }}>
-                        Remarks: "{item.remarks || item.customization?.remarks}"
+
+                    {/* EVENT */}
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
+                        Event
+                      </span>
+                      <div style={{ fontSize: '0.88rem', color: '#334155', fontWeight: '600', marginTop: '2px' }}>
+                        {formatDisplayDate(item.date)} · {item.time}
                       </div>
-                    )}
+                    </div>
+
+                    {/* PINCODE */}
+                    <div style={{ marginBottom: itemRemarks ? '10px' : '0' }}>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
+                        Pincode
+                      </span>
+                      <div style={{ fontSize: '0.88rem', color: '#334155', fontWeight: '600', marginTop: '2px' }}>
+                        {item.pincode || form.pincode}
+                      </div>
+                    </div>
+
+                    {/* SPECIAL INSTRUCTIONS */}
+                    {itemRemarks ? (
+                      <div>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#854d0e', fontWeight: '700', display: 'block' }}>
+                          Special Instructions
+                        </span>
+                        <div style={{ fontSize: '0.88rem', color: '#9a3412', fontWeight: '700', marginTop: '2px', background: '#fff7ed', border: '1px solid #ffedd5', padding: '6px 10px', borderRadius: '6px' }}>
+                          "{itemRemarks}"
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -398,7 +467,7 @@ function Checkout() {
 
             <div className="summary-box" style={{ marginTop: '16px' }}>
               <div className="summary-box__row">
-                <span>Subtotal</span>
+                <span>Base Price</span>
                 <strong>₹{subtotal.toLocaleString('en-IN')}</strong>
               </div>
               {enabledCharges.map((charge) => (
@@ -408,7 +477,7 @@ function Checkout() {
                 </div>
               ))}
               <div className="summary-box__row pricing-row--total">
-                <span>Total Amount</span>
+                <span>Total</span>
                 <strong>₹{total.toLocaleString('en-IN')}</strong>
               </div>
             </div>

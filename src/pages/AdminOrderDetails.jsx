@@ -219,11 +219,25 @@ function AdminOrderDetails() {
             <div className="summary-box__row"><span>Scheduled Date</span><strong>{dateDisplay}</strong></div>
             <div className="summary-box__row"><span>Time Slot</span><strong>{timeDisplay}</strong></div>
             <div className="summary-box__row"><span>Delivery Address</span><strong>{order.deliveryAddress || order.address || 'Address provided'}</strong></div>
+            <div className="summary-box__row"><span>Landmark</span><strong>{order.landmark || customization.landmark || 'Not provided'}</strong></div>
             <div className="summary-box__row"><span>Pincode</span><strong>{order.pincode || 'N/A'}</strong></div>
 
-            <div className="summary-box__row"><span>Theme Palette</span><strong>{customization.themePalette || 'Standard Theme'}</strong></div>
-            <div className="summary-box__row"><span>Floral Arrangement</span><strong>{customization.floralArrangement || 'None'}</strong></div>
-            <div className="summary-box__row"><span>No. of Packages</span><strong>{customization.packageQuantity || 1}</strong></div>
+            <div className="summary-box__row"><span>Theme</span><strong>{customization.themePalette || customization.balloonTheme || order.theme || 'Classic Pink & White'}</strong></div>
+            <div className="summary-box__row"><span>Colors</span><strong>{customization.balloonColors || customization.petalPalette || order.colors || 'Pink + White'}</strong></div>
+            <div className="summary-box__row">
+              <span>Add-ons</span>
+              <strong>
+                {Array.isArray(customization.selectedAddOns || firstItem.customization?.selectedAddOns) && (customization.selectedAddOns || firstItem.customization?.selectedAddOns).length > 0
+                  ? (customization.selectedAddOns || firstItem.customization?.selectedAddOns).map((a) => a.name || a.title || a).join(', ')
+                  : 'None'}
+              </strong>
+            </div>
+            <div className="summary-box__row">
+              <span>Special Instructions</span>
+              <strong style={{ color: remarks ? '#c2410c' : '#64748b' }}>
+                {remarks || 'Not provided'}
+              </strong>
+            </div>
 
             {activeCharges.length > 0 ? (
               activeCharges.map((c) => (
@@ -233,7 +247,7 @@ function AdminOrderDetails() {
                 </div>
               ))
             ) : order.serviceCharges > 0 ? (
-              <div className="summary-box__row"><span>Service Charges</span><strong>₹{Number(order.serviceCharges).toLocaleString('en-IN')}</strong></div>
+              <div className="summary-box__row"><span>Booking Service Fee</span><strong>₹{Number(order.serviceCharges).toLocaleString('en-IN')}</strong></div>
             ) : null}
 
             <div className="summary-box__row pricing-row--total"><span>Total Amount</span><strong>₹{Number(order.total || 0).toLocaleString('en-IN')}</strong></div>

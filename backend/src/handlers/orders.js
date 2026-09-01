@@ -88,38 +88,78 @@ export async function createOrder({ req }) {
     ? 'ORDER_RECEIVED'
     : (payload.bookingStatus || 'ORDER_RECEIVED');
 
-    const userRemarks = String(payload.remarks || payload.items?.[0]?.remarks || payload.items?.[0]?.customization?.remarks || '').trim();
-    const rawCustomization = payload.customization || payload.items?.[0]?.customization || {};
-    const customizationObj = typeof rawCustomization === 'object' && rawCustomization !== null ? { ...rawCustomization } : {};
-    if (userRemarks) {
-      customizationObj.remarks = userRemarks;
-    }
+  // Pincode validation and anti-tampering check
+  const submittedPincode = String(payload.pincode || '').trim();
+  const cartItemPincode = String(payload.items?.[0]?.pincode || '').trim();
+  if (!submittedPincode || !/^[1-9][0-9]{5}$/.test(submittedPincode)) {
+    return {
+      statusCode: 400,
+      body: { error: 'Invalid 6-digit Indian pincode.' },
+    };
+  }
+  if (cartItemPincode && submittedPincode !== cartItemPincode) {
+    return {
+      statusCode: 400,
+      body: { error: 'Checkout pincode does not match the validated booking pincode context.' },
+    };
+  }
 
-    const order = {
-      id: targetId,
-      orderId: targetId,
-      customerId: validCustomerId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      customerMobile: customerPhone,
-      decorationId: payload.decorationId || payload.productId || payload.items?.[0]?.id || '1',
-      decorationName: payload.decorationName || payload.items?.[0]?.productName || 'DecorFesto Package',
-      customization: customizationObj,
-      items: Array.isArray(payload.items) ? payload.items : [],
-      pincode: String(payload.pincode || '').trim(),
-      scheduledDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
-      eventDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
-      scheduledTime: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
-      timeSlot: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
-      deliveryAddress: payload.deliveryAddress || payload.address || '',
-      address: payload.deliveryAddress || payload.address || '',
-      remarks: userRemarks,
-    subtotal: Number(payload.subtotal || 0),
-    serviceCharge: Number(payload.serviceCharge || payload.serviceCharges || 299),
-    serviceCharges: Number(payload.serviceCharge || payload.serviceCharges || 299),
-    totalAmount: Number(payload.totalAmount || payload.total || 0),
-    total: Number(payload.totalAmount || payload.total || 0),
+  // Fetch active service charges dynamically from backend DB source of truth
+  let calculatedServiceFee = 100;
+  try {
+    const chargeRepo = createRepository('charges');
+    const chargesList = await chargeRepo.list();
+    if (Array.isArray(chargesList) && chargesList.length > 0) {
+      const activeCharges = chargesList.filter((c) => c.enabled !== false && c.is_enabled !== 0);
+      if (activeCharges.length > 0) {
+        calculatedServiceFee = activeCharges.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+      }
+    }
+  } catch (err) {
+    console.warn('Backend service charge lookup notice:', err.message);
+  }
+
+  const userRemarks = String(payload.remarks || payload.items?.[0]?.remarks || payload.items?.[0]?.customization?.remarks || '').trim();
+  const userLandmark = String(payload.landmark || payload.items?.[0]?.landmark || payload.customization?.landmark || '').trim();
+  const rawCustomization = payload.customization || payload.items?.[0]?.customization || {};
+  const customizationObj = typeof rawCustomization === 'object' && rawCustomization !== null ? { ...rawCustomization } : {};
+  if (userRemarks) {
+    customizationObj.remarks = userRemarks;
+  }
+  if (userLandmark) {
+    customizationObj.landmark = userLandmark;
+  }
+
+  const cleanDeliveryAddress = String(payload.deliveryAddress || payload.address || '').trim();
+  const orderSubtotal = Number(payload.subtotal || 0);
+  const finalOrderTotal = orderSubtotal + calculatedServiceFee;
+
+  const order = {
+    id: targetId,
+    orderId: targetId,
+    customerId: validCustomerId,
+    customerName,
+    customerEmail,
+    customerPhone,
+    customerMobile: customerPhone,
+    decorationId: payload.decorationId || payload.productId || payload.items?.[0]?.id || '1',
+    decorationName: payload.decorationName || payload.items?.[0]?.productName || 'DecorFesto Package',
+    customization: customizationObj,
+    items: Array.isArray(payload.items) ? payload.items : [],
+    pincode: submittedPincode,
+    scheduledDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
+    eventDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
+    scheduledTime: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
+    timeSlot: payload.scheduledTime || payload.timeSlot || payload.time || payload.items?.[0]?.scheduledTime || payload.items?.[0]?.timeSlot || payload.items?.[0]?.time || '',
+    deliveryAddress: cleanDeliveryAddress,
+    address: cleanDeliveryAddress,
+    landmark: userLandmark,
+    remarks: userRemarks,
+    subtotal: orderSubtotal,
+    serviceCharge: calculatedServiceFee,
+    serviceCharges: calculatedServiceFee,
+    totalAmount: finalOrderTotal,
+    total: finalOrderTotal,
     paymentStatus: payload.paymentStatus || 'PAYMENT_INITIATED',
     bookingStatus: normalizedBookingStatus,
     adminReviewStatus: 'PENDING',

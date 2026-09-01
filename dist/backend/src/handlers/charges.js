@@ -1,11 +1,11 @@
-import { createRepository, LocalJsonRepository } from '../dataAccess/repository.js';
+import { createRepository } from '../dataAccess/repository.js';
 import { requireRole } from '../auth.js';
 
 const CANONICAL_ENABLED_CHARGES = [
   {
     id: 'booking_service_fee',
     name: 'Booking Service Fee',
-    amount: 1,
+    amount: 100,
     description: 'Booking/service charge applied to customer checkouts.',
     type: 'FIXED',
     enabled: true,
@@ -15,7 +15,7 @@ const CANONICAL_ENABLED_CHARGES = [
 export async function listEnabledCharges() {
   let enabledCharges = CANONICAL_ENABLED_CHARGES;
   try {
-    const repository = new LocalJsonRepository('charges');
+    const repository = createRepository('charges');
     const allCharges = await repository.list();
     if (Array.isArray(allCharges) && allCharges.length > 0) {
       const filtered = allCharges
@@ -23,7 +23,7 @@ export async function listEnabledCharges() {
         .map((c) => ({
           id: c.id || c.charge_id || 'booking_service_fee',
           name: c.name || 'Booking Service Fee',
-          amount: Number(c.amount ?? 1),
+          amount: Number(c.amount ?? 100),
           description: c.description || 'Booking/service charge applied to customer checkouts.',
           type: c.type || 'FIXED',
           enabled: true,
@@ -33,7 +33,7 @@ export async function listEnabledCharges() {
       }
     }
   } catch (err) {
-    console.warn('Failed to load charges from local JSON repository, using canonical defaults:', err.message);
+    console.warn('Failed to load charges from repository, using canonical defaults:', err.message);
   }
 
   return {

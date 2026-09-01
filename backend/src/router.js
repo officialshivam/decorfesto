@@ -117,6 +117,8 @@ export async function initializeBackend() {
       const ordersTable = `${prefix}-orders`;
       await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
+      await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS landmark VARCHAR(255) NULL`).catch(() => {});
+      await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS landmark VARCHAR(255) NULL`).catch(() => {});
     }
   } catch (e) {
     console.warn('DB Column Migration Notice:', e?.message || e);

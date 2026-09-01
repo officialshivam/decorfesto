@@ -158,7 +158,7 @@ export async function seedBackendData() {
     await chargeRepo.create({
       id: 'booking_service_fee',
       name: 'Booking Service Fee',
-      amount: 1,
+      amount: 100,
       enabled: true,
       description: 'Booking/service charge applied to customer checkouts.',
       type: 'FIXED',

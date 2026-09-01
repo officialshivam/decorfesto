@@ -193,7 +193,11 @@ function MyOrderDetail() {
     ? orderDateObj.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
     : 'Recently';
 
-  const customerRemarks = String(order.remarks || firstItem.remarks || firstItem.customization?.remarks || '').trim();
+  const landmarkDisplay = order.landmark || firstItem.landmark || order.customization?.landmark || 'Not provided';
+  const rawAddons = firstItem.customization?.selectedAddOns || firstItem.addOns || [];
+  const addOnsDisplay = Array.isArray(rawAddons) && rawAddons.length > 0
+    ? rawAddons.map((a) => a.name || a.title || a).join(', ')
+    : 'None';
 
   return (
     <main className="page">
@@ -239,6 +243,16 @@ function MyOrderDetail() {
                 <span>Colors</span>
                 <strong>{colors}</strong>
               </div>
+              <div className="summary-box__row">
+                <span>Add-ons</span>
+                <strong>{addOnsDisplay}</strong>
+              </div>
+              <div className="summary-box__row">
+                <span>Special Instructions</span>
+                <strong style={{ color: customerRemarks ? '#9a3412' : '#64748b' }}>
+                  {customerRemarks || 'Not provided'}
+                </strong>
+              </div>
             </div>
 
             {/* 2. EVENT & LOCATION DETAILS */}
@@ -247,35 +261,27 @@ function MyOrderDetail() {
                 Event & Location
               </h3>
               <div className="summary-box__row">
-                <span>Event Date</span>
+                <span>Date</span>
                 <strong>{eventDate}</strong>
               </div>
               <div className="summary-box__row">
-                <span>Time Slot</span>
+                <span>Time</span>
                 <strong>{eventTime}</strong>
+              </div>
+              <div className="summary-box__row" style={{ alignItems: 'flex-start' }}>
+                <span>Delivery Address</span>
+                <strong style={{ textAlign: 'right', maxWidth: '180px' }}>{deliveryAddress}</strong>
+              </div>
+              <div className="summary-box__row">
+                <span>Landmark</span>
+                <strong>{landmarkDisplay}</strong>
               </div>
               <div className="summary-box__row">
                 <span>Pincode</span>
                 <strong>{pincode}</strong>
               </div>
-              <div className="summary-box__row" style={{ alignItems: 'flex-start', marginTop: '4px' }}>
-                <span>Venue Address</span>
-                <strong style={{ textAlign: 'right', maxWidth: '180px' }}>{deliveryAddress}</strong>
-              </div>
             </div>
           </div>
-
-          {/* SPECIAL REQUESTS / CUSTOMER REMARKS */}
-          {customerRemarks ? (
-            <div style={{ background: '#fefce8', border: '1px solid #fef08a', padding: '16px 20px', borderRadius: '12px', marginBottom: '24px' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#854d0e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                💬 Special Requests / Customer Remarks
-              </span>
-              <p style={{ margin: '6px 0 0', fontSize: '0.95rem', fontWeight: '700', color: '#713f12' }}>
-                "{customerRemarks}"
-              </p>
-            </div>
-          ) : null}
 
           {/* 3. FINANCIAL & TRANSACTION DETAILS */}
           <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '24px' }}>
