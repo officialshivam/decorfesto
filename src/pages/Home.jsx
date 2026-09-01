@@ -34,32 +34,30 @@ export default function Home() {
     };
   }, []);
 
-  // Derive active categories dynamically from live decorations
-  const categories = useMemo(() => {
-    const set = new Set();
+  // 1. Derive occasion filter options dynamically from live decorations
+  const filterOccasions = useMemo(() => {
+    const defaultOccasions = ['All', 'Birthday', 'Romantic', 'Floral', 'Balloon', 'Anniversary', 'Special Occasions'];
+    const set = new Set(defaultOccasions);
     decorations.forEach((d) => {
-      const name = d.category || d.occasion;
+      const name = d.occasion || d.category;
       if (name) set.add(name);
     });
-    const derived = Array.from(set).map((name, index) => ({
-      id: `category-${name.toLowerCase().replace(/\s+/g, '-')}`,
-      name,
-      active: true,
-      displayOrder: index + 1,
-    }));
-    return derived.length > 0
-      ? derived
-      : ['Birthday', 'Romantic', 'Floral', 'Balloon', 'Anniversary', 'Special Occasions'].map((name, index) => ({
-          id: `category-${name.toLowerCase().replace(/\s+/g, '-')}`,
-          name,
-          active: true,
-          displayOrder: index + 1,
-        }));
+    return Array.from(set);
   }, [decorations]);
 
-  const featuredDecorations = useMemo(() => {
-    return decorations.slice(0, 3);
-  }, [decorations]);
+  const [activeOccasion, setActiveOccasion] = useState('All');
+
+  // 2. Filter decorations for active occasion tab
+  const displayedDecorations = useMemo(() => {
+    if (activeOccasion === 'All') {
+      return decorations.slice(0, 6);
+    }
+    const filtered = decorations.filter((d) => {
+      const target = `${d.occasion || ''} ${d.category || ''} ${d.name || ''}`.toLowerCase();
+      return target.includes(activeOccasion.toLowerCase());
+    });
+    return filtered.length > 0 ? filtered.slice(0, 6) : decorations.slice(0, 3);
+  }, [decorations, activeOccasion]);
 
   // 2. Serviceability Checker State
   const [pincode, setPincode] = useState('');
@@ -84,34 +82,6 @@ export default function Home() {
       </main>
     );
   }
-
-  // Category fallback descriptions & images
-  const categoryMeta = {
-    Birthday: {
-      image: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=800&q=80',
-      description: 'Vibrant balloon arches, backdrop themes & cake table setups for all ages.',
-    },
-    Romantic: {
-      image: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=800&q=80',
-      description: 'Candlelight setups, rose petal pathways & intimate anniversary surprise decor.',
-    },
-    Floral: {
-      image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=800&q=80',
-      description: 'Fresh flower mandaps, entryway garlands & elegant botanical arrangements.',
-    },
-    Balloon: {
-      image: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80',
-      description: 'Chrome balloons, garland arches, LED number lights & party backdrops.',
-    },
-    Anniversary: {
-      image: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?auto=format&fit=crop&w=800&q=80',
-      description: 'Elegant canopy setups, fairytale fairy lights & luxury couple dining decor.',
-    },
-    'Special Occasions': {
-      image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80',
-      description: 'Baby showers, housewarmings, proposals & milestone celebrations.',
-    },
-  };
 
   const handleCheckService = async (e) => {
     e.preventDefault();
@@ -330,129 +300,98 @@ export default function Home() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. CATEGORY / EXPERIENCE SECTION */}
+      {/* 2. CONSOLIDATED PACKAGE DISCOVERY SECTION: CELEBRATE YOUR WAY */}
       {/* ========================================================================= */}
       <section className="container" style={{ padding: '80px 16px' }}>
-        <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 56px auto' }}>
+        <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 40px auto' }}>
           <span style={{ fontSize: '13px', fontWeight: '700', color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Occasions & Experiences
+            Occasions & Packages
           </span>
           <h2 style={{ fontSize: '2.4rem', fontWeight: '800', color: '#0f172a', margin: '8px 0 16px 0' }}>
             Celebrate Your Way
           </h2>
           <p style={{ fontSize: '1rem', color: '#64748b', margin: 0 }}>
-            Choose from curated celebration categories crafted to elevate your milestone moments.
+            Choose an occasion and discover decoration packages made for your celebration.
           </p>
         </div>
 
+        {/* OCCASION FILTER TABS */}
+        <div
+          className="occasion-tabs"
+          style={{
+            display: 'flex',
+            gap: '10px',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            marginBottom: '40px',
+            overflowX: 'auto',
+            paddingBottom: '8px',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {filterOccasions.map((occ) => {
+            const isSelected = activeOccasion === occ;
+            return (
+              <button
+                key={occ}
+                type="button"
+                onClick={() => setActiveOccasion(occ)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '30px',
+                  fontSize: '14px',
+                  fontWeight: isSelected ? '700' : '600',
+                  border: isSelected ? '1px solid #c2410c' : '1px solid #cbd5e1',
+                  background: isSelected ? '#c2410c' : '#ffffff',
+                  color: isSelected ? '#ffffff' : '#475569',
+                  cursor: 'pointer',
+                  boxShadow: isSelected ? '0 4px 12px rgba(194, 65, 12, 0.25)' : '0 2px 6px rgba(0, 0, 0, 0.02)',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {occ}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* PACKAGE CARDS GRID */}
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '24px',
+            gap: '28px',
           }}
         >
-          {categories.slice(0, 6).map((cat) => {
-            const meta = categoryMeta[cat.name] || {
-              image: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80',
-              description: 'Custom celebration setups tailored to your occasion.',
-            };
-            return (
-              <Link
-                key={cat.id}
-                to={`/catalog?occasion=${encodeURIComponent(cat.name)}`}
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '20px',
-                  overflow: 'hidden',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
-                  transition: 'transform 0.3s ease, boxShadow 0.3s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  textDecoration: 'none',
-                }}
-              >
-                <div style={{ height: '200px', overflow: 'hidden', position: 'relative' }}>
-                  <img
-                    src={meta.image}
-                    alt={cat.name}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      transition: 'transform 0.5s ease',
-                    }}
-                  />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.4) 0%, transparent 60%)' }} />
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: '16px',
-                      left: '16px',
-                      color: '#ffffff',
-                      fontSize: '20px',
-                      fontWeight: '800',
-                    }}
-                  >
-                    {cat.name}
-                  </span>
-                </div>
-                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px 0', lineHeight: '1.5' }}>
-                    {meta.description}
-                  </p>
-                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#c2410c', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    Explore Packages <span>→</span>
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
+          {displayedDecorations.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </div>
-      </section>
 
-      {/* ========================================================================= */}
-      {/* 3. FEATURED DECORATIONS SECTION */}
-      {/* ========================================================================= */}
-      <section style={{ background: '#f8fafc', padding: '80px 0', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
-        <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px', flexWrap: 'wrap', gap: '16px' }}>
-            <div>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Handcrafted Packages
-              </span>
-              <h2 style={{ fontSize: '2.2rem', fontWeight: '800', color: '#0f172a', margin: '6px 0 0 0' }}>
-                Made for Your Moment
-              </h2>
-            </div>
-            <Link
-              to="/catalog"
-              style={{
-                fontSize: '14px',
-                fontWeight: '700',
-                color: '#c2410c',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              View Full Catalog <span>→</span>
-            </Link>
-          </div>
-
-          <div
+        {/* CATALOG CTA */}
+        <div style={{ textAlign: 'center', marginTop: '48px' }}>
+          <Link
+            to={activeOccasion === 'All' ? '/catalog' : `/catalog?occasion=${encodeURIComponent(activeOccasion)}`}
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-              gap: '28px',
+              padding: '14px 28px',
+              borderRadius: '12px',
+              background: '#ffffff',
+              color: '#c2410c',
+              fontWeight: '700',
+              fontSize: '15px',
+              border: '1px solid #fed7aa',
+              boxShadow: '0 4px 12px rgba(194, 65, 12, 0.08)',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
             }}
           >
-            {featuredDecorations.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+            Explore Full Catalog <span>→</span>
+          </Link>
         </div>
       </section>
 

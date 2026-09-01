@@ -28,7 +28,7 @@ function ProductCard({ product }) {
         <div className="product-card__footer">
           <span>{product.reviewCount} reviews</span>
           <Link to={`/product/${product.id}`} className="button button--small">
-            🎉 Let's Go
+            View Package
           </Link>
         </div>
       </div>

@@ -669,11 +669,14 @@ input {
 }
 
 @media (max-width: 768px) {
-  .desktop-nav {
+  .desktop-nav,
+  .desktop-auth {
     display: none !important;
   }
   .mobile-menu-btn {
-    display: block !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
   }
 }
 
