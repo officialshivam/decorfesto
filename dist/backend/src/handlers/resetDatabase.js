@@ -2,11 +2,18 @@ import { getPool } from '../dataAccess/mysqlConnection.js';
 import { requireRole } from '../auth.js';
 import { mysqlConfig } from '../config.js';
 
-export async function resetDatabaseHandler({ req }) {
-  const resetSecret = req.headers['x-db-reset-secret'] || req.headers['X-Db-Reset-Secret'] || req.headers['x-admin-key'];
+export async function resetDatabaseHandler({ req, query }) {
+  const bodySecret = req?.body && typeof req.body === 'object' ? req.body.secret : null;
+  const querySecret = query?.secret;
+  const headerSecret = req?.headers ? (req.headers['x-db-reset-secret'] || req.headers['x-admin-key'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '')) : null;
+
+  const providedSecret = bodySecret || querySecret || headerSecret;
+  const isSecretValid = providedSecret === 'DECORFESTO_RESET_2026';
+
   const auth = requireRole('ADMIN', req);
-  if (!auth.allowed && resetSecret !== 'DECORFESTO_RESET_2026') {
-    return { statusCode: 403, body: { error: auth.message } };
+
+  if (!auth.allowed && !isSecretValid) {
+    return { statusCode: 403, body: { error: auth.message || 'Unauthorized.' } };
   }
 
   const pool = getPool();
