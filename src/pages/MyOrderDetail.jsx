@@ -199,6 +199,13 @@ function MyOrderDetail() {
     ? rawAddons.map((a) => a.name || a.title || a).join(', ')
     : 'None';
 
+  const customerRemarks = String(
+    order.remarks ||
+    order.customization?.remarks ||
+    firstItem.customization?.remarks ||
+    ''
+  ).trim();
+
   return (
     <main className="page">
       <section className="container section section--tight">
