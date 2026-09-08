@@ -4,6 +4,8 @@ import CartItem from '../components/CartItem';
 import { useCart } from '../context/CartContext';
 import { fetchEnabledChargesApi } from '../services/chargeService';
 
+import PriceSummaryBreakup from '../components/PriceSummaryBreakup';
+
 function Cart() {
   const { items } = useCart();
   const [enabledCharges, setEnabledCharges] = useState([]);
@@ -56,7 +58,6 @@ function Cart() {
   }, 0);
 
   const totalSavings = originalSubtotal > subtotal ? originalSubtotal - subtotal : 0;
-  const total = subtotal + (items.length > 0 ? serviceCharges : 0);
 
   return (
     <main className="page">
@@ -108,28 +109,12 @@ function Cart() {
                 </div>
               )}
 
-              <div className="summary-box" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {totalSavings > 0 && (
-                  <div className="summary-box__row" style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.9rem' }}>
-                    <span>Original Price</span>
-                    <span style={{ textDecoration: 'line-through' }}>₹{originalSubtotal.toLocaleString('en-IN')}</span>
-                  </div>
-                )}
-                <div className="summary-box__row">
-                  <span>Subtotal</span>
-                  <strong style={{ color: '#0f172a' }}>₹{subtotal.toLocaleString('en-IN')}</strong>
-                </div>
-                {enabledCharges.map((charge) => (
-                  <div key={charge.id} className="summary-box__row">
-                    <span>{charge.name}</span>
-                    <strong style={{ color: '#0f172a' }}>₹{charge.amount.toLocaleString('en-IN')}</strong>
-                  </div>
-                ))}
-                <div className="summary-box__row pricing-row--total" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '6px' }}>
-                  <span>Total</span>
-                  <strong style={{ color: 'var(--accent, #e11d48)', fontSize: '1.35rem' }}>₹{total.toLocaleString('en-IN')}</strong>
-                </div>
-              </div>
+              <PriceSummaryBreakup
+                items={items}
+                enabledCharges={enabledCharges}
+                totalSavings={totalSavings}
+                originalSubtotal={originalSubtotal}
+              />
 
               <p className="summary-note" style={{ fontSize: '0.82rem', color: '#64748b', margin: '16px 0' }}>
                 Your celebration date & slot are reserved upon completing checkout.

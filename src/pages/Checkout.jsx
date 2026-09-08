@@ -8,6 +8,7 @@ import { createOrderApi } from '../services/orderService';
 import { fetchEnabledChargesApi, calculateItemSubtotal } from '../services/chargeService';
 import { initiateRazorpayPayment } from '../services/paymentService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
+import PriceSummaryBreakup from '../components/PriceSummaryBreakup';
 
 function Checkout() {
   const navigate = useNavigate();
@@ -453,21 +454,8 @@ function Checkout() {
               })}
             </div>
 
-            <div className="summary-box" style={{ marginTop: '16px' }}>
-              <div className="summary-box__row">
-                <span>Base Price</span>
-                <strong>₹{subtotal.toLocaleString('en-IN')}</strong>
-              </div>
-              {enabledCharges.map((charge) => (
-                <div key={charge.id} className="summary-box__row">
-                  <span>{charge.name}</span>
-                  <strong>₹{charge.amount.toLocaleString('en-IN')}</strong>
-                </div>
-              ))}
-              <div className="summary-box__row pricing-row--total">
-                <span>Total</span>
-                <strong>₹{total.toLocaleString('en-IN')}</strong>
-              </div>
+            <div style={{ marginTop: '16px' }}>
+              <PriceSummaryBreakup items={items} enabledCharges={enabledCharges} />
             </div>
 
             <button
