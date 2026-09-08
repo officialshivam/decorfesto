@@ -126,7 +126,8 @@ export async function updateAdminChargeApi(id, updates) {
       });
 
       if (!response.ok) {
-        lastError = new Error(`HTTP ${response.status} updating admin charge`);
+        const errorData = await response.json().catch(() => ({}));
+        lastError = new Error(errorData.error || `HTTP ${response.status} updating admin charge`);
         continue;
       }
 
@@ -139,8 +140,8 @@ export async function updateAdminChargeApi(id, updates) {
     }
   }
 
-  console.warn('updateAdminChargeApi local fallback:', lastError?.message);
-  return updateCharge(id, updates);
+  console.error('updateAdminChargeApi failed:', lastError?.message);
+  throw lastError || new Error('Failed to update admin charge on server.');
 }
 
 export async function createAdminChargeApi(chargeData) {

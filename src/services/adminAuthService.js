@@ -4,12 +4,24 @@ const API_BASE_URL = getApiBaseUrl();
 
 export function getAdminAuthHeaders(extraHeaders = {}) {
   const headers = { Accept: 'application/json', ...extraHeaders };
+  let token = null;
+
   if (typeof sessionStorage !== 'undefined') {
-    const token = sessionStorage.getItem('decorfesto_admin_token');
-    if (token && !headers.Authorization) {
+    token = sessionStorage.getItem('decorfesto_admin_token');
+  }
+  if (!token && typeof localStorage !== 'undefined') {
+    token = localStorage.getItem('decorfesto_admin_token');
+  }
+
+  if (token) {
+    if (!headers.Authorization) {
       headers.Authorization = `Bearer ${token}`;
     }
+    if (!headers['x-decorfesto-admin-token']) {
+      headers['x-decorfesto-admin-token'] = token;
+    }
   }
+
   return headers;
 }
 

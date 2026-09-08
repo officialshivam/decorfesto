@@ -699,23 +699,33 @@ function ChargesManagementCard() {
       return;
     }
 
-    await updateAdminChargeApi(editingId, {
-      name: editName.trim(),
-      amount: parsed,
-      enabled: editEnabled,
-    });
+    try {
+      await updateAdminChargeApi(editingId, {
+        name: editName.trim(),
+        amount: parsed,
+        enabled: editEnabled,
+      });
 
-    setEditingId(null);
-    await refresh();
-    setMessage('✓ Charge updated successfully!');
-    setTimeout(() => setMessage(''), 3000);
+      setEditingId(null);
+      await refresh();
+      setMessage('✓ Charge updated successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to update charge:', err);
+      setErrorMsg(`✕ Save failed: ${err.message || 'Unable to update charge on server.'}`);
+    }
   };
 
   const handleQuickToggle = async (id, currentEnabled) => {
-    await updateAdminChargeApi(id, { enabled: !currentEnabled });
-    await refresh();
-    setMessage('✓ Status updated!');
-    setTimeout(() => setMessage(''), 3000);
+    try {
+      await updateAdminChargeApi(id, { enabled: !currentEnabled });
+      await refresh();
+      setMessage('✓ Status updated!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to toggle status:', err);
+      setErrorMsg(`✕ Status update failed: ${err.message || 'Unable to update charge status.'}`);
+    }
   };
 
   const handleAddSubmit = async (e) => {
