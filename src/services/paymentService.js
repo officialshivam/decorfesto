@@ -48,6 +48,21 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
     }
 
     // 3. Configure Razorpay Standard Options
+    const cleanName = String(customer?.fullName || customer?.name || '').trim();
+    const cleanEmail = String(customer?.email || '').trim();
+    const cleanContact = String(customer?.mobile || customer?.phone || '').replace(/\D/g, '').slice(-10);
+
+    const prefill = {};
+    if (cleanName) {
+      prefill.name = cleanName;
+    }
+    if (cleanEmail) {
+      prefill.email = cleanEmail;
+    }
+    if (cleanContact.length === 10) {
+      prefill.contact = cleanContact;
+    }
+
     const options = {
       key: paymentData.keyId,
       amount: paymentData.amount,
@@ -75,11 +90,7 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
           onError(verifyRes.error || 'Signature verification failed.');
         }
       },
-      prefill: {
-        name: customer.fullName || customer.name || 'Shivam Gupta',
-        email: customer.email || 'shivam@decorfesto.com',
-        contact: customer.mobile || customer.phone || '',
-      },
+      prefill,
       notes: {
         orderId: order.id,
         pincode: order.pincode || '110032',
