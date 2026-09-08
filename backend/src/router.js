@@ -13,6 +13,7 @@ import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdmi
 import { createRepository } from './dataAccess/repository.js';
 import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
 import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword } from './handlers/vendorPortal.js';
+import { resetDatabaseHandler } from './handlers/resetDatabase.js';
 
 function healthCheck() {
   return {
@@ -60,6 +61,7 @@ const routeHandlers = {
     '/auth/vendor-login': vendorLogin,
     '/admin/charges': createAdminCharge,
     '/admin/users': createAdminUserRecord,
+    '/admin/db-reset': resetDatabaseHandler,
     '/customers': createCustomer,
     '/vendors': createVendor,
     '/service-areas': createServiceArea,
