@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import MobileNumberInput, { sanitize10DigitMobile, validate10DigitMobile } from '../components/MobileNumberInput';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
 import { createOrderApi } from '../services/orderService';
 import { fetchEnabledChargesApi, calculateItemSubtotal } from '../services/chargeService';
 import { initiateRazorpayPayment } from '../services/paymentService';
+import { checkPincodeServiceability } from '../services/mockServiceAreas';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
 import PriceSummaryBreakup from '../components/PriceSummaryBreakup';
 
@@ -14,48 +14,17 @@ function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { items, clearCart } = useCart();
-  const { user, addOrder: authAddOrder } = useAuth();
+  const { user, isAuthenticated, addOrder: authAddOrder } = useAuth();
   const isNavigatingRef = useRef(false);
-  const currentUserId = user?.id || user?.email || user?.mobile || null;
-  const prevUserIdRef = useRef(currentUserId);
 
-  const deliveryAddr = location.state?.deliveryAddress || user?.savedAddressObject || user?.addressDetails || null;
-
-  const [form, setForm] = useState(() => ({
-    fullName: user?.name || user?.fullName || '',
-    mobile: sanitize10DigitMobile(deliveryAddr?.mobile || user?.mobile || user?.phone || ''),
-    email: user?.email || '',
-    address: deliveryAddr?.fullAddress || deliveryAddr?.address || user?.savedAddress || user?.address || '',
-    landmark: deliveryAddr?.landmark || '',
-    city: deliveryAddr?.city || 'Delhi NCR',
-    state: deliveryAddr?.state || 'Delhi',
-    pincode: deliveryAddr?.pincode || items[0]?.pincode || '',
-  }));
-
-  useEffect(() => {
-    if (currentUserId) {
-      const userChanged = prevUserIdRef.current !== currentUserId;
-      prevUserIdRef.current = currentUserId;
-
-      if (userChanged) {
-        setForm((curr) => ({
-          ...curr,
-          fullName: user.name || user.fullName || '',
-          mobile: sanitize10DigitMobile(user.mobile || user.phone || ''),
-          email: user.email || '',
-          address: user.savedAddress || user.address || '',
-        }));
-      }
-    } else {
-      prevUserIdRef.current = null;
-    }
-  }, [currentUserId, user]);
-
-  const [errors, setErrors] = useState({});
+  const [enabledCharges, setEnabledCharges] = useState([]);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [enabledCharges, setEnabledCharges] = useState([]);
+  // Address handoff from location state or customer profile
+  const deliveryAddr = location.state?.deliveryAddress || user?.savedAddressObject || user?.addressDetails || (
+    user?.savedAddress ? { fullAddress: user.savedAddress, address: user.savedAddress, pincode: items[0]?.pincode || '' } : null
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -66,9 +35,7 @@ function Checkout() {
           setEnabledCharges(Array.isArray(data) ? data : []);
         }
       } catch (err) {
-        if (isMounted) {
-          console.error('Error fetching charges for checkout:', err);
-        }
+        if (isMounted) console.error('Error fetching charges for checkout:', err);
       }
     }
     loadCharges();
@@ -79,55 +46,31 @@ function Checkout() {
 
   const serviceFee = enabledCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
   const subtotal = items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
-
   const serviceCharges = items.length > 0 ? serviceFee : 0;
   const total = subtotal + serviceCharges;
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
-    setErrors((current) => ({ ...current, [name]: '' }));
-    setSubmitError('');
-  };
+  // Validate address and pincode readiness
+  const effectivePincode = (deliveryAddr?.pincode || items[0]?.pincode || '').replace(/\D/g, '');
+  const pincodeCheck = effectivePincode.length === 6 ? checkPincodeServiceability(effectivePincode) : { isServiceable: false };
 
-  const validate = () => {
-    const nextErrors = {};
-
-    if (!form.fullName.trim()) {
-      nextErrors.fullName = 'Full name is required.';
-    }
-
-    if (!validate10DigitMobile(form.mobile).isValid) {
-      nextErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.';
-    }
-
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      nextErrors.email = 'Please enter a valid email address.';
-    }
-
-    if (!form.address.trim()) {
-      nextErrors.address = 'Street address is required.';
-    }
-
-    if (!form.pincode.trim() || !/^[1-9][0-9]{5}$/.test(form.pincode.trim())) {
-      nextErrors.pincode = 'Please select a valid 6-digit Indian pincode.';
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
+  const hasValidAddress = Boolean(
+    deliveryAddr &&
+    (deliveryAddr.fullAddress || deliveryAddr.address) &&
+    effectivePincode.length === 6 &&
+    pincodeCheck.isServiceable
+  );
 
   const handlePlaceOrder = async () => {
     if (isSubmitting) return;
-
-    console.log('SUBMIT CART', items);
+    setSubmitError('');
 
     if (items.length === 0) {
       setSubmitError('Your cart is empty. Add a decoration package before checkout.');
       return;
     }
 
-    if (!validate()) {
+    if (!hasValidAddress) {
+      setSubmitError('Please add a valid delivery address with a serviceable pincode before continuing.');
       return;
     }
 
@@ -139,8 +82,6 @@ function Checkout() {
     setIsSubmitting(true);
 
     try {
-      const mobileVal = validate10DigitMobile(form.mobile);
-
       const orderRemarks = items
         .map((i) => i.remarks || i.customization?.remarks)
         .filter(Boolean)
@@ -157,20 +98,26 @@ function Checkout() {
       const selectedDate = firstCartItem.date || firstCartItem.scheduledDate || firstCartItem.eventDate || '';
       const selectedTime = firstCartItem.time || firstCartItem.scheduledTime || firstCartItem.timeSlot || '';
 
+      const customerName = user?.fullName || user?.name || deliveryAddr?.name || 'Customer';
+      const customerMobile = user?.mobile || user?.phone || deliveryAddr?.mobile || '';
+      const customerEmail = user?.email || '';
+
+      const fullAddressStr = deliveryAddr?.fullAddress || deliveryAddr?.address || '';
+
       const orderId = `DFC-${Date.now().toString().slice(-6)}`;
       const order = {
         id: orderId,
         orderId,
         customerId: user?.id || null,
-        customerName: form.fullName.trim(),
-        customerMobile: mobileVal.fullMobile,
-        customerEmail: form.email.trim(),
-        deliveryAddress: form.address.trim(),
-        address: form.address.trim(),
-        landmark: form.landmark.trim(),
-        city: form.city.trim(),
-        state: form.state.trim(),
-        pincode: form.pincode.trim(),
+        customerName: customerName.trim(),
+        customerMobile: customerMobile.trim(),
+        customerEmail: customerEmail.trim(),
+        deliveryAddress: fullAddressStr.trim(),
+        address: fullAddressStr.trim(),
+        landmark: (deliveryAddr?.landmark || '').trim(),
+        city: (deliveryAddr?.city || 'Delhi NCR').trim(),
+        state: (deliveryAddr?.state || 'Delhi').trim(),
+        pincode: effectivePincode.trim(),
         scheduledDate: selectedDate,
         eventDate: selectedDate,
         date: selectedDate,
@@ -186,23 +133,21 @@ function Checkout() {
         bookingStatus: 'ORDER_RECEIVED',
         remarks: orderRemarks,
         customization: {
-          landmark: form.landmark.trim(),
+          landmark: (deliveryAddr?.landmark || '').trim(),
           remarks: orderRemarks,
         },
         reviewMessage: 'DecorFesto will review your booking shortly and confirm the next step with you.',
         createdAt: new Date().toISOString(),
       };
 
-      console.log('BOOKING PAYLOAD', order);
-
       // 1. Persist order to production MySQL database FIRST
       let activeOrder = null;
       try {
         activeOrder = await createOrderApi(order, {
-          fullName: form.fullName.trim(),
-          mobile: mobileVal.fullMobile,
-          email: form.email.trim(),
-          savedAddress: form.address.trim(),
+          fullName: customerName.trim(),
+          mobile: customerMobile.trim(),
+          email: customerEmail.trim(),
+          savedAddress: fullAddressStr.trim(),
         });
       } catch (orderErr) {
         console.error('Production order creation failed:', orderErr);
@@ -222,17 +167,17 @@ function Checkout() {
 
       if (typeof authAddOrder === 'function') {
         authAddOrder(activeOrder, {
-          fullName: form.fullName.trim(),
-          mobile: mobileVal.fullMobile,
-          email: form.email.trim(),
-          savedAddress: form.address.trim(),
+          fullName: customerName.trim(),
+          mobile: customerMobile.trim(),
+          email: customerEmail.trim(),
+          savedAddress: fullAddressStr.trim(),
         });
       } else {
         addOrderMock(activeOrder, {
-          fullName: form.fullName.trim(),
-          mobile: mobileVal.fullMobile,
-          email: form.email.trim(),
-          savedAddress: form.address.trim(),
+          fullName: customerName.trim(),
+          mobile: customerMobile.trim(),
+          email: customerEmail.trim(),
+          savedAddress: fullAddressStr.trim(),
         });
       }
 
@@ -240,9 +185,9 @@ function Checkout() {
       initiateRazorpayPayment({
         order: activeOrder,
         customer: {
-          fullName: form.fullName.trim(),
-          email: form.email.trim(),
-          mobile: mobileVal.fullMobile,
+          fullName: customerName.trim(),
+          email: customerEmail.trim(),
+          mobile: customerMobile.trim(),
         },
         onSuccess: (verifyRes) => {
           const verifiedOrder = verifyRes.order || {
@@ -261,11 +206,11 @@ function Checkout() {
         },
         onError: (errMessage) => {
           setIsSubmitting(false);
-          setSubmitError(errMessage || 'Razorpay payment was not completed. Click Place Booking Request to try again.');
+          setSubmitError(errMessage || 'Razorpay payment was not completed. Click Pay & Complete Booking to try again.');
         },
         onDismiss: () => {
           setIsSubmitting(false);
-          setSubmitError('Payment modal was closed before completion. Click Place Booking Request to retry.');
+          setSubmitError('Payment modal was closed before completion. Click Pay & Complete Booking to retry.');
         },
       });
     } catch (error) {
@@ -279,10 +224,10 @@ function Checkout() {
     return (
       <main className="page">
         <section className="container section section--tight">
-          <div className="card-panel empty-state">
+          <div className="card-panel empty-state" style={{ padding: '40px', borderRadius: '16px', textAlign: 'center' }}>
             <h1>Your cart is empty</h1>
             <p>Please select a decoration package from our catalog before proceeding to checkout.</p>
-            <Link to="/catalog" className="button" style={{ marginTop: '12px' }}>Browse Catalog</Link>
+            <Link to="/catalog" className="button" style={{ marginTop: '16px' }}>Browse Catalog</Link>
           </div>
         </section>
       </main>
@@ -294,182 +239,156 @@ function Checkout() {
       <section className="container section section--tight">
         <div className="section__heading section__heading--left">
           <span className="eyebrow">Checkout</span>
-          <h1>Complete your booking request</h1>
-          <p>Please review your customer information and celebration address.</p>
+          <h1>You're ready to complete your booking</h1>
+          <p>Please confirm your customer profile, delivery address, and price summary before payment.</p>
         </div>
 
         <div className="checkout-layout">
-          <div className="card-panel">
-            <div className="card-panel__header">
-              <h2>Customer Information & Delivery Address</h2>
-            </div>
-            <form className="checkout-form" onSubmit={(e) => e.preventDefault()}>
-              <label className="search-field">
-                <span>Full Name *</span>
-                <input
-                  name="fullName"
-                  value={form.fullName}
-                  onChange={handleChange}
-                  placeholder="Shivam Gupta"
-                  required
-                />
-                {errors.fullName && <small className="field-error">{errors.fullName}</small>}
-              </label>
-
-              <MobileNumberInput
-                value={form.mobile}
-                onChange={(val) => {
-                  setForm((curr) => ({ ...curr, mobile: val }));
-                  setErrors((curr) => ({ ...curr, mobile: '' }));
-                }}
-                label="Mobile Number"
-                placeholder="Enter 10 Digit Mobile No."
-                required
-                error={errors.mobile}
-              />
-
-              <label className="search-field">
-                <span>Email Address</span>
-                <input
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="shivam@example.com"
-                />
-                {errors.email && <small className="field-error">{errors.email}</small>}
-              </label>
-
-              <label className="search-field">
-                <span>Full Delivery Address *</span>
-                <textarea
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  placeholder="Flat, Building, Street, Area"
-                  required
-                />
-                {errors.address && <small className="field-error">{errors.address}</small>}
-              </label>
-
-              <label className="search-field">
-                <span>Landmark (Optional)</span>
-                <input
-                  name="landmark"
-                  value={form.landmark}
-                  onChange={handleChange}
-                  placeholder="e.g. Near Metro Station, Opposite Park"
-                />
-              </label>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <label className="search-field">
-                  <span>City</span>
-                  <input name="city" value={form.city} onChange={handleChange} />
-                </label>
-                <label className="search-field">
-                  <span>State</span>
-                  <input name="state" value={form.state} onChange={handleChange} />
-                </label>
-                <label className="search-field">
-                  <span>Pincode *</span>
-                  <input
-                    name="pincode"
-                    value={form.pincode}
-                    readOnly
-                    disabled
-                    style={{ background: '#f1f5f9', cursor: 'not-allowed', color: '#334155', fontWeight: '700' }}
-                  />
-                  <small style={{ color: '#16a34a', fontWeight: '700', marginTop: '4px', display: 'block' }}>
-                    ✓ Service area available
-                  </small>
-                </label>
+          <div className="checkout-left-col" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* 1. CUSTOMER CONFIRMATION CARD */}
+            <article className="card-panel" style={{ borderRadius: '16px', padding: '24px', background: '#ffffff', border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Customer
+                </h2>
+                {isAuthenticated && (
+                  <span style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: '700', background: '#f0fdf4', padding: '4px 10px', borderRadius: '6px' }}>
+                    ✓ Authenticated
+                  </span>
+                )}
               </div>
 
-              {submitError && (
-                <div className="admin-error-banner" style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '8px' }}>
-                  ✕ {submitError}
+              <div style={{ fontSize: '0.95rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>
+                  {user?.fullName || user?.name || deliveryAddr?.name || 'Customer'}
+                </div>
+                {user?.mobile || user?.phone || deliveryAddr?.mobile ? (
+                  <div><strong>Mobile:</strong> {user?.mobile || user?.phone || deliveryAddr?.mobile}</div>
+                ) : null}
+                {user?.email && (
+                  <div style={{ color: '#64748b' }}><strong>Email:</strong> {user.email}</div>
+                )}
+              </div>
+            </article>
+
+            {/* 2. DELIVERY ADDRESS CONFIRMATION CARD */}
+            <article className="card-panel" style={{ borderRadius: '16px', padding: '24px', background: '#ffffff', border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Delivery Address
+                </h2>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  onClick={() => navigate('/cart')}
+                  style={{ padding: '6px 14px', fontSize: '0.85rem', fontWeight: '700' }}
+                >
+                  Change Address
+                </button>
+              </div>
+
+              {deliveryAddr && (deliveryAddr.fullAddress || deliveryAddr.address) ? (
+                <div style={{ fontSize: '0.92rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontWeight: '800', color: '#0f172a' }}>
+                    {deliveryAddr.addressType === 'Office' ? '🏢 Office' : deliveryAddr.addressType === 'Other' ? '📍 Other' : '🏠 Home'}
+                  </div>
+                  <div style={{ color: '#0f172a', fontWeight: '600', marginTop: '2px' }}>
+                    {deliveryAddr.flatNo ? `${deliveryAddr.flatNo}, ` : ''}{deliveryAddr.fullAddress || deliveryAddr.address}
+                  </div>
+                  {deliveryAddr.landmark && (
+                    <div style={{ color: '#64748b', fontSize: '0.88rem' }}>
+                      Landmark: {deliveryAddr.landmark}
+                    </div>
+                  )}
+                  <div style={{ color: '#475569', fontWeight: '600' }}>
+                    {deliveryAddr.city || 'Delhi NCR'}, {deliveryAddr.state || 'Delhi'} - {effectivePincode}
+                  </div>
+                  {deliveryAddr.mobile && (
+                    <div style={{ color: '#0369a1', fontWeight: '600', marginTop: '2px' }}>
+                      Mobile: {deliveryAddr.mobile}
+                    </div>
+                  )}
+                  {pincodeCheck.isServiceable && (
+                    <small style={{ color: '#16a34a', fontWeight: '700', marginTop: '6px', display: 'block' }}>
+                      ✓ Service area available
+                    </small>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <div style={{ color: '#dc2626', fontWeight: '700', fontSize: '0.95rem' }}>📍 No delivery address selected</div>
+                  <p style={{ color: '#64748b', fontSize: '0.88rem', margin: '4px 0 12px 0' }}>Please add a delivery address to continue with your booking.</p>
+                  <button
+                    type="button"
+                    className="button button--small"
+                    onClick={() => navigate('/cart')}
+                  >
+                    Add Delivery Address →
+                  </button>
                 </div>
               )}
-            </form>
+            </article>
+
+            {/* 3. BOOKED ITEMS LOGISTICS SUMMARY */}
+            <article className="card-panel" style={{ borderRadius: '16px', padding: '24px', background: '#ffffff', border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+              <div style={{ marginBottom: '14px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Booking Logistics
+                </h2>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {items.map((item) => {
+                  const basePrice = item.basePrice || item.price || 0;
+                  return (
+                    <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ fontSize: '1rem', color: '#0f172a', display: 'block' }}>
+                          {item.productName} {item.quantity > 1 ? `(×${item.quantity})` : ''}
+                        </strong>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                          📅 {formatDisplayDate(item.date)} · ⏰ {item.time} · 📍 Pincode: {item.pincode || effectivePincode}
+                        </span>
+                      </div>
+                      <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>
+                        ₹{(basePrice * item.quantity).toLocaleString('en-IN')}
+                      </strong>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
           </div>
 
-          <aside className="card-panel sticky-summary">
-            <div className="card-panel__header">
-              <h2>Booking Summary</h2>
+          {/* RIGHT COLUMN: STICKY SUMMARY & PAYMENT ACTION */}
+          <aside className="card-panel sticky-summary" style={{ borderRadius: '16px', padding: '24px', border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <div className="card-panel__header" style={{ marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>Booking Summary</h2>
             </div>
 
-            <div className="cart-list">
-              {items.map((item) => {
-                const basePrice = item.basePrice || item.price || 0;
-                const itemAddOns = item.customization?.selectedAddOns || item.selectedAddOns || [];
-                const itemRemarks = String(item.remarks || item.customization?.remarks || '').trim();
+            <PriceSummaryBreakup items={items} enabledCharges={enabledCharges} />
 
-                return (
-                  <div key={item.key} style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
-                    {/* PACKAGE */}
-                    <div style={{ marginBottom: '10px' }}>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
-                        Package
-                      </span>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', marginTop: '2px', color: '#0f172a', fontSize: '0.98rem' }}>
-                        <span>{item.productName}</span>
-                        <span>₹{(basePrice * item.quantity).toLocaleString('en-IN')}</span>
-                      </div>
-                    </div>
-
-                    {/* ADD-ONS */}
-                    {Array.isArray(itemAddOns) && itemAddOns.length > 0 && (
-                      <div style={{ marginBottom: '10px' }}>
-                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
-                          Add-ons
-                        </span>
-                        {itemAddOns.map((addon, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#0284c7', fontWeight: '600', marginTop: '3px' }}>
-                            <span>{addon.name || addon.title || addon} × 1</span>
-                            <span>+₹{Number(addon.price || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* EVENT */}
-                    <div style={{ marginBottom: '10px' }}>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
-                        Event
-                      </span>
-                      <div style={{ fontSize: '0.88rem', color: '#334155', fontWeight: '600', marginTop: '2px' }}>
-                        {formatDisplayDate(item.date)} · {item.time}
-                      </div>
-                    </div>
-
-                    {/* PINCODE */}
-                    <div style={{ marginBottom: itemRemarks ? '10px' : '0' }}>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
-                        Pincode
-                      </span>
-                      <div style={{ fontSize: '0.88rem', color: '#334155', fontWeight: '600', marginTop: '2px' }}>
-                        {item.pincode || form.pincode}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ marginTop: '16px' }}>
-              <PriceSummaryBreakup items={items} enabledCharges={enabledCharges} />
-            </div>
+            {submitError && (
+              <div className="admin-error-banner" style={{ marginTop: '16px', padding: '10px 14px', borderRadius: '8px', fontSize: '0.88rem' }}>
+                ✕ {submitError}
+              </div>
+            )}
 
             <button
               type="button"
               className={`button button--full${isSubmitting ? ' button--disabled' : ''}`}
               onClick={handlePlaceOrder}
-              disabled={isSubmitting || items.length === 0}
-              style={{ marginTop: '16px' }}
+              disabled={isSubmitting || items.length === 0 || !hasValidAddress}
+              style={{ marginTop: '20px', padding: '14px 20px', fontSize: '1.05rem', fontWeight: '800' }}
             >
-              {isSubmitting ? 'Placing Request…' : 'Place Booking Request'}
+              {isSubmitting ? 'Processing Order…' : 'Pay & Complete Booking'}
             </button>
+
+            {!hasValidAddress && (
+              <p style={{ fontSize: '0.82rem', color: '#dc2626', fontWeight: '600', marginTop: '8px', textAlign: 'center' }}>
+                Please add a valid delivery address before continuing.
+              </p>
+            )}
           </aside>
         </div>
       </section>
