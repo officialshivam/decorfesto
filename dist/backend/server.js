@@ -36,6 +36,12 @@ const distRoot = syncFs.existsSync(path.join(distCandidate, 'index.html'))
   : path.resolve(__dirname, '..');
 
 function isApiRequest(pathname, req) {
+  if (pathname.startsWith('/api/')) {
+    pathname = pathname.slice(4);
+  }
+  if (pathname === '/api') {
+    pathname = '/';
+  }
   const explicitApiPrefixes = [
     '/health',
     '/auth',
