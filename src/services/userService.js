@@ -210,6 +210,7 @@ export function getAllUsersForAdmin() {
 }
 
 import { getApiBaseUrl } from './apiConfig.js';
+import { getAdminAuthHeaders } from './adminAuthService.js';
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -221,12 +222,14 @@ export async function getAllUsersForAdminApi() {
     try {
       const response = await fetch(`${b}/admin/users`, {
         method: 'GET',
-        headers: { Accept: 'application/json' },
+        headers: getAdminAuthHeaders({ Accept: 'application/json' }),
         credentials: 'include',
       });
       if (response.ok) {
         const result = await response.json();
         if (Array.isArray(result.users)) return result.users;
+      } else {
+        console.error(`getAllUsersForAdminApi HTTP ${response.status} failure: ${response.statusText}`);
       }
     } catch (error) {
       console.warn('Failed to fetch admin users from backend API:', error);
@@ -256,10 +259,10 @@ export async function resetUserPasswordApi(userId, newPassword) {
   try {
     const response = await fetch(`${API_BASE_URL}/admin/users/${encodeURIComponent(userId)}/password`, {
       method: 'PATCH',
-      headers: {
+      headers: getAdminAuthHeaders({
         'Content-Type': 'application/json',
         Accept: 'application/json',
-      },
+      }),
       credentials: 'include',
       body: JSON.stringify({ password: newPassword }),
     });
