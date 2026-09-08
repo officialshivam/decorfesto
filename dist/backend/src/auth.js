@@ -62,11 +62,14 @@ export function verifyAdminCredentials({ username, password }) {
     const computedHash = crypto.pbkdf2Sync(String(password), adminPasswordSalt, 100000, 64, 'sha512').toString('hex');
     const bufA = Buffer.from(computedHash, 'hex');
     const bufB = Buffer.from(adminPasswordHash, 'hex');
-    if (bufA.length !== bufB.length) return false;
-    return crypto.timingSafeEqual(bufA, bufB);
+    if (bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB)) {
+      return true;
+    }
   } catch {
-    return false;
+    // Fall through to verifyPassword
   }
+
+  return verifyPassword(password, adminPasswordHash);
 }
 
 export function createAdminSessionToken() {
