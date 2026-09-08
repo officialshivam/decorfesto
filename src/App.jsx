@@ -6,7 +6,6 @@ import Home from './pages/Home';
 import Catalog from './pages/Catalog';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
 import Confirmation from './pages/Confirmation';
 import AIAssistant from './pages/AIAssistant';
 import NIFTConsultation from './pages/NIFTConsultation';

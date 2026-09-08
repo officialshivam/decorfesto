@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import CartItem from '../components/CartItem';
 import AddAddressDrawer from '../components/AddAddressDrawer';
 import PriceSummaryBreakup from '../components/PriceSummaryBreakup';
@@ -14,7 +14,6 @@ import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
 
 function Cart() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { items, clearCart } = useCart();
   const { user, isAuthenticated, updateProfile, addOrder: authAddOrder } = useAuth();
   const isNavigatingRef = useRef(false);
@@ -162,7 +161,15 @@ function Cart() {
       const selectedTime = firstCartItem.time || firstCartItem.scheduledTime || firstCartItem.timeSlot || '';
 
       const customerName = user?.fullName || user?.name || selectedAddress?.name || 'Customer';
-      const customerMobile = user?.mobile || user?.phone || selectedAddress?.mobile || '';
+      const customerMobile =
+        user?.mobile ||
+        user?.phone ||
+        user?.customerMobile ||
+        selectedAddress?.mobile ||
+        selectedAddress?.phone ||
+        user?.savedAddressObject?.mobile ||
+        user?.addressDetails?.mobile ||
+        '';
       const customerEmail = user?.email || '';
 
       const fullAddressStr = selectedAddress?.fullAddress || selectedAddress?.address || '';
