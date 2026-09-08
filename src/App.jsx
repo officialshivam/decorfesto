@@ -152,7 +152,7 @@ function App() {
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
-                <Route path="/checkout" element={<RequireAuth><Checkout /></RequireAuth>} />
+                <Route path="/checkout" element={<Navigate to="/cart" replace />} />
                 <Route path="/confirmation" element={<RequireAuth><Confirmation /></RequireAuth>} />
                 <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
                 <Route path="/my-orders" element={<RequireAuth><MyOrders /></RequireAuth>} />

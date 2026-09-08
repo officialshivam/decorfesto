@@ -1,23 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import CartItem from '../components/CartItem';
 import AddAddressDrawer from '../components/AddAddressDrawer';
 import PriceSummaryBreakup from '../components/PriceSummaryBreakup';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchEnabledChargesApi } from '../services/chargeService';
+import { fetchEnabledChargesApi, calculateItemSubtotal } from '../services/chargeService';
 import { updateCustomerProfileApi } from '../services/customerAuthService';
 import { checkPincodeServiceability } from '../services/mockServiceAreas';
+import { createOrderApi } from '../services/orderService';
+import { initiateRazorpayPayment } from '../services/paymentService';
+import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
 
 function Cart() {
   const navigate = useNavigate();
-  const { items } = useCart();
-  const { user, updateProfile } = useAuth();
+  const location = useLocation();
+  const { items, clearCart } = useCart();
+  const { user, isAuthenticated, updateProfile, addOrder: authAddOrder } = useAuth();
+  const isNavigatingRef = useRef(false);
 
   const [enabledCharges, setEnabledCharges] = useState([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [addressError, setAddressError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Address state derived from authenticated user profile or local session
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -57,14 +64,10 @@ function Cart() {
     }
   }, [user, items]);
 
-  const subtotal = items.reduce((sum, item) => {
-    const basePrice = item.basePrice || item.price || 0;
-    const addOnPrice = item.addOnPrice || 0;
-    const itemPrice = typeof item.totalPrice === 'number' && item.totalPrice > 0
-      ? item.totalPrice
-      : (basePrice + addOnPrice);
-    return sum + itemPrice * (item.quantity || 1);
-  }, 0);
+  const serviceFee = enabledCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const itemSubtotal = items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
+  const serviceCharges = items.length > 0 ? serviceFee : 0;
+  const finalTotal = itemSubtotal + serviceCharges;
 
   const originalSubtotal = items.reduce((sum, item) => {
     const base = item.basePrice || item.price || 0;
@@ -74,7 +77,7 @@ function Cart() {
     return sum + (originalBase + (item.addOnPrice || 0)) * (item.quantity || 1);
   }, 0);
 
-  const totalSavings = originalSubtotal > subtotal ? originalSubtotal - subtotal : 0;
+  const totalSavings = originalSubtotal > itemSubtotal ? originalSubtotal - itemSubtotal : 0;
 
   const handleSaveAddress = async (savedAddrObj) => {
     setIsSavingAddress(true);
@@ -103,9 +106,24 @@ function Cart() {
     }
   };
 
-  const handleProceedToCheckout = () => {
+  const handleProceedToPayment = async () => {
+    if (isSubmitting) return;
     setAddressError('');
+    setSubmitError('');
 
+    // 1. Customer Authentication Check
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: '/cart' }, autoPay: true } });
+      return;
+    }
+
+    // 2. Validate Cart Items
+    if (items.length === 0) {
+      setSubmitError('Your cart is empty. Add a decoration package before proceeding.');
+      return;
+    }
+
+    // 3. Validate Delivery Address & Pincode
     if (!selectedAddress || (!selectedAddress.fullAddress && !selectedAddress.address)) {
       setAddressError('Please add your delivery address to continue.');
       setIsDrawerOpen(true);
@@ -119,13 +137,149 @@ function Cart() {
       return;
     }
 
-    const check = checkPincodeServiceability(pin);
-    if (!check.isServiceable) {
-      setAddressError(check.message || 'Decoration service is unavailable at this delivery pincode.');
+    const serviceability = checkPincodeServiceability(pin);
+    if (!serviceability.isServiceable) {
+      setAddressError(serviceability.message || 'Decoration service is unavailable at this delivery pincode.');
       return;
     }
 
-    navigate('/checkout', { state: { deliveryAddress: selectedAddress } });
+    // 4. Validate Amount
+    if (finalTotal <= 0) {
+      setSubmitError('Invalid booking total. Please re-select package options.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const orderRemarks = items
+        .map((i) => i.remarks || i.customization?.remarks)
+        .filter(Boolean)
+        .join('; ');
+
+      const firstCartItem = items[0] || {};
+      const selectedDate = firstCartItem.date || firstCartItem.scheduledDate || firstCartItem.eventDate || '';
+      const selectedTime = firstCartItem.time || firstCartItem.scheduledTime || firstCartItem.timeSlot || '';
+
+      const customerName = user?.fullName || user?.name || selectedAddress?.name || 'Customer';
+      const customerMobile = user?.mobile || user?.phone || selectedAddress?.mobile || '';
+      const customerEmail = user?.email || '';
+
+      const fullAddressStr = selectedAddress?.fullAddress || selectedAddress?.address || '';
+
+      const orderId = `DFC-${Date.now().toString().slice(-6)}`;
+      const orderPayload = {
+        id: orderId,
+        orderId,
+        customerId: user?.id || null,
+        customerName: customerName.trim(),
+        customerMobile: customerMobile.trim(),
+        customerEmail: customerEmail.trim(),
+        deliveryAddress: fullAddressStr.trim(),
+        address: fullAddressStr.trim(),
+        landmark: (selectedAddress?.landmark || '').trim(),
+        city: (selectedAddress?.city || 'Delhi NCR').trim(),
+        state: (selectedAddress?.state || 'Delhi').trim(),
+        pincode: pin.trim(),
+        scheduledDate: selectedDate,
+        eventDate: selectedDate,
+        date: selectedDate,
+        scheduledTime: selectedTime,
+        timeSlot: selectedTime,
+        time: selectedTime,
+        items: JSON.parse(JSON.stringify(items)),
+        subtotal: itemSubtotal,
+        total: finalTotal,
+        serviceCharges: serviceCharges,
+        charges: [...enabledCharges],
+        paymentStatus: 'PAYMENT_INITIATED',
+        bookingStatus: 'ORDER_RECEIVED',
+        remarks: orderRemarks,
+        customization: {
+          landmark: (selectedAddress?.landmark || '').trim(),
+          remarks: orderRemarks,
+        },
+        reviewMessage: 'DecorFesto will review your booking shortly and confirm the next step with you.',
+        createdAt: new Date().toISOString(),
+      };
+
+      // 5. Create Order in Production MySQL Database FIRST
+      let activeOrder = null;
+      try {
+        activeOrder = await createOrderApi(orderPayload, {
+          fullName: customerName.trim(),
+          mobile: customerMobile.trim(),
+          email: customerEmail.trim(),
+          savedAddress: fullAddressStr.trim(),
+        });
+      } catch (orderErr) {
+        console.error('Production order creation failed:', orderErr);
+        setIsSubmitting(false);
+        setSubmitError(orderErr?.message || 'Failed to initialize booking on server. Please try again.');
+        return;
+      }
+
+      if (!activeOrder || !activeOrder.id) {
+        setIsSubmitting(false);
+        setSubmitError('Unable to create booking record in production database. Payment aborted.');
+        return;
+      }
+
+      // 6. Save local state
+      saveLastOrder(activeOrder);
+      if (typeof authAddOrder === 'function') {
+        authAddOrder(activeOrder, {
+          fullName: customerName.trim(),
+          mobile: customerMobile.trim(),
+          email: customerEmail.trim(),
+          savedAddress: fullAddressStr.trim(),
+        });
+      } else {
+        addOrderMock(activeOrder, {
+          fullName: customerName.trim(),
+          mobile: customerMobile.trim(),
+          email: customerEmail.trim(),
+          savedAddress: fullAddressStr.trim(),
+        });
+      }
+
+      // 7. Initiate Razorpay Checkout directly from /cart
+      initiateRazorpayPayment({
+        order: activeOrder,
+        customer: {
+          fullName: customerName.trim(),
+          email: customerEmail.trim(),
+          mobile: customerMobile.trim(),
+        },
+        onSuccess: (verifyRes) => {
+          const verifiedOrder = verifyRes.order || {
+            ...activeOrder,
+            paymentStatus: 'PAID',
+            razorpayPaymentId: verifyRes.razorpayPaymentId,
+            razorpayOrderId: verifyRes.razorpayOrderId,
+          };
+          saveLastOrder(verifiedOrder);
+          if (typeof authAddOrder === 'function') {
+            authAddOrder(verifiedOrder);
+          }
+          isNavigatingRef.current = true;
+          clearCart();
+          navigate('/confirmation', { state: { order: verifiedOrder }, replace: true });
+        },
+        onError: (errMessage) => {
+          setIsSubmitting(false);
+          setSubmitError(errMessage || 'Razorpay payment was not completed. Click Pay & Confirm Booking to try again.');
+        },
+        onDismiss: () => {
+          setIsSubmitting(false);
+          setSubmitError('Payment modal was closed before completion. Click Pay & Confirm Booking to retry.');
+        },
+      });
+    } catch (err) {
+      console.error('Error initiating payment:', err);
+      setIsSubmitting(false);
+      setSubmitError(err?.message || 'Failed to initialize payment. Please try again.');
+    }
   };
 
   return (
@@ -137,7 +291,7 @@ function Cart() {
           <p>Check your package selections, delivery address, and price breakup before proceeding to checkout.</p>
         </div>
 
-        {items.length === 0 ? (
+        {items.length === 0 && !isSubmitting && !isNavigatingRef.current ? (
           <div className="empty-state card-panel" style={{ padding: '40px', borderRadius: '16px', textAlign: 'center' }}>
             <h2>Your cart is empty</h2>
             <p>Add a decoration package to continue your celebration booking journey.</p>
@@ -257,13 +411,20 @@ function Cart() {
                 Your celebration date & slot are reserved upon completing checkout.
               </p>
 
+              {submitError && (
+                <div className="admin-error-banner" style={{ marginTop: '12px', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '0.88rem' }}>
+                  ✕ {submitError}
+                </div>
+              )}
+
               <button
                 type="button"
-                className="button button--full"
-                onClick={handleProceedToCheckout}
-                style={{ padding: '12px 20px', fontSize: '1rem', fontWeight: '700' }}
+                className={`button button--full${isSubmitting ? ' button--disabled' : ''}`}
+                onClick={handleProceedToPayment}
+                disabled={isSubmitting || items.length === 0}
+                style={{ padding: '14px 20px', fontSize: '1.05rem', fontWeight: '800' }}
               >
-                Proceed to Checkout →
+                {isSubmitting ? 'Preparing secure payment…' : `Pay ₹${finalTotal.toLocaleString('en-IN')} & Confirm Booking →`}
               </button>
             </aside>
           </div>

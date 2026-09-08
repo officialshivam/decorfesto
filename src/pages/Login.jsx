@@ -17,7 +17,8 @@ function Login() {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const from = location.state?.from?.pathname || '/my-orders';
+  const rawFrom = location.state?.from?.pathname || location.state?.from || '/my-orders';
+  const from = rawFrom === '/checkout' ? '/cart' : rawFrom;
 
   if (loading) {
     return (
@@ -31,7 +32,7 @@ function Login() {
     return <Navigate to={from} replace />;
   }
 
-  const isCheckoutFlow = from === '/checkout';
+  const isCheckoutFlow = from === '/cart';
 
   const validate = () => {
     const nextErrors = {};

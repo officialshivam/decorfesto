@@ -1,48 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
-import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
-import { createOrderApi } from '../services/orderService';
-import { fetchEnabledChargesApi, calculateItemSubtotal } from '../services/chargeService';
-import { initiateRazorpayPayment } from '../services/paymentService';
-import { checkPincodeServiceability } from '../services/mockServiceAreas';
-import { formatDisplayDate } from '../utils/dateTimeUtils';
-import PriceSummaryBreakup from '../components/PriceSummaryBreakup';
+import { Navigate } from 'react-router-dom';
 
 function Checkout() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { items, clearCart } = useCart();
-  const { user, isAuthenticated, addOrder: authAddOrder } = useAuth();
-  const isNavigatingRef = useRef(false);
+  return <Navigate to="/cart" replace />;
+}
 
-  const [enabledCharges, setEnabledCharges] = useState([]);
-  const [submitError, setSubmitError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Address handoff from location state or customer profile
-  const deliveryAddr = location.state?.deliveryAddress || user?.savedAddressObject || user?.addressDetails || (
-    user?.savedAddress ? { fullAddress: user.savedAddress, address: user.savedAddress, pincode: items[0]?.pincode || '' } : null
-  );
-
-  useEffect(() => {
-    let isMounted = true;
-    async function loadCharges() {
-      try {
-        const data = await fetchEnabledChargesApi();
-        if (isMounted) {
-          setEnabledCharges(Array.isArray(data) ? data : []);
-        }
-      } catch (err) {
-        if (isMounted) console.error('Error fetching charges for checkout:', err);
-      }
-    }
-    loadCharges();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+function LegacyCheckout() {
 
   const serviceFee = enabledCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
   const subtotal = items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
