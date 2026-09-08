@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { fetchDecorationsApi } from '../services/decorationService';
+import { fetchCategoriesApi } from '../services/categoryService';
 
 function Catalog() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ function Catalog() {
   const [query, setQuery] = useState('');
 
   const [products, setProducts] = useState([]);
+  const [dbCategories, setDbCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,14 +21,18 @@ function Catalog() {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchDecorationsApi();
+        const [decs, cats] = await Promise.all([
+          fetchDecorationsApi(),
+          fetchCategoriesApi().catch(() => []),
+        ]);
         if (isMounted) {
-          setProducts(Array.isArray(data) ? data.filter((item) => item.active) : []);
+          setProducts(Array.isArray(decs) ? decs.filter((item) => item.active) : []);
+          setDbCategories(Array.isArray(cats) ? cats.filter((c) => c.active) : []);
         }
       } catch (err) {
         if (isMounted) {
           console.error('Error loading catalog decorations:', err);
-          setError('Unable to load decoration catalog. Please check connection.');
+          setError('Unable to load decoration catalog from MySQL server. Please check connection.');
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -38,20 +44,32 @@ function Catalog() {
     };
   }, []);
 
-  // Derive categories dynamically from live products
+  // Derive categories dynamically from backend categories API merged with live active products
   const categories = useMemo(() => {
-    const set = new Set();
-    products.forEach((p) => {
-      const occ = p.occasion || p.category;
-      if (occ) set.add(occ);
+    const map = new Map();
+    dbCategories.forEach((cat, index) => {
+      map.set(cat.name, {
+        id: cat.id || `category-${cat.name.toLowerCase().replace(/\s+/g, '-')}`,
+        name: cat.name,
+        active: true,
+        displayOrder: cat.displayOrder || index + 1,
+      });
     });
-    return Array.from(set).map((name, index) => ({
-      id: `category-${name.toLowerCase().replace(/\s+/g, '-')}`,
-      name,
-      active: true,
-      displayOrder: index + 1,
-    }));
-  }, [products]);
+
+    products.forEach((p, index) => {
+      const occ = p.occasion || p.category;
+      if (occ && !map.has(occ)) {
+        map.set(occ, {
+          id: `category-${occ.toLowerCase().replace(/\s+/g, '-')}`,
+          name: occ,
+          active: true,
+          displayOrder: map.size + index + 1,
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [products, dbCategories]);
 
   // 1. Group products by Occasion for Level 1 (Occasion Landing Page)
   const occasionsData = useMemo(() => {

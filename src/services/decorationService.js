@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './apiConfig.js';
+import { getAdminAuthHeaders } from './adminAuthService.js';
 
 function resolveApiBases() {
   const base = getApiBaseUrl();
@@ -106,7 +107,6 @@ export async function fetchDecorationByIdApi(id) {
     }
   }
 
-  // Fallback check against full list if single lookup returns 404
   try {
     const list = await fetchDecorationsApi();
     return list.find((item) => String(item.id) === targetId || String(item.decorationId) === targetId) || null;
@@ -114,4 +114,121 @@ export async function fetchDecorationByIdApi(id) {
     console.error('fetchDecorationByIdApi error:', lastError);
     return null;
   }
+}
+
+export async function createDecorationApi(decorationData) {
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/decorations`, {
+        method: 'POST',
+        headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(decorationData),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        lastError = new Error(errorData.error || `HTTP ${response.status} creating decoration`);
+        continue;
+      }
+
+      const data = await response.json();
+      return sanitizeDecoration(data.decoration || data);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Failed to create decoration.');
+}
+
+export async function updateDecorationApi(id, decorationData) {
+  const targetId = String(id).trim();
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/decorations/${targetId}`, {
+        method: 'PUT',
+        headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(decorationData),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        lastError = new Error(errorData.error || `HTTP ${response.status} updating decoration`);
+        continue;
+      }
+
+      const data = await response.json();
+      return sanitizeDecoration(data.decoration || data);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Failed to update decoration.');
+}
+
+export async function toggleDecorationStatusApi(id, active) {
+  const targetId = String(id).trim();
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/decorations/${targetId}/status`, {
+        method: 'PATCH',
+        headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ active }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        lastError = new Error(errorData.error || `HTTP ${response.status} toggling decoration status`);
+        continue;
+      }
+
+      const data = await response.json();
+      return sanitizeDecoration(data.decoration || data);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Failed to update decoration status.');
+}
+
+export async function deleteDecorationApi(id) {
+  const targetId = String(id).trim();
+  const bases = resolveApiBases();
+  let lastError;
+
+  for (const base of bases) {
+    try {
+      const response = await fetch(`${base}/admin/decorations/${targetId}`, {
+        method: 'DELETE',
+        headers: getAdminAuthHeaders(),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        lastError = new Error(errorData.error || `HTTP ${response.status} deleting decoration`);
+        continue;
+      }
+
+      return { ok: true };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Failed to delete decoration.');
 }

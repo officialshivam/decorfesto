@@ -186,3 +186,16 @@ CREATE TABLE IF NOT EXISTS charges (
   INDEX idx_charges_enabled (is_enabled)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 10. Categories table
+CREATE TABLE IF NOT EXISTS categories (
+  id            VARCHAR(64)  NOT NULL PRIMARY KEY,
+  name          VARCHAR(128) NOT NULL,
+  display_order INT          NOT NULL DEFAULT 0,
+  active        TINYINT(1)   NOT NULL DEFAULT 1,
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_categories_name (name),
+  INDEX idx_categories_active (active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+

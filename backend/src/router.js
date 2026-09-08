@@ -1,4 +1,5 @@
-import { listDecorations, getDecoration } from './handlers/decorations.js';
+import { listDecorations, getDecoration, createAdminDecoration, updateAdminDecoration, toggleAdminDecorationStatus, deleteAdminDecoration } from './handlers/decorations.js';
+import { listCategories, createAdminCategory, updateAdminCategory, toggleAdminCategoryStatus, deleteAdminCategory } from './handlers/categories.js';
 import { createCustomer, getCustomer } from './handlers/customers.js';
 import { listVendors, getVendor, createVendor, updateVendor } from './handlers/vendors.js';
 import { createServiceArea, getServiceArea, listServiceAreaVendors, listServiceAreas, deleteServiceArea } from './handlers/serviceAreas.js';
@@ -38,6 +39,7 @@ const routeHandlers = {
     '/charges/enabled': listEnabledCharges,
     '/decorations': listDecorations,
     '/decorations/:id': getDecoration,
+    '/categories': listCategories,
     '/customers/:id': getCustomer,
     '/vendors': listVendors,
     '/vendors/:id': getVendor,
@@ -60,6 +62,8 @@ const routeHandlers = {
     '/auth/vendor-login': vendorLogin,
     '/admin/charges': createAdminCharge,
     '/admin/users': createAdminUserRecord,
+    '/admin/decorations': createAdminDecoration,
+    '/admin/categories': createAdminCategory,
     '/customers': createCustomer,
     '/vendors': createVendor,
     '/service-areas': createServiceArea,
@@ -72,11 +76,15 @@ const routeHandlers = {
   },
   PUT: {
     '/admin/charges/:id': updateAdminCharge,
+    '/admin/decorations/:id': updateAdminDecoration,
+    '/admin/categories/:id': updateAdminCategory,
   },
   PATCH: {
     '/admin/charges/:id': updateAdminCharge,
     '/admin/users/:id/status': toggleAdminUserStatus,
     '/admin/users/:id/password': resetAdminUserPassword,
+    '/admin/decorations/:id/status': toggleAdminDecorationStatus,
+    '/admin/categories/:id/status': toggleAdminCategoryStatus,
     '/orders/:id/status': updateOrderStatus,
     '/vendors/:id': updateVendor,
     '/vendor/orders/:id/status': updateVendorOrderStatus,
@@ -84,6 +92,8 @@ const routeHandlers = {
   },
   DELETE: {
     '/admin/charges/:id': deleteAdminCharge,
+    '/admin/decorations/:id': deleteAdminDecoration,
+    '/admin/categories/:id': deleteAdminCategory,
     '/service-areas/:pincode': deleteServiceArea,
   },
 };
@@ -128,6 +138,19 @@ export async function initializeBackend() {
           INDEX idx_charges_enabled (is_enabled)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `).catch((err) => console.warn('Charges table init notice:', err.message));
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS categories (
+          id            VARCHAR(64)  NOT NULL PRIMARY KEY,
+          name          VARCHAR(128) NOT NULL,
+          display_order INT          NOT NULL DEFAULT 0,
+          active        TINYINT(1)   NOT NULL DEFAULT 1,
+          created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_categories_name (name),
+          INDEX idx_categories_active (active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `).catch((err) => console.warn('Categories table init notice:', err.message));
 
       await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});

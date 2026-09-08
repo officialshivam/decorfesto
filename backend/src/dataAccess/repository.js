@@ -16,6 +16,7 @@ const MYSQL_TABLE_MAP = {
   'service-area-vendors': 'service_area_vendors',
   'availability-checks': 'availability_checks',
   charges: 'charges',
+  categories: 'categories',
 };
 
 /*
@@ -180,6 +181,14 @@ export const columnMaps = {
     available: 'available',
     vendorCount: 'vendor_count',
     checkedAt: 'checked_at',
+  },
+  categories: {
+    id: 'id',
+    name: 'name',
+    displayOrder: 'display_order',
+    active: 'active',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
   },
 };
 

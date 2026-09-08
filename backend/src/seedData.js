@@ -166,4 +166,24 @@ export async function seedBackendData() {
       updatedAt: new Date().toISOString(),
     });
   }
+
+  const categoryRepo = createRepository('categories');
+  const existingCategories = await categoryRepo.list();
+  if (!existingCategories || existingCategories.length === 0) {
+    const defaultCategoryNames = [
+      'Birthday', 'Anniversary', 'Proposal', 'Baby Shower', 'Housewarming',
+      'Wedding', 'Kids', 'Romantic', 'Festival', 'Custom',
+    ];
+    for (let i = 0; i < defaultCategoryNames.length; i++) {
+      const catName = defaultCategoryNames[i];
+      await categoryRepo.create({
+        id: `category-${catName.toLowerCase().replace(/\s+/g, '-')}`,
+        name: catName,
+        displayOrder: i + 1,
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
 }

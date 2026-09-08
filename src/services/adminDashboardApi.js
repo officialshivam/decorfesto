@@ -1,7 +1,7 @@
 import { getStoredVendors } from './mockVendors';
 import { getStoredServiceAreas } from './mockServiceAreas';
-import { getStoredDecorations } from './mockDecorations';
-import { getStoredCategories } from './mockCategories';
+import { fetchDecorationsApi } from './decorationService';
+import { fetchCategoriesApi } from './categoryService';
 
 import { getAdminAuthHeaders } from './adminAuthService';
 import { getApiBaseUrl } from './apiConfig.js';
@@ -94,8 +94,8 @@ export async function fetchAdminDashboard() {
     Promise.resolve([]),
     Promise.resolve(getStoredVendors()),
     Promise.resolve(getStoredServiceAreas()),
-    Promise.resolve(getStoredDecorations()),
-    Promise.resolve(getStoredCategories()),
+    fetchDecorationsApi().catch(() => []),
+    fetchCategoriesApi().catch(() => []),
   ]);
 
   return {

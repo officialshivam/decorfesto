@@ -1,6 +1,5 @@
 import { getStoredVendors } from './mockVendors';
 import { getStoredServiceAreas } from './mockServiceAreas';
-import { getStoredDecorations } from './mockDecorations';
 
 const _PENDING_STATUSES = new Set(['BOOKING PLACED', 'BOOKING_PLACED', 'ORDER RECEIVED', 'CREATED', 'PENDING']);
 const CONFIRMED_STATUSES = new Set(['APPROVED', 'ASSIGNED_TO_VENDOR', 'CONFIRMED', 'CONFIRM']);
@@ -233,7 +232,7 @@ export function deriveDashboard(payload) {
   const serviceAreas = mergeServiceAreas(clientAreas, backend?.serviceAreas?.areas);
   const serviceableAreas = serviceAreas.filter((area) => area.serviceable && area.active);
 
-  const clientDecorations = client.decorations || getStoredDecorations();
+  const clientDecorations = Array.isArray(client.decorations) ? client.decorations : [];
   const decorations = dedupeById([...clientDecorations, ...(Array.isArray(clientDecorations) ? [] : [])]);
   const activeDecorations = decorations.filter((decoration) => decoration.active !== false);
 

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { getStoredDecorations } from '../services/mockDecorations';
+import { useEffect, useMemo, useState } from 'react';
+import { fetchDecorationsApi } from '../services/decorationService';
 import {
   deleteStoredCustomization,
   getStoredCategoryTabs,
@@ -98,7 +98,19 @@ function AdminCustomizations() {
   const [assignOccasionFilter, setAssignOccasionFilter] = useState('All');
   const [assignSearchQuery, setAssignSearchQuery] = useState('');
 
-  const decorations = useMemo(() => getStoredDecorations(), []);
+  const [decorations, setDecorations] = useState([]);
+
+  useEffect(() => {
+    fetchDecorationsApi()
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setDecorations(data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch decorations for customization assignment', err);
+      });
+  }, []);
 
   // Occasions list for design assignment filter
   const occasionsList = useMemo(() => {

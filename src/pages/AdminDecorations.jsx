@@ -1,7 +1,12 @@
 import { Link } from 'react-router-dom';
-import { useMemo, useState } from 'react';
-import { getStoredDecorations, saveStoredDecoration } from '../services/mockDecorations';
-import { getStoredCategories } from '../services/mockCategories';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  fetchDecorationsApi,
+  createDecorationApi,
+  updateDecorationApi,
+  toggleDecorationStatusApi,
+} from '../services/decorationService';
+import { fetchCategoriesApi } from '../services/categoryService';
 import {
   getStoredCustomizations,
   toggleCustomizationAssignment,
@@ -26,7 +31,7 @@ function toFormDecoration(decoration) {
     price: priceVal,
     basePrice: priceVal,
     originalPrice: origVal,
-    ...Object.fromEntries(listFields.map((field) => [field, (decoration[field] || []).join(', ')])),
+    ...Object.fromEntries(listFields.map((field) => [field, Array.isArray(decoration[field]) ? decoration[field].join(', ') : (decoration[field] || '')])),
     imageAssets: decoration.imageAssets || [],
     customizationOptions: JSON.stringify(decoration.customizationOptions || [], null, 2),
   };
@@ -66,8 +71,10 @@ function readImageFile(file) {
 }
 
 function AdminDecorations() {
-  const [decorations, setDecorations] = useState(() => getStoredDecorations());
-  const [categories] = useState(() => getStoredCategories());
+  const [decorations, setDecorations] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [customizationsList, setCustomizationsList] = useState(() => getStoredCustomizations());
   const [form, setForm] = useState(null);
   const [query, setQuery] = useState('');
@@ -79,15 +86,39 @@ function AdminDecorations() {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [imageError, setImageError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const [fetchedDecorations, fetchedCategories] = await Promise.all([
+        fetchDecorationsApi(),
+        fetchCategoriesApi().catch(() => []),
+      ]);
+      setDecorations(fetchedDecorations || []);
+      setCategories(fetchedCategories || []);
+    } catch (err) {
+      console.error('Error loading admin decorations:', err);
+      setFetchError(err.message || 'Unable to load decorations from server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const visibleDecorations = useMemo(() => {
     const minimum = minPrice === '' ? null : Number(minPrice);
     const maximum = maxPrice === '' ? null : Number(maxPrice);
     const filtered = decorations.filter((decoration) => {
       const p = Number(decoration.price ?? decoration.basePrice ?? 0);
+      const cat = decoration.category || decoration.occasion;
       return (
         decoration.name.toLowerCase().includes(query.toLowerCase())
-        && (category === 'All' || decoration.category === category)
+        && (category === 'All' || cat === category)
         && (status === 'All' || (status === 'Active' ? decoration.active : !decoration.active))
         && (minimum === null || p >= minimum)
         && (maximum === null || p <= maximum)
@@ -212,36 +243,15 @@ function AdminDecorations() {
     });
   };
 
-  const saveDecoration = (decoration) => {
-    const numPrice = Number(decoration.price ?? decoration.basePrice ?? 0);
-    const numOriginalPrice = (decoration.originalPrice !== '' && decoration.originalPrice !== null && decoration.originalPrice !== undefined)
-      ? Number(decoration.originalPrice)
-      : numPrice;
-
-    const finalOriginalPrice = numOriginalPrice >= numPrice ? numOriginalPrice : numPrice;
-
-    const savedDecoration = saveStoredDecoration({
-      ...decoration,
-      price: numPrice,
-      basePrice: numPrice,
-      originalPrice: finalOriginalPrice,
-      ...Object.fromEntries(listFields.map((field) => [field, parseList(decoration[field])])),
-      imageAssets: decoration.imageAssets || [],
-      customizationOptions: parseCustomizationOptions(decoration.customizationOptions),
-    });
-    setDecorations(getStoredDecorations());
-    return savedDecoration;
-  };
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setImageError('');
     setSuccessMessage('');
+    setSaving(true);
 
     try {
       let currentForm = { ...form };
 
-      // Auto-convert pending image URL input if present
       const pendingUrl = imageUrlInput.trim();
       if (pendingUrl) {
         try {
@@ -257,39 +267,66 @@ function AdminDecorations() {
         } catch {
           setImageError('Failed to update decoration. Enter a valid image URL.');
           setSuccessMessage('');
+          setSaving(false);
           return;
         }
       }
 
-      const isEditing = Boolean(currentForm.id);
-      saveDecoration(currentForm);
+      const numPrice = Number(currentForm.price ?? currentForm.basePrice ?? 0);
+      const numOriginalPrice = (currentForm.originalPrice !== '' && currentForm.originalPrice !== null && currentForm.originalPrice !== undefined)
+        ? Number(currentForm.originalPrice)
+        : numPrice;
 
-      setDecorations(getStoredDecorations());
+      const finalOriginalPrice = numOriginalPrice >= numPrice ? numOriginalPrice : numPrice;
+
+      const payloadToSave = {
+        ...currentForm,
+        price: numPrice,
+        basePrice: numPrice,
+        originalPrice: finalOriginalPrice,
+        occasion: currentForm.category || currentForm.occasion || 'Celebration',
+        category: currentForm.category || currentForm.occasion || 'Celebration',
+        ...Object.fromEntries(listFields.map((field) => [field, parseList(currentForm[field])])),
+        imageAssets: currentForm.imageAssets || [],
+        customizationOptions: parseCustomizationOptions(currentForm.customizationOptions),
+      };
+
+      const isEditing = Boolean(currentForm.id);
+      if (isEditing) {
+        await updateDecorationApi(currentForm.id, payloadToSave);
+      } else {
+        await createDecorationApi(payloadToSave);
+      }
+
+      await loadData();
       setForm(null);
-      setSuccessMessage(isEditing ? 'Decoration updated successfully!' : 'Decoration added successfully!');
+      setSuccessMessage(isEditing ? 'Decoration updated successfully in MySQL!' : 'Decoration added successfully to MySQL!');
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       setTimeout(() => {
         setSuccessMessage('');
       }, 5000);
     } catch (err) {
-      console.error('Error saving decoration:', err);
-      setImageError('Failed to update decoration. Please try again.');
+      console.error('Error saving decoration to MySQL:', err);
+      setImageError(err.message || 'Failed to save decoration to MySQL server. Please try again.');
       setSuccessMessage('');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleToggleActive = (decoration) => {
+  const handleToggleActive = async (decoration) => {
     try {
       const nextActive = !decoration.active;
-      saveDecoration({ ...decoration, active: nextActive });
-      setSuccessMessage(`"${decoration.name}" ${nextActive ? 'activated' : 'deactivated'} successfully!`);
+      await toggleDecorationStatusApi(decoration.id, nextActive);
+      await loadData();
+      setSuccessMessage(`"${decoration.name}" ${nextActive ? 'activated' : 'deactivated'} in MySQL!`);
       setTimeout(() => {
         setSuccessMessage('');
       }, 4000);
     } catch (err) {
       console.error('Error toggling active status:', err);
-      setImageError('Failed to update decoration. Please try again.');
+      setImageError(err.message || 'Failed to update status in MySQL.');
       setSuccessMessage('');
     }
   };
@@ -306,7 +343,7 @@ function AdminDecorations() {
         <div className="section__heading section__heading--left">
           <span className="eyebrow">Admin</span>
           <h1>Decorations</h1>
-          <p>Manage local decoration packages shown in the customer catalog.</p>
+          <p>Manage live decoration packages backed by MySQL server.</p>
         </div>
 
         {successMessage ? (
@@ -321,6 +358,13 @@ function AdminDecorations() {
         {imageError ? (
           <div className="admin-error-banner" role="alert" style={{ marginBottom: '16px', padding: '12px 16px', background: '#fce8e6', color: '#c5221f', borderRadius: '8px', fontWeight: '600' }}>
             <span>{imageError}</span>
+          </div>
+        ) : null}
+
+        {fetchError ? (
+          <div className="admin-error-banner" role="alert" style={{ marginBottom: '16px', padding: '12px 16px', background: '#fce8e6', color: '#c5221f', borderRadius: '8px', fontWeight: '600' }}>
+            <span>⚠️ {fetchError}</span>
+            <button type="button" className="button button--small button--ghost" onClick={loadData} style={{ marginLeft: '12px' }}>Retry</button>
           </div>
         ) : null}
 
@@ -346,7 +390,18 @@ function AdminDecorations() {
             <form className="auth-form" onSubmit={handleSubmit}>
               <fieldset className="admin-decorations__section"><legend>Basic Information</legend>
                 <label className="search-field"><span>Name</span><input name="name" value={form.name} onChange={handleChange} required /></label>
-                <label className="search-field"><span>Category</span><select name="category" value={form.category} onChange={handleChange}>{categories.filter((item) => item.active || item.name === form.category).map((item) => <option key={item.id}>{item.name}</option>)}</select></label>
+                <label className="search-field">
+                  <span>Category</span>
+                  {categories.length > 0 ? (
+                    <select name="category" value={form.category} onChange={handleChange}>
+                      {categories.filter((item) => item.active || item.name === form.category).map((item) => (
+                        <option key={item.id} value={item.name}>{item.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input name="category" value={form.category} onChange={handleChange} placeholder="e.g. Wedding, Birthday" required />
+                  )}
+                </label>
                 <label className="search-field"><span>Short description</span><textarea name="shortDescription" value={form.shortDescription} onChange={handleChange} required /></label>
                 <label className="search-field"><span>Description</span><textarea name="description" value={form.description} onChange={handleChange} required /></label>
               </fieldset>
@@ -385,7 +440,6 @@ function AdminDecorations() {
                   </label>
                 </div>
 
-                {/* LIVE SAVINGS & DISCOUNT PREVIEW */}
                 {(() => {
                   const p = Number(form.price || 0);
                   const op = Number(form.originalPrice || 0);
@@ -413,7 +467,6 @@ function AdminDecorations() {
                 })()}
               </fieldset>
 
-              {/* DESIGN-LEVEL ASSIGNED CUSTOMIZATIONS SECTION */}
               {form.id ? (
                 <fieldset className="admin-decorations__section">
                   <legend>Customization Options Assigned to This Design</legend>
@@ -495,16 +548,62 @@ function AdminDecorations() {
                 <label className="checkbox-row"><input name="active" type="checkbox" checked={form.active} onChange={handleChange} /><span>Active</span></label>
               </fieldset>
               <div className="confirmation-actions">
-                <button type="submit" className="button">Save Decoration</button>
+                <button type="submit" className="button" disabled={saving}>
+                  {saving ? 'Saving to MySQL...' : 'Save Decoration'}
+                </button>
                 <button type="button" className="button button--ghost" onClick={() => { setForm(null); setImageError(''); setSuccessMessage(''); }}>Cancel</button>
               </div>
             </form>
           </div>
         ) : null}
 
-        <div className="card-panel admin-orders__table-wrap"><table className="admin-orders__table"><thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Featured</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-          {visibleDecorations.map((decoration) => <tr key={decoration.id}><td><img src={decoration.imageUrl} alt="" className="admin-decoration-thumbnail" /></td><td><strong>{decoration.name}</strong></td><td>{decoration.category}</td><td>₹{Number(decoration.price ?? decoration.basePrice ?? 0).toLocaleString('en-IN')}</td><td>{decoration.featured ? 'Yes' : 'No'}</td><td>{decoration.displayOrder}</td><td><span className="status-pill">{decoration.active ? 'Active' : 'Inactive'}</span></td><td><div className="admin-decorations__actions"><button type="button" className="button button--small button--ghost" onClick={() => { setForm(toFormDecoration(decoration)); setImageError(''); setSuccessMessage(''); }}>Edit</button><button type="button" className="button button--small button--ghost" onClick={() => handleToggleActive(decoration)}>{decoration.active ? 'Deactivate' : 'Activate'}</button></div></td></tr>)}
-        </tbody></table></div>
+        {loading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading decorations from MySQL...</div>
+        ) : (
+          <div className="card-panel admin-orders__table-wrap">
+            <table className="admin-orders__table">
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Featured</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleDecorations.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                      No decorations found in MySQL database. Click "Add Decoration" above to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  visibleDecorations.map((decoration) => (
+                    <tr key={decoration.id}>
+                      <td><img src={decoration.imageUrl || decoration.image} alt="" className="admin-decoration-thumbnail" /></td>
+                      <td><strong>{decoration.name}</strong></td>
+                      <td>{decoration.category || decoration.occasion}</td>
+                      <td>₹{Number(decoration.price ?? decoration.basePrice ?? 0).toLocaleString('en-IN')}</td>
+                      <td>{decoration.featured ? 'Yes' : 'No'}</td>
+                      <td>{decoration.displayOrder}</td>
+                      <td><span className="status-pill">{decoration.active ? 'Active' : 'Inactive'}</span></td>
+                      <td>
+                        <div className="admin-decorations__actions">
+                          <button type="button" className="button button--small button--ghost" onClick={() => { setForm(toFormDecoration(decoration)); setImageError(''); setSuccessMessage(''); }}>Edit</button>
+                          <button type="button" className="button button--small button--ghost" onClick={() => handleToggleActive(decoration)}>{decoration.active ? 'Deactivate' : 'Activate'}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </main>
   );
