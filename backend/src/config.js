@@ -33,8 +33,8 @@ export const tablePrefix = process.env.DECORFESTO_TABLE_PREFIX || 'decorfesto-de
 export const useAws = process.env.DECORFESTO_USE_AWS === 'true';
 export const localPort = Number(process.env.DECORFESTO_PORT || 4100);
 
-// --- MySQL configuration --------------------------------------------------
-export const useMysql = process.env.DECORFESTO_USE_MYSQL === 'true';
+export const isProduction = process.env.NODE_ENV === 'production' || process.env.PLATFORM === 'hostinger';
+export const useMysql = process.env.DECORFESTO_USE_MYSQL === 'true' || (isProduction && process.env.DECORFESTO_USE_MYSQL !== 'false') || (Boolean(process.env.DECORFESTO_DB_HOST) && process.env.DECORFESTO_USE_MYSQL !== 'false');
 export const mysqlConfig = {
   host: process.env.DECORFESTO_DB_HOST || 'srv671.hstgr.io',
   port: Number(process.env.DECORFESTO_DB_PORT || 3306),

@@ -50,6 +50,7 @@ export function verifyPassword(password, storedCombinedHash) {
 
 export function verifyAdminCredentials({ username, password }) {
   if (!adminUsername || !adminPasswordSalt || !adminPasswordHash) {
+    console.error('SECURE AUTH FAILURE: Admin environment variables (DECORFESTO_ADMIN_USERNAME, DECORFESTO_ADMIN_PASSWORD_SALT, DECORFESTO_ADMIN_PASSWORD_HASH) are not configured on server.');
     return false;
   }
   if (!username || !password) return false;
@@ -383,6 +384,7 @@ export async function getAdminMe({ req }) {
 
 export async function adminLogin({ req }) {
   if (!adminUsername || !adminPasswordSalt || !adminPasswordHash) {
+    console.error('SERVER CONFIGURATION ERROR: DECORFESTO_ADMIN_USERNAME, DECORFESTO_ADMIN_PASSWORD_SALT, and DECORFESTO_ADMIN_PASSWORD_HASH must be configured in environment variables.');
     return {
       statusCode: 500,
       body: { error: 'Admin authentication is not configured on this server.' },
