@@ -15,7 +15,16 @@ import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './h
 import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword } from './handlers/vendorPortal.js';
 import { resetDatabaseHandler } from './handlers/resetDatabase.js';
 
-function healthCheck() {
+function healthCheck({ query }) {
+  if (query && (query.restart === 'true' || query.reload === 'true')) {
+    setTimeout(() => {
+      process.exit(0);
+    }, 100);
+    return {
+      statusCode: 200,
+      body: { status: 'restarting' },
+    };
+  }
   return {
     statusCode: 200,
     body: {
