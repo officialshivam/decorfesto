@@ -110,6 +110,10 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
       },
     };
 
+    if (!cleanEmail) {
+      options.hidden = { email: true };
+    }
+
     const rzp = new window.Razorpay(options);
 
     rzp.on('payment.failed', function (response) {
