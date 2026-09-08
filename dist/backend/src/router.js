@@ -7,7 +7,7 @@ import { createOrder, getOrder, listOrders, listAdminOrders, getAdminOrderDetail
 import { checkAvailability } from './handlers/availability.js';
 import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
-import { adminLogin, adminLogout, getAdminMe, vendorLogin, validateActiveUserSession, customerSignup, customerLogin, customerLogout, getCustomerMe } from './auth.js';
+import { adminLogin, adminLogout, getAdminMe, vendorLogin, validateActiveUserSession, customerSignup, customerLogin, customerLogout, getCustomerMe, updateCustomerProfile } from './auth.js';
 import { getCorsHeaders } from './config.js';
 import { listEnabledCharges, listAdminCharges, createAdminCharge, updateAdminCharge, deleteAdminCharge } from './handlers/charges.js';
 import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdminUserPassword } from './handlers/users.js';
@@ -80,6 +80,7 @@ const routeHandlers = {
     '/admin/categories/:id': updateAdminCategory,
   },
   PATCH: {
+    '/auth/customer-profile': updateCustomerProfile,
     '/admin/charges/:id': updateAdminCharge,
     '/admin/users/:id/status': toggleAdminUserStatus,
     '/admin/users/:id/password': resetAdminUserPassword,

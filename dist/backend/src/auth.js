@@ -522,6 +522,15 @@ function sanitizeCustomerProfile(c) {
   const email = String(c.email || '').trim().toLowerCase();
   const address = String(c.savedAddress || c.address || (Array.isArray(c.addresses) ? c.addresses[0] : '') || '').trim();
 
+  let addressDetails = null;
+  if (c.addressDetails) {
+    if (typeof c.addressDetails === 'string') {
+      try { addressDetails = JSON.parse(c.addressDetails); } catch {}
+    } else if (typeof c.addressDetails === 'object') {
+      addressDetails = c.addressDetails;
+    }
+  }
+
   return {
     id: String(c.id).trim(),
     fullName,
@@ -531,8 +540,54 @@ function sanitizeCustomerProfile(c) {
     mobile: fullPhone,
     savedAddress: address,
     address,
+    addressDetails,
+    savedAddressObject: addressDetails,
     role: 'CUSTOMER',
     createdAt: c.createdAt || new Date().toISOString(),
+  };
+}
+
+export async function updateCustomerProfile({ req }) {
+  const userAuth = getAuthenticatedCustomer(req.headers);
+  if (!userAuth || !userAuth.id) {
+    return { statusCode: 401, body: { error: 'Not authenticated.' } };
+  }
+
+  const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+  const repository = createRepository('customers');
+  const existing = await repository.getById(userAuth.id);
+
+  if (!existing) {
+    return { statusCode: 404, body: { error: 'Customer account not found.' } };
+  }
+
+  const updates = {};
+  if (payload.fullName || payload.name) {
+    const nameVal = String(payload.fullName || payload.name).trim();
+    updates.fullName = nameVal;
+    updates.name = nameVal;
+  }
+  if (payload.savedAddress || payload.address || payload.fullAddress) {
+    const addrVal = String(payload.savedAddress || payload.address || payload.fullAddress).trim();
+    updates.savedAddress = addrVal;
+    updates.address = addrVal;
+  }
+  if (payload.addressDetails || payload.savedAddressObject) {
+    const details = payload.addressDetails || payload.savedAddressObject;
+    updates.addressDetails = typeof details === 'string' ? details : JSON.stringify(details);
+  }
+  if (payload.pincode || payload.defaultPincode) {
+    updates.defaultPincode = String(payload.pincode || payload.defaultPincode).trim();
+  }
+
+  updates.updatedAt = new Date().toISOString();
+
+  const updated = await repository.update(userAuth.id, updates);
+  const safeProfile = sanitizeCustomerProfile(updated);
+
+  return {
+    statusCode: 200,
+    body: { success: true, user: safeProfile },
   };
 }
 

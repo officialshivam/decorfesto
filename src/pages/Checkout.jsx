@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MobileNumberInput, { sanitize10DigitMobile, validate10DigitMobile } from '../components/MobileNumberInput';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -12,22 +12,25 @@ import PriceSummaryBreakup from '../components/PriceSummaryBreakup';
 
 function Checkout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { items, clearCart } = useCart();
   const { user, addOrder: authAddOrder } = useAuth();
   const isNavigatingRef = useRef(false);
   const currentUserId = user?.id || user?.email || user?.mobile || null;
   const prevUserIdRef = useRef(currentUserId);
 
-  const [form, setForm] = useState({
+  const deliveryAddr = location.state?.deliveryAddress || user?.savedAddressObject || user?.addressDetails || null;
+
+  const [form, setForm] = useState(() => ({
     fullName: user?.name || user?.fullName || '',
-    mobile: sanitize10DigitMobile(user?.mobile || user?.phone || ''),
+    mobile: sanitize10DigitMobile(deliveryAddr?.mobile || user?.mobile || user?.phone || ''),
     email: user?.email || '',
-    address: user?.savedAddress || user?.address || '',
-    landmark: '',
-    city: 'Delhi NCR',
-    state: 'Delhi',
-    pincode: items[0]?.pincode || '',
-  });
+    address: deliveryAddr?.fullAddress || deliveryAddr?.address || user?.savedAddress || user?.address || '',
+    landmark: deliveryAddr?.landmark || '',
+    city: deliveryAddr?.city || 'Delhi NCR',
+    state: deliveryAddr?.state || 'Delhi',
+    pincode: deliveryAddr?.pincode || items[0]?.pincode || '',
+  }));
 
   useEffect(() => {
     if (currentUserId) {

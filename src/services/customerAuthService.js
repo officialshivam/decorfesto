@@ -98,3 +98,27 @@ export async function customerLogoutApi() {
   } catch {}
   return { ok: true };
 }
+
+export async function updateCustomerProfileApi(updates) {
+  try {
+    const headers = getCustomerAuthHeaders({ 'Content-Type': 'application/json' });
+    const response = await fetch(`${API_BASE_URL}/auth/customer-profile`, {
+      method: 'PATCH',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { ok: false, error: data.error || 'Failed to update customer profile.' };
+    }
+    if (data.user) {
+      try {
+        localStorage.setItem('decorfesto-current-user', JSON.stringify(data.user));
+      } catch {}
+    }
+    return { ok: true, user: data.user };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'Network error updating customer profile.' };
+  }
+}
