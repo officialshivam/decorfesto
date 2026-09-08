@@ -47,6 +47,7 @@ function isApiRequest(pathname, req) {
     '/auth',
     '/payments',
     '/decorations',
+    '/categories',
     '/customers',
     '/vendors',
     '/service-areas',
