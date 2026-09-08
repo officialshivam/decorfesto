@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AvailabilityChecker from '../components/AvailabilityChecker';
-import BookingSummary from '../components/BookingSummary';
 import CustomizationPanel from '../components/CustomizationPanel';
 import DateTimeSelector from '../components/DateTimeSelector';
 import ProductImageGallery from '../components/ProductImageGallery';
@@ -354,23 +353,56 @@ function ProductDetail() {
               </label>
             </div>
 
-            {/* BOOKING SUMMARY & ADD TO CART */}
-            <div className="detail-flow-section">
-              <BookingSummary
-                product={product}
-                totalPrice={totalPrice}
-                selections={selections}
-                availability={availability}
-                pincode={availability.pincode}
-                date={date}
-                time={time}
-                onAddToCart={handleAddToCart}
-                isReady={validationMessages.length === 0}
-                validationMessages={validationMessages}
-                cartSuccessMessage={cartSuccessMessage}
-                cartErrorMessage={cartErrorMessage}
-                isSubmitting={isSubmitting}
-              />
+            {/* ADD TO CART ACTION CARD */}
+            <div className="detail-flow-section card-panel" style={{ borderRadius: '16px', padding: '24px', border: '1px solid var(--border, #e2e8f0)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '700', display: 'block' }}>
+                  Total Amount
+                </span>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--accent, #e11d48)', marginTop: '2px' }}>
+                  Current Total: ₹{totalPrice.toLocaleString('en-IN')}
+                </div>
+              </div>
+
+              {cartSuccessMessage && (
+                <div
+                  className="admin-success-banner"
+                  role="alert"
+                  style={{ marginBottom: '16px', padding: '12px 14px', background: '#e6f4ea', color: '#137333', borderRadius: '10px', fontWeight: '700', fontSize: '0.9rem' }}
+                >
+                  ✓ {cartSuccessMessage}
+                </div>
+              )}
+
+              {cartErrorMessage && (
+                <div
+                  className="admin-error-banner"
+                  role="alert"
+                  style={{ marginBottom: '16px', padding: '12px 14px', background: '#fce8e6', color: '#c5221f', borderRadius: '10px', fontWeight: '600', fontSize: '0.88rem' }}
+                >
+                  ✕ {cartErrorMessage}
+                </div>
+              )}
+
+              {validationMessages.length > 0 && !cartErrorMessage && !cartSuccessMessage && (
+                <div className="validation-box" style={{ marginBottom: '16px' }}>
+                  {validationMessages.map((message) => (
+                    <p key={message} style={{ color: '#64748b', fontSize: '0.88rem', margin: '4px 0' }}>
+                      • {message}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={`button button--full${isSubmitting ? ' button--disabled' : ''}`}
+                onClick={handleAddToCart}
+                disabled={validationMessages.length > 0 || isSubmitting}
+                style={{ padding: '14px 24px', fontSize: '1.05rem', fontWeight: '700' }}
+              >
+                {isSubmitting ? 'Adding to Cart…' : 'Add to Cart →'}
+              </button>
             </div>
 
             {/* OPTIONAL EXPERIENCES CALLOUT */}
