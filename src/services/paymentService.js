@@ -50,15 +50,20 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
     // 3. Configure Razorpay Standard Options
     const cleanName = String(customer?.fullName || customer?.name || '').trim();
     const cleanEmail = String(customer?.email || '').trim();
-    const cleanContact = String(customer?.mobile || customer?.phone || '').replace(/\D/g, '').slice(-10);
+    const rawPhone = String(customer?.mobile || customer?.phone || '').trim();
 
-    const prefill = {
-      email: cleanEmail || '',
-    };
+    const digitsOnly = rawPhone.replace(/\D/g, '').slice(-10);
+    const isValidIndianMobile = digitsOnly.length === 10 && /^[6-9]/.test(digitsOnly);
+    const cleanContact = isValidIndianMobile ? `+91${digitsOnly}` : '';
+
+    const prefill = {};
     if (cleanName) {
       prefill.name = cleanName;
     }
-    if (cleanContact.length === 10) {
+    if (cleanEmail) {
+      prefill.email = cleanEmail;
+    }
+    if (cleanContact) {
       prefill.contact = cleanContact;
     }
 
