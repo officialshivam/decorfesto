@@ -49,8 +49,8 @@ export function verifyPassword(password, storedCombinedHash) {
 }
 
 export function verifyAdminCredentials({ username, password }) {
-  if (!adminUsername || !adminPasswordSalt || !adminPasswordHash) {
-    console.error('SECURE AUTH FAILURE: Admin environment variables (DECORFESTO_ADMIN_USERNAME, DECORFESTO_ADMIN_PASSWORD_SALT, DECORFESTO_ADMIN_PASSWORD_HASH) are not configured on server.');
+  if (!adminUsername || !adminPasswordHash) {
+    console.error('SECURE AUTH FAILURE: Admin environment variables are not configured on server.');
     return false;
   }
   if (!username || !password) return false;
@@ -58,15 +58,26 @@ export function verifyAdminCredentials({ username, password }) {
   const expectedUser = String(adminUsername).trim().toLowerCase();
   if (normalizedUser !== expectedUser && normalizedUser !== 'admin') return false;
 
-  try {
-    const computedHash = crypto.pbkdf2Sync(String(password), adminPasswordSalt, 100000, 64, 'sha512').toString('hex');
-    const bufA = Buffer.from(computedHash, 'hex');
-    const bufB = Buffer.from(adminPasswordHash, 'hex');
-    if (bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB)) {
-      return true;
+  let salt = adminPasswordSalt;
+  let targetHash = adminPasswordHash;
+
+  if (adminPasswordHash.includes(':')) {
+    const parts = adminPasswordHash.split(':');
+    salt = parts[0];
+    targetHash = parts[1];
+  }
+
+  if (salt && targetHash && targetHash.length === 128) {
+    try {
+      const computedHash = crypto.pbkdf2Sync(String(password), salt, 100000, 64, 'sha512').toString('hex');
+      const bufA = Buffer.from(computedHash, 'hex');
+      const bufB = Buffer.from(targetHash, 'hex');
+      if (bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB)) {
+        return true;
+      }
+    } catch {
+      // Fall through
     }
-  } catch {
-    // Fall through
   }
 
   return verifyPassword(password, adminPasswordHash);
