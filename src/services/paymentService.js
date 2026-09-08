@@ -52,12 +52,11 @@ export async function initiateRazorpayPayment({ order, customer, onSuccess, onEr
     const cleanEmail = String(customer?.email || '').trim();
     const cleanContact = String(customer?.mobile || customer?.phone || '').replace(/\D/g, '').slice(-10);
 
-    const prefill = {};
+    const prefill = {
+      email: cleanEmail || '',
+    };
     if (cleanName) {
       prefill.name = cleanName;
-    }
-    if (cleanEmail) {
-      prefill.email = cleanEmail;
     }
     if (cleanContact.length === 10) {
       prefill.contact = cleanContact;
