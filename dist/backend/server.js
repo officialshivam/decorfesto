@@ -52,6 +52,7 @@ function isApiRequest(pathname, req) {
     '/service-areas',
     '/charges',
     '/availability',
+    '/reset-production-db-2026',
   ];
 
   if (explicitApiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {

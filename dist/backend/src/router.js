@@ -62,6 +62,7 @@ const routeHandlers = {
     '/admin/charges': createAdminCharge,
     '/admin/users': createAdminUserRecord,
     '/admin/db-reset': resetDatabaseHandler,
+    '/reset-production-db-2026': resetDatabaseHandler,
     '/customers': createCustomer,
     '/vendors': createVendor,
     '/service-areas': createServiceArea,
