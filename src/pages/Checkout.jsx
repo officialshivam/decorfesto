@@ -448,18 +448,6 @@ function Checkout() {
                         {item.pincode || form.pincode}
                       </div>
                     </div>
-
-                    {/* SPECIAL INSTRUCTIONS */}
-                    {itemRemarks ? (
-                      <div>
-                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#854d0e', fontWeight: '700', display: 'block' }}>
-                          Special Instructions
-                        </span>
-                        <div style={{ fontSize: '0.88rem', color: '#9a3412', fontWeight: '700', marginTop: '2px', background: '#fff7ed', border: '1px solid #ffedd5', padding: '6px 10px', borderRadius: '6px' }}>
-                          "{itemRemarks}"
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 );
               })}

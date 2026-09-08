@@ -19,11 +19,11 @@ export async function listEnabledCharges() {
     const allCharges = await repository.list();
     if (Array.isArray(allCharges) && allCharges.length > 0) {
       const filtered = allCharges
-        .filter((c) => c.enabled !== false && c.is_enabled !== 0)
+        .filter((c) => c.enabled !== false && c.is_enabled !== 0 && c.is_enabled !== false)
         .map((c) => ({
           id: c.id || c.charge_id || 'booking_service_fee',
           name: c.name || 'Booking Service Fee',
-          amount: Number(c.amount ?? 100),
+          amount: Number(c.amount ?? c.fee ?? 100),
           description: c.description || 'Booking/service charge applied to customer checkouts.',
           type: c.type || 'FIXED',
           enabled: true,
@@ -68,7 +68,7 @@ export async function createAdminCharge({ req }) {
   const newCharge = {
     id: payload.id || `charge_${Date.now().toString().slice(-6)}`,
     name: String(payload.name || 'Service Charge').trim(),
-    amount: Number(payload.amount || 0),
+    amount: Number(payload.amount ?? payload.fee ?? 0),
     description: String(payload.description || '').trim(),
     type: payload.type || 'FIXED',
     enabled: payload.enabled !== false,
@@ -93,10 +93,15 @@ export async function updateAdminCharge({ req, params }) {
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
   const repository = createRepository('charges');
 
-  const updatedCharge = await repository.update(chargeId, {
+  const updates = {
     ...payload,
+    amount: Number(payload.amount ?? payload.fee ?? 0),
+    enabled: payload.enabled !== false,
+    is_enabled: payload.enabled !== false ? 1 : 0,
     updatedAt: new Date().toISOString(),
-  });
+  };
+
+  const updatedCharge = await repository.update(chargeId, updates);
 
   if (!updatedCharge) {
     return { statusCode: 404, body: { error: 'Charge not found.' } };

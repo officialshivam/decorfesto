@@ -15,6 +15,7 @@ const MYSQL_TABLE_MAP = {
   'service-areas': 'service_areas',
   'service-area-vendors': 'service_area_vendors',
   'availability-checks': 'availability_checks',
+  charges: 'charges',
 };
 
 /*
@@ -23,6 +24,19 @@ const MYSQL_TABLE_MAP = {
  * so migrated rows round-trip through the repository unchanged.
  */
 export const columnMaps = {
+  charges: {
+    id: 'id',
+    name: 'name',
+    amount: 'amount',
+    fee: 'amount',
+    description: 'description',
+    type: 'type',
+    enabled: 'is_enabled',
+    is_enabled: 'is_enabled',
+    isEnabled: 'is_enabled',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
   customers: {
     id: 'id',
     cognitoSub: 'cognito_sub',
@@ -228,7 +242,7 @@ function deserializeJson(value) {
   }
 }
 
-const BOOLEAN_COLUMNS = new Set(['serviceable', 'active', 'featured', 'available']);
+const BOOLEAN_COLUMNS = new Set(['serviceable', 'active', 'featured', 'available', 'is_enabled']);
 
 const DECIMAL_COLUMNS = new Set([
   'base_price',
@@ -241,6 +255,7 @@ const DECIMAL_COLUMNS = new Set([
   'add_on_price',
   'total_price',
   'price',
+  'amount',
 ]);
 
 function mapForWrite(values, columnMap) {
