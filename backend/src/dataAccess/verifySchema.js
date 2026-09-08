@@ -17,6 +17,7 @@ const REQUIRED_TABLES = [
   'orders',
   'order_items',
   'availability_checks',
+  'charges',
 ];
 
 const EXPECTED_INDEXES = {
@@ -28,6 +29,7 @@ const EXPECTED_INDEXES = {
   orders: ['PRIMARY', 'idx_orders_customer', 'idx_orders_vendor', 'idx_orders_status', 'idx_orders_pincode', 'idx_orders_created'],
   order_items: ['PRIMARY', 'idx_order_items_order'],
   availability_checks: ['PRIMARY', 'idx_checks_pincode', 'idx_checks_checked'],
+  charges: ['PRIMARY', 'idx_charges_enabled'],
 };
 
 async function inspectSchema(pool) {

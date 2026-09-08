@@ -106,11 +106,7 @@ let isInitialized = false;
 export async function initializeBackend() {
   if (isInitialized) return;
   isInitialized = true;
-  try {
-    await seedBackendData();
-  } catch (error) {
-    console.warn('Backend data seed warning (using fallback repository):', error.message);
-  }
+
   try {
     const { getPool } = await import('./dataAccess/mysqlConnection.js');
     const { useMysql, tablePrefix } = await import('./config.js');
@@ -118,6 +114,21 @@ export async function initializeBackend() {
       const pool = getPool();
       const prefix = tablePrefix || 'decorfesto-dev';
       const ordersTable = `${prefix}-orders`;
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS charges (
+          id          VARCHAR(64)  NOT NULL PRIMARY KEY,
+          name        VARCHAR(255) NOT NULL,
+          amount      DECIMAL(12,2) NOT NULL DEFAULT 0,
+          description TEXT         NULL,
+          type        VARCHAR(64)  NOT NULL DEFAULT 'FIXED',
+          is_enabled  TINYINT(1)   NOT NULL DEFAULT 1,
+          created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_charges_enabled (is_enabled)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `).catch((err) => console.warn('Charges table init notice:', err.message));
+
       await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
       await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS landmark VARCHAR(255) NULL`).catch(() => {});
@@ -125,6 +136,12 @@ export async function initializeBackend() {
     }
   } catch (e) {
     console.warn('DB Column Migration Notice:', e?.message || e);
+  }
+
+  try {
+    await seedBackendData();
+  } catch (error) {
+    console.warn('Backend data seed warning (using fallback repository):', error.message);
   }
 }
 
