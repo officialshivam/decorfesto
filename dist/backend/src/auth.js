@@ -244,7 +244,14 @@ export function extractTokenFromHeaders(headers = {}, targetRole = null) {
 
   for (const key of Object.keys(headers || {})) {
     const k = key.toLowerCase();
-    if (k === 'x-customer-token' || k === 'x-session-token' || k === 'x-auth-token') {
+    if (
+      k === 'x-customer-token' ||
+      k === 'x-session-token' ||
+      k === 'x-auth-token' ||
+      k === 'x-admin-token' ||
+      k === 'x-decorfesto-admin-token' ||
+      k === 'x-admin-key'
+    ) {
       const token = String(headers[key] || '').trim();
       if (token) return token;
     }

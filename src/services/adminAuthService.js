@@ -17,6 +17,9 @@ export function getAdminAuthHeaders(extraHeaders = {}) {
     if (!headers.Authorization) {
       headers.Authorization = `Bearer ${token}`;
     }
+    if (!headers['x-admin-token']) {
+      headers['x-admin-token'] = token;
+    }
     if (!headers['x-decorfesto-admin-token']) {
       headers['x-decorfesto-admin-token'] = token;
     }

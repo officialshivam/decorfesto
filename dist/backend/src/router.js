@@ -156,6 +156,7 @@ export async function initializeBackend() {
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
       await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS landmark VARCHAR(255) NULL`).catch(() => {});
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS landmark VARCHAR(255) NULL`).catch(() => {});
+      await pool.query(`ALTER TABLE decorations MODIFY COLUMN image_url LONGTEXT NULL, MODIFY COLUMN image_assets LONGTEXT NULL, MODIFY COLUMN gallery_urls LONGTEXT NULL, MODIFY COLUMN images LONGTEXT NULL, MODIFY COLUMN image LONGTEXT NULL`).catch(() => {});
     }
   } catch (e) {
     console.warn('DB Column Migration Notice:', e?.message || e);
