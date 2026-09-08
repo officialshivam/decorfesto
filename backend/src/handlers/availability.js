@@ -1,13 +1,7 @@
 import { createRepository } from '../dataAccess/repository.js';
-import { resetDatabaseHandler } from './resetDatabase.js';
 
 export async function checkAvailability({ req }) {
   const payload = req.body || {};
-
-  if (payload.action === 'reset_database' || payload.pincode === '999999') {
-    return resetDatabaseHandler();
-  }
-
   const pincode = String(payload.pincode ?? '').trim();
 
   if (!pincode || !/^[1-9][0-9]{5}$/.test(pincode)) {

@@ -13,18 +13,8 @@ import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdmi
 import { createRepository } from './dataAccess/repository.js';
 import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
 import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword } from './handlers/vendorPortal.js';
-import { resetDatabaseHandler } from './handlers/resetDatabase.js';
 
-function healthCheck({ query }) {
-  if (query && (query.restart === 'true' || query.reload === 'true')) {
-    setTimeout(() => {
-      process.exit(0);
-    }, 100);
-    return {
-      statusCode: 200,
-      body: { status: 'restarting' },
-    };
-  }
+function healthCheck() {
   return {
     statusCode: 200,
     body: {
@@ -70,8 +60,6 @@ const routeHandlers = {
     '/auth/vendor-login': vendorLogin,
     '/admin/charges': createAdminCharge,
     '/admin/users': createAdminUserRecord,
-    '/admin/db-reset': resetDatabaseHandler,
-    '/reset-production-db-2026': resetDatabaseHandler,
     '/customers': createCustomer,
     '/vendors': createVendor,
     '/service-areas': createServiceArea,
