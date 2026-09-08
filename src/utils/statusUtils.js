@@ -7,10 +7,10 @@
  */
 
 export const BOOKING_STATUS_DISPLAY_MAP = {
+  'PAYMENT_INITIATED': 'Not Placed',
   'ORDER RECEIVED': 'Booking Placed',
   'ORDER_RECEIVED': 'Booking Placed',
   'CREATED': 'Booking Placed',
-  'PAYMENT_INITIATED': 'Booking Placed',
   'BOOKING PLACED': 'Booking Placed',
   'BOOKING_PLACED': 'Booking Placed',
   'ADMIN_APPROVED': 'Vendor Assigned',
@@ -35,13 +35,19 @@ export const BOOKING_STATUS_DISPLAY_MAP = {
  * @returns {string}
  */
 export function formatCustomerBookingStatus(rawStatus, paymentStatus = '') {
-  if (!rawStatus) return 'Booking Placed';
+  if (!rawStatus) return 'Not Placed';
   const status = String(rawStatus).trim().toUpperCase();
   const payment = String(paymentStatus || '').trim().toUpperCase();
   const isPaid = payment.includes('PAID') || payment.includes('SUCCESS');
 
-  if (status === 'ORDER_RECEIVED' || status === 'ORDER RECEIVED' || status === 'CREATED' || status === 'PAYMENT_INITIATED') {
-    return isPaid ? 'Vendor Assignment Pending' : 'Booking Placed';
+  if (status === 'PAYMENT_INITIATED' || !isPaid) {
+    if (status === 'PAYMENT_INITIATED' || status === 'ORDER_RECEIVED' || status === 'ORDER RECEIVED' || status === 'CREATED' || status === 'BOOKING_PLACED' || status === 'BOOKING PLACED') {
+      return 'Not Placed';
+    }
+  }
+
+  if (status === 'ORDER_RECEIVED' || status === 'ORDER RECEIVED' || status === 'CREATED' || status === 'BOOKING_PLACED' || status === 'BOOKING PLACED') {
+    return 'Booking Placed';
   }
   if (status === 'VENDOR_ASSIGNED' || status === 'ASSIGNED_TO_VENDOR' || status === 'APPROVED' || status === 'ADMIN_APPROVED') {
     return 'Decoration Pending';
@@ -69,13 +75,19 @@ export function formatCustomerBookingStatus(rawStatus, paymentStatus = '') {
  * @returns {string}
  */
 export function formatAdminBookingStatus(rawStatus, paymentStatus = '') {
-  if (!rawStatus) return 'Booking Placed';
+  if (!rawStatus) return 'Not Placed';
   const status = String(rawStatus).trim().toUpperCase();
   const payment = String(paymentStatus || '').trim().toUpperCase();
   const isPaid = payment.includes('PAID') || payment.includes('SUCCESS');
 
-  if (status === 'ORDER_RECEIVED' || status === 'ORDER RECEIVED' || status === 'CREATED' || status === 'PAYMENT_INITIATED') {
-    return isPaid ? 'Vendor Assignment Pending' : 'Booking Placed';
+  if (status === 'PAYMENT_INITIATED' || !isPaid) {
+    if (status === 'PAYMENT_INITIATED' || status === 'ORDER_RECEIVED' || status === 'ORDER RECEIVED' || status === 'CREATED' || status === 'BOOKING_PLACED' || status === 'BOOKING PLACED') {
+      return 'Not Placed';
+    }
+  }
+
+  if (status === 'ORDER_RECEIVED' || status === 'ORDER RECEIVED' || status === 'CREATED' || status === 'BOOKING_PLACED' || status === 'BOOKING PLACED') {
+    return 'Booking Placed';
   }
   if (status === 'VENDOR_ASSIGNED' || status === 'ASSIGNED_TO_VENDOR' || status === 'APPROVED' || status === 'ADMIN_APPROVED') {
     return 'Vendor Assigned';
