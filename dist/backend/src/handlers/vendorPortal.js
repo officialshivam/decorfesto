@@ -419,8 +419,8 @@ export async function verifyStartOtp({ req, params }) {
       );
 
       await connection.query(
-        `UPDATE orders SET booking_status = 'IN_PROGRESS', vendor_started_at = ?, updated_at = ? WHERE id = ?`,
-        [now, now, orderId],
+        `UPDATE orders SET booking_status = 'IN_PROGRESS', updated_at = ? WHERE id = ?`,
+        [now, orderId],
       );
 
       await connection.commit();
