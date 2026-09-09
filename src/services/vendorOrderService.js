@@ -165,3 +165,23 @@ export async function updateVendorOrderStatusApi(orderId, vendorId, vendorName, 
     return { ok: true, order: updated };
   }
 }
+
+export async function verifyStartOtpApi(orderId, otp) {
+  try {
+    const res = await fetch(`/vendor/orders/${orderId}/verify-start-otp`, {
+      method: 'POST',
+      headers: getVendorAuthHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
+      body: JSON.stringify({ otp: String(otp || '').trim() }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      return { ok: true, message: data.message, order: data.order };
+    }
+    return { ok: false, error: data.error || 'OTP verification failed.', statusCode: res.status };
+  } catch (err) {
+    return { ok: false, error: err.message || 'Unable to connect to server for OTP verification.' };
+  }
+}
+

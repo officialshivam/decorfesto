@@ -17,6 +17,8 @@ const MYSQL_TABLE_MAP = {
   'availability-checks': 'availability_checks',
   charges: 'charges',
   categories: 'categories',
+  'order-start-otps': 'order_start_otps',
+  order_start_otps: 'order_start_otps',
 };
 
 /*
@@ -25,6 +27,39 @@ const MYSQL_TABLE_MAP = {
  * so migrated rows round-trip through the repository unchanged.
  */
 export const columnMaps = {
+  order_start_otps: {
+    id: 'id',
+    orderId: 'order_id',
+    vendorId: 'vendor_id',
+    otpHash: 'otp_hash',
+    startOtp: 'start_otp',
+    startOtpEncrypted: 'start_otp_encrypted',
+    startOtpIv: 'start_otp_iv',
+    startOtpAuthTag: 'start_otp_auth_tag',
+    expiresAt: 'expires_at',
+    verifiedAt: 'verified_at',
+    attemptCount: 'attempt_count',
+    active: 'active',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  'order-start-otps': {
+    id: 'id',
+    orderId: 'order_id',
+    vendorId: 'vendor_id',
+    otpHash: 'otp_hash',
+    startOtp: 'start_otp',
+    startOtpEncrypted: 'start_otp_encrypted',
+    startOtpIv: 'start_otp_iv',
+    startOtpAuthTag: 'start_otp_auth_tag',
+    expiresAt: 'expires_at',
+    verifiedAt: 'verified_at',
+    attemptCount: 'attempt_count',
+    active: 'active',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+
   charges: {
     id: 'id',
     name: 'name',

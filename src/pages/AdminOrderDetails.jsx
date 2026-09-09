@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getStoredCharges } from '../services/chargeService';
-import { getOrderById, getAdminOrderByIdApi, updateAdminOrderStatusApi } from '../services/orderService';
+import { getOrderById, getAdminOrderByIdApi, updateAdminOrderStatusApi, regenerateOrderOtpApi } from '../services/orderService';
 import { getAllUsersForAdminApi } from '../services/userService';
 import { getVendorsApi } from '../services/vendorAuthService';
 import { formatDisplayDate } from '../utils/dateTimeUtils';
@@ -25,6 +25,33 @@ function AdminOrderDetails() {
   const [isSubmittingVendor, setIsSubmittingVendor] = useState(false);
   const [vendorSuccess, setVendorSuccess] = useState('');
   const [vendorError, setVendorError] = useState('');
+
+  // 4-Digit Customer OTP state & handlers
+  const [isRegeneratingOtp, setIsRegeneratingOtp] = useState(false);
+  const [otpNotice, setOtpNotice] = useState('');
+  const [otpError, setOtpError] = useState('');
+
+  const handleRegenerateOtp = async () => {
+    if (!order || !order.vendorId) return;
+    setIsRegeneratingOtp(true);
+    setOtpNotice('');
+    setOtpError('');
+    try {
+      const res = await regenerateOrderOtpApi(order.id);
+      if (res.ok) {
+        setOtpNotice(`Customer OTP regenerated successfully! New 4-digit OTP: ${res.startOtp}`);
+        const updated = await getAdminOrderByIdApi(order.id);
+        if (updated) setOrder(updated);
+      } else {
+        setOtpError(res.error || 'Failed to regenerate OTP.');
+      }
+    } catch (err) {
+      setOtpError(err.message || 'Unable to connect to server to regenerate OTP.');
+    } finally {
+      setIsRegeneratingOtp(false);
+    }
+  };
+
 
   useEffect(() => {
     async function loadData() {
@@ -348,6 +375,77 @@ function AdminOrderDetails() {
                   </div>
                 )}
               </div>
+
+              {/* CUSTOMER 4-DIGIT START OTP CONTROL CARD */}
+              {order.vendorId && (
+                <div style={{ marginTop: '24px', padding: '20px', borderRadius: '16px', border: '1px solid #cbd5e1', background: '#ffffff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800', color: '#0f172a' }}>
+                        🔐 Customer Start OTP Status
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: '#64748b' }}>
+                        4-digit security code required by vendor to start decoration at location.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isRegeneratingOtp || isTerminal}
+                      onClick={handleRegenerateOtp}
+                      style={{
+                        background: isTerminal ? '#94a3b8' : '#e11d48',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '10px 18px',
+                        borderRadius: '8px',
+                        fontWeight: '700',
+                        fontSize: '0.88rem',
+                        cursor: isTerminal ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {isRegeneratingOtp ? 'Generating...' : '🔄 Regenerate Customer OTP'}
+                    </button>
+                  </div>
+
+                  {otpNotice && (
+                    <div style={{ marginTop: '12px', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: '700' }}>
+                      ✓ {otpNotice}
+                    </div>
+                  )}
+
+                  {otpError && (
+                    <div style={{ marginTop: '12px', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: '700' }}>
+                      ⚠️ {otpError}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', background: '#f8fafc', padding: '14px', borderRadius: '10px', fontSize: '0.88rem' }}>
+                    <div>
+                      <span style={{ color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: '700' }}>Active OTP</span>
+                      <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '1.2rem', marginTop: '2px', letterSpacing: '2px' }}>
+                        {order.startOtp ? order.startOtp : '● ● ● ● (Active in DB)'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style={{ color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: '700' }}>Verification State</span>
+                      <div style={{ fontWeight: '800', color: order.otpDetails?.verifiedAt || ['IN_PROGRESS', 'READY_FOR_SETUP', 'COMPLETED'].includes(String(order.bookingStatus).toUpperCase()) ? '#16a34a' : '#d97706', marginTop: '4px' }}>
+                        {order.otpDetails?.verifiedAt || ['IN_PROGRESS', 'READY_FOR_SETUP', 'COMPLETED'].includes(String(order.bookingStatus).toUpperCase())
+                          ? '✓ Verified'
+                          : (order.otpDetails?.attemptCount >= 5 ? '🔒 Locked (Max attempts)' : '⏳ Pending Verification')}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style={{ color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: '700' }}>Failed Attempts</span>
+                      <div style={{ fontWeight: '800', color: (order.otpDetails?.attemptCount || 0) >= 5 ? '#dc2626' : '#0f172a', marginTop: '4px' }}>
+                        {order.otpDetails?.attemptCount || 0} / 5 attempts
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* VENDOR ASSIGNMENT CARD (SEPARATE) */}
               <div className="payment-card" style={{ marginTop: '24px', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#f8fafc' }}>

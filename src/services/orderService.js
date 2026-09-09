@@ -372,3 +372,17 @@ export async function updateAdminOrderStatusApi(orderId, updates) {
   const errData = await response.json().catch(() => ({}));
   throw new Error(errData.error || `Failed to update order status on server (HTTP ${response.status}).`);
 }
+
+export async function regenerateOrderOtpApi(orderId) {
+  const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/regenerate-otp`, {
+    method: 'POST',
+    headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
+    credentials: 'include',
+  });
+  const data = await response.json().catch(() => ({}));
+  if (response.ok) {
+    return { ok: true, message: data.message, startOtp: data.startOtp };
+  }
+  return { ok: false, error: data.error || 'Failed to regenerate OTP.', statusCode: response.status };
+}
+

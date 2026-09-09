@@ -232,6 +232,85 @@ function MyOrderDetail() {
             </div>
           </div>
 
+          {/* CUSTOMER 4-DIGIT START OTP CARD */}
+          {(String(order.bookingStatus || '').toUpperCase() === 'VENDOR_ASSIGNED' ||
+            String(order.bookingStatus || '').toUpperCase() === 'VENDOR_ACCEPTED' ||
+            (order.startOtp && !['IN_PROGRESS', 'READY_FOR_SETUP', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(String(order.bookingStatus || '').toUpperCase()))) && (
+            <div style={{
+              background: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)',
+              border: '2px solid #fda4af',
+              borderRadius: '14px',
+              padding: '20px 24px',
+              marginBottom: '24px',
+              boxShadow: '0 4px 12px rgba(225, 29, 72, 0.08)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.25rem' }}>🔐</span>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: '#881337' }}>
+                      Start Decoration Security OTP
+                    </h3>
+                  </div>
+                  <p style={{ margin: '6px 0 0', fontSize: '0.88rem', color: '#9f1239', lineHeight: '1.4' }}>
+                    Share this 4-digit security OTP with your assigned vendor when they arrive at your location to begin decoration.
+                  </p>
+                </div>
+
+                {order.startOtp ? (
+                  <div style={{ display: 'flex', gap: '8px', background: '#ffffff', padding: '10px 16px', borderRadius: '12px', border: '1px solid #fecdd3', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                    {String(order.startOtp).padStart(4, '0').slice(-4).split('').map((digit, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '40px',
+                          height: '48px',
+                          fontSize: '1.6rem',
+                          fontWeight: '900',
+                          color: '#e11d48',
+                          background: '#fff1f2',
+                          borderRadius: '8px',
+                          border: '1.5px solid #f43f5e',
+                        }}
+                      >
+                        {digit}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.9rem', color: '#9f1239', fontWeight: '600', background: '#ffffff', padding: '8px 14px', borderRadius: '8px' }}>
+                    Generating OTP...
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* VERIFIED OTP BADGE WHEN IN_PROGRESS OR COMPLETED */}
+          {['IN_PROGRESS', 'READY_FOR_SETUP', 'COMPLETED'].includes(String(order.bookingStatus || '').toUpperCase()) && (
+            <div style={{
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '12px',
+              padding: '14px 20px',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}>
+              <span style={{ fontSize: '1.25rem', color: '#16a34a' }}>✓</span>
+              <div>
+                <span style={{ fontWeight: '800', color: '#15803d', fontSize: '0.95rem' }}>Customer OTP Verified</span>
+                <p style={{ margin: '2px 0 0', color: '#166534', fontSize: '0.84rem' }}>
+                  Security verification complete. Decoration has been authorized and started.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '24px' }}>
             {/* 1. DECORATION & CUSTOMIZATION */}
             <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px' }}>

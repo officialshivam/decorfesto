@@ -3,7 +3,7 @@ import { listCategories, createAdminCategory, updateAdminCategory, toggleAdminCa
 import { createCustomer, getCustomer } from './handlers/customers.js';
 import { listVendors, getVendor, createVendor, updateVendor } from './handlers/vendors.js';
 import { createServiceArea, getServiceArea, listServiceAreaVendors, listServiceAreas, deleteServiceArea } from './handlers/serviceAreas.js';
-import { createOrder, getOrder, listOrders, listAdminOrders, getAdminOrderDetails, updateOrderStatus } from './handlers/orders.js';
+import { createOrder, getOrder, listOrders, listAdminOrders, getAdminOrderDetails, updateOrderStatus, regenerateOrderOtp } from './handlers/orders.js';
 import { checkAvailability } from './handlers/availability.js';
 import { getDashboard } from './handlers/dashboard.js';
 import { seedBackendData } from './seedData.js';
@@ -13,7 +13,10 @@ import { listEnabledCharges, listAdminCharges, createAdminCharge, updateAdminCha
 import { listAdminUsers, createAdminUserRecord, toggleAdminUserStatus, resetAdminUserPassword } from './handlers/users.js';
 import { createRepository } from './dataAccess/repository.js';
 import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
-import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword } from './handlers/vendorPortal.js';
+import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword, verifyStartOtp } from './handlers/vendorPortal.js';
+import { migrateOtpEncryption } from './otp.js';
+
+
 
 function healthCheck() {
   return {
@@ -73,6 +76,8 @@ const routeHandlers = {
     '/payments/verify-razorpay-payment': verifyRazorpayPayment,
     '/payments/razorpay-webhook': razorpayWebhook,
     '/vendor/change-password': changeVendorPassword,
+    '/vendor/orders/:id/verify-start-otp': verifyStartOtp,
+    '/admin/orders/:id/regenerate-otp': regenerateOrderOtp,
   },
   PUT: {
     '/admin/charges/:id': updateAdminCharge,
@@ -165,9 +170,11 @@ export async function initializeBackend() {
 
   try {
     await seedBackendData();
+    await migrateOtpEncryption().catch(() => {});
   } catch (error) {
     console.warn('Backend data seed warning (using fallback repository):', error.message);
   }
+
 }
 
 async function parseRequestBody(req) {

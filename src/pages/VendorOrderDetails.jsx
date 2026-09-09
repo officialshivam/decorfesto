@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useVendorAuth } from '../context/VendorAuthContext';
-import { fetchVendorOrderDetailApi, updateVendorOrderStatusApi } from '../services/vendorOrderService';
+import { fetchVendorOrderDetailApi, updateVendorOrderStatusApi, verifyStartOtpApi } from '../services/vendorOrderService';
 
 function getStatusBadge(status) {
   const s = String(status || '').toUpperCase();
@@ -40,6 +40,68 @@ export default function VendorOrderDetails() {
   // Decline Modal state
   const [isDeclineOpen, setIsDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
+
+  // 4-Digit Customer OTP Verification state
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpError, setOtpError] = useState('');
+
+  const handleOtpDigitChange = (index, value) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const nextDigits = [...otpDigits];
+    nextDigits[index] = digit;
+    setOtpDigits(nextDigits);
+    setOtpError('');
+
+    if (digit && index < 3) {
+      const nextInput = document.getElementById(`otp-input-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-input-${index - 1}`);
+      if (prevInput) prevInput.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (pasted) {
+      const digitsArr = pasted.split('').concat(['', '', '', '']).slice(0, 4);
+      setOtpDigits(digitsArr);
+      setOtpError('');
+      const targetIdx = Math.min(pasted.length - 1, 3);
+      const targetInput = document.getElementById(`otp-input-${targetIdx}`);
+      if (targetInput) targetInput.focus();
+    }
+  };
+
+  const handleVerifyStartOtpSubmit = async (e) => {
+    if (e) e.preventDefault();
+    const fullOtp = otpDigits.join('');
+    if (fullOtp.length !== 4) {
+      setOtpError('Please enter the complete 4-digit OTP provided by the customer.');
+      return;
+    }
+    setOtpVerifying(true);
+    setOtpError('');
+    setNotice('');
+
+    const res = await verifyStartOtpApi(order.id, fullOtp);
+    setOtpVerifying(false);
+
+    if (res.ok) {
+      setOrder(res.order || { ...order, bookingStatus: 'IN_PROGRESS' });
+      setNotice('Customer 4-digit OTP verified successfully! Decoration is now IN PROGRESS.');
+      setOtpDigits(['', '', '', '']);
+    } else {
+      setOtpError(res.error || 'Invalid OTP. Please check with the customer and try again.');
+    }
+  };
+
 
   useEffect(() => {
     async function loadData() {
@@ -138,65 +200,131 @@ export default function VendorOrderDetails() {
       )}
 
       {/* WORKFLOW ACTION BAR */}
-      <div style={{ background: '#fff', padding: '20px 24px', borderRadius: '16px', border: '2px solid #e11d48', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '800' }}>
-            CURRENT SETUP WORKFLOW ACTION
+      <div style={{ background: '#fff', padding: '20px 24px', borderRadius: '16px', border: '2px solid #e11d48', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: '800' }}>
+              CURRENT SETUP WORKFLOW ACTION
+            </div>
+            <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
+              {currentStatus === 'VENDOR_ASSIGNED' && 'Booking assigned to your studio. Please Accept or Decline.'}
+              {currentStatus === 'VENDOR_ACCEPTED' && 'Booking accepted! Ask client for 4-digit OTP to start decoration.'}
+              {(currentStatus === 'IN_PROGRESS' || currentStatus === 'READY_FOR_SETUP') && 'Decoration in progress. Mark completed once celebration setup is finished.'}
+              {currentStatus === 'COMPLETED' && 'Setup Completed successfully!'}
+              {currentStatus === 'VENDOR_DECLINED' && 'Order was declined. Waiting for Admin reassignment.'}
+            </div>
           </div>
-          <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
-            {currentStatus === 'VENDOR_ASSIGNED' && 'Booking assigned to your studio. Please Accept or Decline.'}
-            {currentStatus === 'VENDOR_ACCEPTED' && 'Booking accepted! Start decoration when ready.'}
-            {(currentStatus === 'IN_PROGRESS' || currentStatus === 'READY_FOR_SETUP') && 'Decoration in progress. Mark completed once celebration setup is finished.'}
-            {currentStatus === 'COMPLETED' && 'Setup Completed successfully!'}
-            {currentStatus === 'VENDOR_DECLINED' && 'Order was declined. Waiting for Admin reassignment.'}
-          </div>
-        </div>
 
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {currentStatus === 'VENDOR_ASSIGNED' && (
-            <>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {currentStatus === 'VENDOR_ASSIGNED' && (
+              <>
+                <button
+                  type="button"
+                  disabled={updating}
+                  onClick={() => handleStatusChange('VENDOR_ACCEPTED')}
+                  style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
+                >
+                  {updating ? 'Updating...' : '✓ Accept Order'}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={updating}
+                  onClick={() => setIsDeclineOpen(true)}
+                  style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
+                >
+                  ✕ Decline Order
+                </button>
+              </>
+            )}
+
+            {(currentStatus === 'IN_PROGRESS' || currentStatus === 'READY_FOR_SETUP') && (
               <button
                 type="button"
                 disabled={updating}
-                onClick={() => handleStatusChange('VENDOR_ACCEPTED')}
+                onClick={() => handleStatusChange('COMPLETED')}
                 style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
               >
-                {updating ? 'Updating...' : '✓ Accept Order'}
+                {updating ? 'Updating...' : '🎉 Mark Completed'}
               </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4-DIGIT CUSTOMER OTP FORM WHEN VENDOR_ACCEPTED */}
+        {currentStatus === 'VENDOR_ACCEPTED' && (
+          <div style={{
+            background: '#f8fafc',
+            border: '2px solid #3b82f6',
+            borderRadius: '12px',
+            padding: '20px',
+            marginTop: '8px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '1.2rem' }}>🔑</span>
+              <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800', color: '#1e3a8a' }}>
+                Enter Customer 4-Digit Security OTP to Start Decoration
+              </h4>
+            </div>
+            <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+              Ask the client at the venue for their 4-digit OTP from their order page to verify venue arrival and authorize starting decoration.
+            </p>
+
+            {otpError && (
+              <div style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: '8px', fontSize: '0.88rem', fontWeight: '700', marginBottom: '14px' }}>
+                ⚠️ {otpError}
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyStartOtpSubmit} style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[0, 1, 2, 3].map((idx) => (
+                  <input
+                    key={idx}
+                    id={`otp-input-${idx}`}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={otpDigits[idx]}
+                    onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    onPaste={handleOtpPaste}
+                    style={{
+                      width: '46px',
+                      height: '52px',
+                      fontSize: '1.6rem',
+                      fontWeight: '900',
+                      textAlign: 'center',
+                      borderRadius: '8px',
+                      border: '2px solid #93c5fd',
+                      background: '#ffffff',
+                      color: '#1e40af',
+                      outline: 'none',
+                    }}
+                  />
+                ))}
+              </div>
 
               <button
-                type="button"
-                disabled={updating}
-                onClick={() => setIsDeclineOpen(true)}
-                style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
+                type="submit"
+                disabled={otpVerifying || otpDigits.join('').length !== 4}
+                style={{
+                  background: otpDigits.join('').length === 4 ? '#2563eb' : '#94a3b8',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '14px 24px',
+                  borderRadius: '10px',
+                  fontWeight: '800',
+                  fontSize: '0.95rem',
+                  cursor: otpDigits.join('').length === 4 ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s ease',
+                }}
               >
-                ✕ Decline Order
+                {otpVerifying ? 'Verifying OTP...' : '▶ Verify OTP & Start Decoration'}
               </button>
-            </>
-          )}
-
-          {currentStatus === 'VENDOR_ACCEPTED' && (
-            <button
-              type="button"
-              disabled={updating}
-              onClick={() => handleStatusChange('IN_PROGRESS')}
-              style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
-            >
-              {updating ? 'Updating...' : '▶ Start Decoration'}
-            </button>
-          )}
-
-          {(currentStatus === 'IN_PROGRESS' || currentStatus === 'READY_FOR_SETUP') && (
-            <button
-              type="button"
-              disabled={updating}
-              onClick={() => handleStatusChange('COMPLETED')}
-              style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', fontSize: '0.95rem' }}
-            >
-              {updating ? 'Updating...' : '🎉 Mark Completed'}
-            </button>
-          )}
-        </div>
+            </form>
+          </div>
+        )}
       </div>
 
       {/* GRID: EVENT & CUSTOMER DETAILS */}

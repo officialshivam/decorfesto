@@ -198,4 +198,26 @@ CREATE TABLE IF NOT EXISTS categories (
   INDEX idx_categories_active (active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 11. Order Start OTPs table
+CREATE TABLE IF NOT EXISTS order_start_otps (
+  id                  VARCHAR(64)  NOT NULL PRIMARY KEY,
+  order_id            VARCHAR(64)  NOT NULL,
+  vendor_id           VARCHAR(64)  NOT NULL,
+  otp_hash            VARCHAR(255) NOT NULL,
+  start_otp           VARCHAR(8)   NULL DEFAULT NULL,
+  start_otp_encrypted VARCHAR(255) NULL DEFAULT NULL,
+  start_otp_iv        VARCHAR(64)  NULL DEFAULT NULL,
+  start_otp_auth_tag  VARCHAR(64)  NULL DEFAULT NULL,
+  expires_at          DATETIME     NOT NULL,
+  verified_at         DATETIME     NULL DEFAULT NULL,
+  attempt_count       INT          NOT NULL DEFAULT 0,
+  active              TINYINT(1)   NOT NULL DEFAULT 1,
+  created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_otps_order (order_id),
+  INDEX idx_otps_vendor (vendor_id),
+  INDEX idx_otps_active (active),
+  CONSTRAINT fk_otps_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+  CONSTRAINT fk_otps_vendor FOREIGN KEY (vendor_id) REFERENCES vendors (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
