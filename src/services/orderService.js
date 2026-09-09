@@ -54,6 +54,8 @@ function sanitizeOrder(ord) {
     vendorName: ord.vendorName || 'Unassigned',
     remarks: String(ord.remarks || '').trim(),
     reviewMessage: String(ord.reviewMessage || 'DecorFesto will review your booking shortly and confirm the next step with you.').trim(),
+    startOtp: ord.startOtp || null,
+    otpDetails: ord.otpDetails || null,
     createdAt: ord.createdAt || new Date().toISOString(),
     updatedAt: ord.updatedAt || new Date().toISOString(),
   };
