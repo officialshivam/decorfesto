@@ -87,7 +87,7 @@ export function decryptOtp(encryptedHex, ivHex, tagHex, customKeyStr = null) {
 }
 
 /**
- * Migration helper: Non-destructively updates schema & encrypts existing legacy plaintext OTP records.
+ * Migration helper: Ensures order_start_otps table exists, updates schema & encrypts existing legacy plaintext OTP records.
  */
 export async function migrateOtpEncryption() {
   if (!useMysql) return;
@@ -95,7 +95,32 @@ export async function migrateOtpEncryption() {
     const pool = getPool();
     const connection = await pool.getConnection();
     try {
-      // 1. Add encrypted storage columns if missing
+      // 1. Ensure order_start_otps table exists using canonical DDL from schema.sql
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS order_start_otps (
+          id                  VARCHAR(64)  NOT NULL PRIMARY KEY,
+          order_id            VARCHAR(64)  NOT NULL,
+          vendor_id           VARCHAR(64)  NOT NULL,
+          otp_hash            VARCHAR(255) NOT NULL,
+          start_otp           VARCHAR(8)   NULL DEFAULT NULL,
+          start_otp_encrypted VARCHAR(255) NULL DEFAULT NULL,
+          start_otp_iv        VARCHAR(64)  NULL DEFAULT NULL,
+          start_otp_auth_tag  VARCHAR(64)  NULL DEFAULT NULL,
+          expires_at          DATETIME     NOT NULL,
+          verified_at         DATETIME     NULL DEFAULT NULL,
+          attempt_count       INT          NOT NULL DEFAULT 0,
+          active              TINYINT(1)   NOT NULL DEFAULT 1,
+          created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_otps_order (order_id),
+          INDEX idx_otps_vendor (vendor_id),
+          INDEX idx_otps_active (active),
+          CONSTRAINT fk_otps_order_rel FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+          CONSTRAINT fk_otps_vendor_rel FOREIGN KEY (vendor_id) REFERENCES vendors (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 2. Add encrypted storage columns if missing from a legacy table definition
       await connection.query(`
         ALTER TABLE order_start_otps
         ADD COLUMN IF NOT EXISTS start_otp_encrypted VARCHAR(255) NULL DEFAULT NULL AFTER otp_hash,
@@ -104,7 +129,7 @@ export async function migrateOtpEncryption() {
         MODIFY COLUMN start_otp VARCHAR(8) NULL DEFAULT NULL;
       `).catch(() => {});
 
-      // 2. Find any active records with plaintext start_otp and missing encrypted payload
+      // 3. Find any active records with plaintext start_otp and missing encrypted payload
       const [rows] = await connection.query(
         `SELECT id, start_otp FROM order_start_otps WHERE start_otp IS NOT NULL AND (start_otp_encrypted IS NULL OR start_otp_encrypted = '')`,
       );
@@ -124,7 +149,7 @@ export async function migrateOtpEncryption() {
       connection.release();
     }
   } catch (err) {
-    console.warn('Notice running OTP encryption migration:', err.message);
+    console.error('❌ Error during order_start_otps database schema initialization:', err.message);
   }
 }
 
