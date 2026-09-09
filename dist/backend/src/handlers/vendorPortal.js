@@ -25,7 +25,7 @@ export function isOrderAssignedToAuthVendor(order, vendorAuth) {
     'COMPLETED',
   ];
 
-  const currentStatus = String(order.bookingStatus || '').toUpperCase();
+  const currentStatus = String(order.bookingStatus || order.booking_status || '').toUpperCase();
   if (!activeVendorStatuses.includes(currentStatus)) {
     return false;
   }
