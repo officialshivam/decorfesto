@@ -67,30 +67,12 @@ function Navbar() {
         </Link>
 
         {/* Desktop Nav Links */}
-        <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
           <NavLink to="/" end style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#334155' })}>
             Home
           </NavLink>
           <NavLink to="/catalog" style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#334155' })}>
             Decorations
-          </NavLink>
-          <NavLink
-            to="/ai-assistant"
-            style={({ isActive }) => ({
-              textDecoration: 'none',
-              fontSize: '13px',
-              fontWeight: '700',
-              color: isActive ? '#ea580c' : '#c2410c',
-              background: isActive ? '#fff4ed' : 'rgba(234, 88, 12, 0.06)',
-              padding: '6px 12px',
-              borderRadius: '20px',
-              border: '1px solid rgba(234, 88, 12, 0.18)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            })}
-          >
-            <span>✨ AI Visualizer</span>
           </NavLink>
           <a href="/#how-it-works" style={{ textDecoration: 'none', fontSize: '14px', fontWeight: '600', color: '#334155' }}>
             How It Works
@@ -221,9 +203,6 @@ function Navbar() {
           </NavLink>
           <NavLink to="/catalog" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#0f172a', textDecoration: 'none' })}>
             Decorations
-          </NavLink>
-          <NavLink to="/ai-assistant" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#ea580c', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' })}>
-            <span>✨ AI Visualizer</span>
           </NavLink>
           <a href="/#how-it-works" onClick={closeMobileMenu} style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', textDecoration: 'none' }}>
             How It Works
