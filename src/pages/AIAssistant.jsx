@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { optionalFeatureService } from '../services/optionalFeatures';
+import { uploadAiSpaceImage, analyzeAiSpaceImage } from '../services/aiAssistantService';
 import { products } from '../data/products';
 
 const initialForm = {
@@ -20,22 +21,63 @@ function AIAssistant() {
   const [loading, setLoading] = useState(false);
   const [photoName, setPhotoName] = useState('');
   const [photoPreview, setPhotoPreview] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState('');
+  const [spaceAnalysis, setSpaceAnalysis] = useState(null);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const handlePhotoUpload = (event) => {
+  const runSpaceAnalysis = async (imageUrl) => {
+    setAnalyzing(true);
+    setAiAnalysisError('');
+    try {
+      const analysis = await analyzeAiSpaceImage({
+        imageUrl,
+        roomType: form.roomType,
+        occasion: form.occasion,
+      });
+      setSpaceAnalysis(analysis);
+    } catch (err) {
+      setAiAnalysisError(err.message || 'AI Space Analysis unavailable.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
-    setPhotoName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setPhotoPreview(reader.result);
-    reader.readAsDataURL(file);
+    setUploading(true);
+    setUploadError('');
+    setAiAnalysisError('');
+    setSpaceAnalysis(null);
+
+    try {
+      const uploaded = await uploadAiSpaceImage(file);
+      setPhotoName(file.name);
+      setPhotoPreview(uploaded.imageUrl);
+      setUploading(false);
+
+      // Trigger Phase 2 AI Space Analysis automatically after successful upload
+      await runSpaceAnalysis(uploaded.imageUrl);
+    } catch (err) {
+      setUploadError(err.message || 'Failed to upload image.');
+      setUploading(false);
+    }
+  };
+
+  const handleRetryAnalysis = () => {
+    if (photoPreview) {
+      runSpaceAnalysis(photoPreview);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -63,6 +105,9 @@ function AIAssistant() {
   const handleUploadAnotherSpace = () => {
     setPhotoName('');
     setPhotoPreview('');
+    setSpaceAnalysis(null);
+    setUploadError('');
+    setAiAnalysisError('');
     setResult(null);
   };
 
@@ -72,16 +117,16 @@ function AIAssistant() {
     <main className="page">
       <section className="container section section--tight">
         <div className="section__heading section__heading--left">
-          <span className="eyebrow">Optional AI experience</span>
+          <span className="eyebrow">Real AI Experience</span>
           <h1>AI Decor Assistant</h1>
-          <p>Get a polished decor direction in seconds. This experience is optional and does not replace the main booking flow.</p>
+          <p>Upload a photo of your space for real AI visual space analysis and tailored decor suggestions.</p>
         </div>
 
         <div className="checkout-layout">
           <form className="card-panel" onSubmit={handleSubmit}>
             <div className="card-panel__header">
               <h2>Tell us about your event</h2>
-              <p>We’ll use mock AI suggestions to recommend decor packages that fit your space and budget.</p>
+              <p>Upload a room photo to receive real-time AI space & wall analysis.</p>
             </div>
 
             <div className="checkout-form">
@@ -94,15 +139,31 @@ function AIAssistant() {
                 <input name="roomType" value={form.roomType} onChange={handleChange} placeholder="Living room, terrace, stage, etc." />
               </label>
               <label className="search-field">
-                <span>Room / space photo upload</span>
-                <input type="file" accept="image/*" onChange={handlePhotoUpload} />
-                <span className="upload-hint">{photoName ? `Selected: ${photoName}` : 'Optional photo for richer mock AI suggestions.'}</span>
+                <span>Room / space photo upload (JPG, PNG, WEBP max 10MB)</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoUpload} disabled={uploading || analyzing} />
+                <span className="upload-hint">
+                  {uploading
+                    ? 'Uploading image to server...'
+                    : analyzing
+                    ? 'Analyzing room space with AI Vision...'
+                    : photoName
+                    ? `Selected: ${photoName}`
+                    : 'Upload wall or room photo for AI space analysis.'}
+                </span>
               </label>
+
+              {uploadError && (
+                <div className="alert alert--error" style={{ color: '#d32f2f', margin: '8px 0', fontSize: '0.9rem' }}>
+                  <strong>Upload Error:</strong> {uploadError}
+                </div>
+              )}
+
               {photoPreview ? (
-                <div className="upload-preview">
-                  <img src={photoPreview} alt="Selected room preview" />
+                <div className="upload-preview" style={{ marginTop: '12px' }}>
+                  <img src={photoPreview} alt="Uploaded room preview" style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '240px', objectFit: 'cover' }} />
                 </div>
               ) : null}
+
               <label className="search-field">
                 <span>Dimensions</span>
                 <input name="dimensions" value={form.dimensions} onChange={handleChange} placeholder="e.g. 4m x 5m" />
@@ -125,7 +186,7 @@ function AIAssistant() {
               </label>
             </div>
 
-            <button className="button button--full" type="submit" disabled={loading}>
+            <button className="button button--full" type="submit" disabled={loading || uploading || analyzing}>
               {loading ? 'Generating ideas…' : 'Generate AI Recommendation'}
             </button>
           </form>
@@ -133,15 +194,83 @@ function AIAssistant() {
           <aside className="card-panel sticky-summary">
             <div className="card-panel__header">
               <h2>AI recommendation preview</h2>
-              <p>Use this as a styling starting point before placing your decoration booking.</p>
+              <p>Use this space analysis as a styling starting point for your booking.</p>
             </div>
 
-            {!result ? (
+            {/* REAL AI SPACE ANALYSIS SECTION */}
+            {analyzing && (
               <div className="payment-card">
-                <h3>Mock AI assistant ready</h3>
-                <p>Once you submit the form, a mock recommendation will appear here with package suggestions and styling direction.</p>
+                <h3>Analyzing Your Space...</h3>
+                <p>AI Vision is inspecting room dimensions, lighting, surface type, and decoration areas.</p>
               </div>
-            ) : (
+            )}
+
+            {aiAnalysisError && !analyzing && (
+              <div className="payment-card" style={{ borderLeft: '4px solid #d32f2f' }}>
+                <h3 style={{ color: '#d32f2f' }}>AI Analysis Notice</h3>
+                <p>{aiAnalysisError}</p>
+                <button type="button" className="button button--small button--ghost" style={{ marginTop: '8px' }} onClick={handleRetryAnalysis}>
+                  Retry AI Analysis
+                </button>
+              </div>
+            )}
+
+            {spaceAnalysis && !analyzing && (
+              <div className="summary-box" style={{ marginBottom: '16px', border: '1px solid #e0e0e0', padding: '16px', borderRadius: '8px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '0.85rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '12px', color: '#666' }}>
+                  AI SPACE ANALYSIS
+                </div>
+                <div className="summary-box__row">
+                  <span>Space</span>
+                  <strong>{spaceAnalysis.spaceType}</strong>
+                </div>
+                <div className="summary-box__row">
+                  <span>Surface</span>
+                  <strong>{spaceAnalysis.surfaceType}</strong>
+                </div>
+                <div className="summary-box__row">
+                  <span>Available Area</span>
+                  <strong>{spaceAnalysis.availableDecorationArea || spaceAnalysis.usableArea}</strong>
+                </div>
+                <div className="summary-box__row">
+                  <span>Wall Color</span>
+                  <strong>{spaceAnalysis.wallColor}</strong>
+                </div>
+                <div className="summary-box__row">
+                  <span>Lighting</span>
+                  <strong>{spaceAnalysis.lighting}</strong>
+                </div>
+
+                {spaceAnalysis.styleCompatibility?.length > 0 && (
+                  <div className="summary-box__row summary-box__row--stacked" style={{ marginTop: '8px' }}>
+                    <span>Style Compatibility</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                      {spaceAnalysis.styleCompatibility.map((style, idx) => (
+                        <span key={idx} style={{ background: '#e3f2fd', color: '#1565c0', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                          {style}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {spaceAnalysis.decorationConstraints?.length > 0 && (
+                  <div className="summary-box__row summary-box__row--stacked" style={{ marginTop: '8px' }}>
+                    <span>Decoration Constraints</span>
+                    <small style={{ color: '#888' }}>{spaceAnalysis.decorationConstraints.join(', ')}</small>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!result && !spaceAnalysis && !analyzing && !aiAnalysisError ? (
+              <div className="payment-card">
+                <h3>AI Assistant Ready</h3>
+                <p>Upload a photo of your space to view live AI Space Analysis, or submit your preferences to generate package recommendations.</p>
+              </div>
+            ) : null}
+
+            {result ? (
               <div className="summary-box">
                 <div className="summary-box__row">
                   <span>Confidence</span>
@@ -208,7 +337,7 @@ function AIAssistant() {
                 {result.photoName ? (
                   <div className="summary-box__row summary-box__row--stacked">
                     <span>Photo reference</span>
-                    <small>{result.photoName} attached for the mock styling pass.</small>
+                    <small>{result.photoName} attached for styling pass.</small>
                   </div>
                 ) : null}
                 <div className="summary-box__row summary-box__row--stacked">
@@ -235,7 +364,7 @@ function AIAssistant() {
                   </button>
                 </div>
               </div>
-            )}
+            ) : null}
 
             <div className="payment-card">
               <h3>Suggested packages</h3>

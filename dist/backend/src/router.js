@@ -15,6 +15,7 @@ import { createRepository } from './dataAccess/repository.js';
 import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
 import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword, verifyStartOtp } from './handlers/vendorPortal.js';
 import { migrateOtpEncryption } from './otp.js';
+import { uploadAiSpaceImage, analyzeAiSpace } from './handlers/aiAssistant.js';
 
 
 
@@ -78,6 +79,8 @@ const routeHandlers = {
     '/vendor/change-password': changeVendorPassword,
     '/vendor/orders/:id/verify-start-otp': verifyStartOtp,
     '/admin/orders/:id/regenerate-otp': regenerateOrderOtp,
+    '/ai-assistant/upload': uploadAiSpaceImage,
+    '/ai-assistant/analyze-space': analyzeAiSpace,
   },
   PUT: {
     '/admin/charges/:id': updateAdminCharge,
@@ -183,20 +186,37 @@ async function parseRequestBody(req) {
   }
 
   return new Promise((resolve, reject) => {
-    let body = '';
+    let chunks = [];
+    let totalBytes = 0;
+    const MAX_PAYLOAD_BYTES = 15 * 1024 * 1024; // 15 MB limit
+
     req.on('data', (chunk) => {
-      body += chunk;
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_PAYLOAD_BYTES) {
+        req.destroy();
+        reject(new Error('Request payload size exceeds maximum limit.'));
+        return;
+      }
+      chunks.push(chunk);
     });
     req.on('end', () => {
-      if (!body) {
+      if (chunks.length === 0) {
+        resolve(null);
+        return;
+      }
+
+      const buffer = Buffer.concat(chunks);
+      const str = buffer.toString('utf8');
+
+      if (!str) {
         resolve(null);
         return;
       }
 
       try {
-        resolve(JSON.parse(body));
+        resolve(JSON.parse(str));
       } catch {
-        resolve(body);
+        resolve(str);
       }
     });
     req.on('error', reject);
