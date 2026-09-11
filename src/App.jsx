@@ -21,6 +21,7 @@ import AdminVendorDetails from './pages/AdminVendorDetails';
 import AdminServiceAreas from './pages/AdminServiceAreas';
 import AdminDecorations from './pages/AdminDecorations';
 import AdminCategories from './pages/AdminCategories';
+import AdminCoupons from './pages/AdminCoupons';
 import AdminCustomizations from './pages/AdminCustomizations';
 import AdminUsers from './pages/AdminUsers';
 import AdminDashboard from './pages/AdminDashboard';
@@ -138,6 +139,7 @@ function App() {
                   <Route path="service-areas" element={<AdminServiceAreas />} />
                   <Route path="decorations" element={<AdminDecorations />} />
                   <Route path="categories" element={<AdminCategories />} />
+                  <Route path="coupons" element={<AdminCoupons />} />
                   <Route path="customizations" element={<AdminCustomizations />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="*" element={<Navigate to="/admin" replace />} />

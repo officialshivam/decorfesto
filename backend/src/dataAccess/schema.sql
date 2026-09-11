@@ -116,6 +116,9 @@ CREATE TABLE IF NOT EXISTS orders (
   scheduled_time     VARCHAR(64)  NOT NULL DEFAULT '',
   delivery_address   TEXT         NULL,
   subtotal           DECIMAL(12,2) NOT NULL DEFAULT 0,
+  coupon_code        VARCHAR(64)  NULL DEFAULT NULL,
+  coupon_id          VARCHAR(64)  NULL DEFAULT NULL,
+  discount_amount    DECIMAL(12,2) NOT NULL DEFAULT 0,
   service_charge     DECIMAL(12,2) NOT NULL DEFAULT 0,
   total_amount       DECIMAL(12,2) NOT NULL DEFAULT 0,
   total              DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -220,4 +223,49 @@ CREATE TABLE IF NOT EXISTS order_start_otps (
   CONSTRAINT fk_otps_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
   CONSTRAINT fk_otps_vendor FOREIGN KEY (vendor_id) REFERENCES vendors (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 12. Coupons table
+CREATE TABLE IF NOT EXISTS coupons (
+  id                     VARCHAR(64)   NOT NULL PRIMARY KEY,
+  code                   VARCHAR(64)   NOT NULL,
+  name                   VARCHAR(255)  NOT NULL,
+  description            TEXT          NULL,
+  discount_type          VARCHAR(32)   NOT NULL DEFAULT 'PERCENTAGE',
+  discount_value         DECIMAL(12,2) NOT NULL DEFAULT 0,
+  max_discount_amount    DECIMAL(12,2) NULL DEFAULT NULL,
+  min_order_amount       DECIMAL(12,2) NOT NULL DEFAULT 0,
+  starts_at              DATETIME      NULL DEFAULT NULL,
+  expires_at             DATETIME      NULL DEFAULT NULL,
+  usage_limit            INT           NULL DEFAULT NULL,
+  usage_count            INT           NOT NULL DEFAULT 0,
+  per_customer_limit     INT           NULL DEFAULT NULL,
+  active                 TINYINT(1)    NOT NULL DEFAULT 1,
+  visible_to_customers   TINYINT(1)    NOT NULL DEFAULT 1,
+  first_order_only       TINYINT(1)    NOT NULL DEFAULT 0,
+  applicable_categories  TEXT          NULL DEFAULT NULL,
+  applicable_decorations TEXT          NULL DEFAULT NULL,
+  created_at             DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at             DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_coupons_code (code),
+  INDEX idx_coupons_active (active),
+  INDEX idx_coupons_visible (visible_to_customers),
+  INDEX idx_coupons_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. Coupon Usages table
+CREATE TABLE IF NOT EXISTS coupon_usages (
+  id              VARCHAR(64)   NOT NULL PRIMARY KEY,
+  coupon_id       VARCHAR(64)   NOT NULL,
+  customer_id     VARCHAR(64)   NULL DEFAULT NULL,
+  customer_phone  VARCHAR(32)   NULL DEFAULT NULL,
+  order_id        VARCHAR(64)   NOT NULL,
+  discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  used_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_cu_coupon (coupon_id),
+  INDEX idx_cu_customer (customer_id),
+  INDEX idx_cu_phone (customer_phone),
+  INDEX idx_cu_order (order_id),
+  CONSTRAINT fk_cu_coupon FOREIGN KEY (coupon_id) REFERENCES coupons (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 

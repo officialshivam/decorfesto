@@ -7,6 +7,8 @@ const adminNavItems = [
   { label: 'Vendors', to: '/admin/vendors' },
   { label: 'Service Areas', to: '/admin/service-areas' },
   { label: 'Decorations', to: '/admin/decorations' },
+  { label: 'Categories', to: '/admin/categories' },
+  { label: 'Coupons', to: '/admin/coupons' },
   { label: 'Customizations', to: '/admin/customizations' },
   { label: 'Users', to: '/admin/users' },
 ];

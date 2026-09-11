@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { createRepository } from '../dataAccess/repository.js';
 import { razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret } from '../config.js';
+import { recordCouponUsage } from './coupons.js';
 
 export async function createRazorpayOrder({ req }) {
   const payload = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
@@ -197,6 +198,20 @@ export async function verifyRazorpayPayment({ req }) {
     razorpayPaymentId: razorpay_payment_id,
     updatedAt: new Date().toISOString(),
   });
+
+  if (order.couponId || order.coupon_id) {
+    try {
+      await recordCouponUsage({
+        couponId: order.couponId || order.coupon_id,
+        customerId: order.customerId || order.customer_id,
+        customerPhone: order.customerPhone || order.customer_phone || order.customerMobile,
+        orderId: order.id || order.orderId,
+        discountAmount: order.discountAmount || order.discount_amount || 0,
+      });
+    } catch (err) {
+      console.warn('Failed to record coupon usage:', err.message);
+    }
+  }
 
   return {
     statusCode: 200,

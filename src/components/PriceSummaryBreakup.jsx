@@ -87,7 +87,7 @@ export function getCartItemAddOns(item) {
   return list;
 }
 
-function PriceSummaryBreakup({ items = [], enabledCharges = [], totalSavings = 0, originalSubtotal = 0 }) {
+function PriceSummaryBreakup({ items = [], enabledCharges = [], totalSavings = 0, originalSubtotal = 0, appliedCoupon = null, discountAmount = 0 }) {
   const { totalBasePrice, allAddOns, subtotal, total } = useMemo(() => {
     const basePriceTotal = items.reduce((sum, item) => {
       const base = item.basePrice || item.price || 0;
@@ -113,7 +113,7 @@ function PriceSummaryBreakup({ items = [], enabledCharges = [], totalSavings = 0
       ? enabledCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
       : 0;
 
-    const grandTotal = calculatedSubtotal + chargesTotal;
+    const grandTotal = Math.max(0, calculatedSubtotal - (discountAmount || 0) + chargesTotal);
 
     return {
       totalBasePrice: basePriceTotal,
@@ -122,7 +122,7 @@ function PriceSummaryBreakup({ items = [], enabledCharges = [], totalSavings = 0
       serviceCharges: chargesTotal,
       total: grandTotal,
     };
-  }, [items, enabledCharges]);
+  }, [items, enabledCharges, discountAmount]);
 
   return (
     <div className="summary-box" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -176,7 +176,15 @@ function PriceSummaryBreakup({ items = [], enabledCharges = [], totalSavings = 0
         <strong style={{ color: '#0f172a', fontWeight: '800' }}>₹{subtotal.toLocaleString('en-IN')}</strong>
       </div>
 
-      {/* 4. Booking Service Fee & Charges */}
+      {/* 4. Coupon Discount (if applied) */}
+      {appliedCoupon && discountAmount > 0 && (
+        <div className="summary-box__row" style={{ color: '#16a34a', fontSize: '0.92rem', fontWeight: 600 }}>
+          <span>Coupon ({appliedCoupon.code})</span>
+          <strong>-₹{discountAmount.toLocaleString('en-IN')}</strong>
+        </div>
+      )}
+
+      {/* 5. Booking Service Fee & Charges */}
       {enabledCharges.map((charge) => (
         <div key={charge.id} className="summary-box__row" style={{ fontSize: '0.92rem', color: '#475569' }}>
           <span>{charge.name}</span>
@@ -184,7 +192,7 @@ function PriceSummaryBreakup({ items = [], enabledCharges = [], totalSavings = 0
         </div>
       ))}
 
-      {/* 5. Total */}
+      {/* 6. Total */}
       <div className="summary-box__row pricing-row--total" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '6px' }}>
         <span>Total</span>
         <strong style={{ color: 'var(--accent, #e11d48)', fontSize: '1.35rem', fontWeight: '800' }}>₹{total.toLocaleString('en-IN')}</strong>

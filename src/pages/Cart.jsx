@@ -11,6 +11,7 @@ import { checkPincodeServiceability } from '../services/mockServiceAreas';
 import { createOrderApi } from '../services/orderService';
 import { initiateRazorpayPayment } from '../services/paymentService';
 import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
+import { fetchAvailableCouponsApi, validateCouponApi } from '../services/couponService';
 
 function Cart() {
   const navigate = useNavigate();
@@ -25,22 +26,34 @@ function Cart() {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Coupon States
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [couponError, setCouponError] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+
   // Address state derived from authenticated user profile or local session
   const [selectedAddress, setSelectedAddress] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
-    async function loadCharges() {
+    async function loadInitialData() {
       try {
-        const data = await fetchEnabledChargesApi();
+        const [chargesData, couponsData] = await Promise.all([
+          fetchEnabledChargesApi(),
+          fetchAvailableCouponsApi(),
+        ]);
         if (isMounted) {
-          setEnabledCharges(Array.isArray(data) ? data : []);
+          setEnabledCharges(Array.isArray(chargesData) ? chargesData : []);
+          setAvailableCoupons(Array.isArray(couponsData) ? couponsData : []);
         }
       } catch (err) {
-        if (isMounted) console.error('Error fetching charges for cart:', err);
+        if (isMounted) console.error('Error fetching cart initial data:', err);
       }
     }
-    loadCharges();
+    loadInitialData();
     return () => {
       isMounted = false;
     };
@@ -66,7 +79,52 @@ function Cart() {
   const serviceFee = enabledCharges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
   const itemSubtotal = items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
   const serviceCharges = items.length > 0 ? serviceFee : 0;
-  const finalTotal = itemSubtotal + serviceCharges;
+  const finalTotal = Math.max(0, Math.round((itemSubtotal - discountAmount + serviceCharges) * 100) / 100);
+
+  const handleApplyCoupon = async (codeToApply) => {
+    const targetCode = String(codeToApply || couponInput || '').trim().toUpperCase();
+    if (!targetCode) {
+      setCouponError('Please enter a coupon code.');
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+    setCouponError('');
+
+    try {
+      const res = await validateCouponApi({
+        code: targetCode,
+        subtotal: itemSubtotal,
+        items,
+        customerId: user?.id,
+        customerPhone: user?.mobile || user?.phone,
+      });
+
+      if (res.valid) {
+        setAppliedCoupon(res.coupon);
+        setDiscountAmount(res.discountAmount || 0);
+        setCouponInput(res.coupon.code);
+        setCouponError('');
+      } else {
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+        setCouponError(res.message || 'Invalid coupon code');
+      }
+    } catch (err) {
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+      setCouponError(err.message || 'Failed to validate coupon');
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponInput('');
+    setCouponError('');
+  };
 
   const originalSubtotal = items.reduce((sum, item) => {
     const base = item.basePrice || item.price || 0;
@@ -196,6 +254,12 @@ function Cart() {
         time: selectedTime,
         items: JSON.parse(JSON.stringify(items)),
         subtotal: itemSubtotal,
+        couponCode: appliedCoupon?.code || null,
+        coupon_code: appliedCoupon?.code || null,
+        couponId: appliedCoupon?.id || null,
+        coupon_id: appliedCoupon?.id || null,
+        discountAmount: discountAmount || 0,
+        discount_amount: discountAmount || 0,
         total: finalTotal,
         serviceCharges: serviceCharges,
         charges: [...enabledCharges],
@@ -407,11 +471,93 @@ function Cart() {
                 </div>
               )}
 
+              {/* COUPON SECTION */}
+              <div className="cart-coupon-section" style={{ marginBottom: '20px', padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#0f172a', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🏷️ <span>Coupons & Offers</span>
+                </div>
+
+                {appliedCoupon ? (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: '800', color: '#166534', fontSize: '0.95rem' }}>
+                        🎉 {appliedCoupon.code} APPLIED
+                      </div>
+                      <div style={{ color: '#15803d', fontSize: '0.82rem', marginTop: '2px' }}>
+                        Saving ₹{discountAmount.toLocaleString('en-IN')} on this order
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      style={{ background: 'none', border: '1px solid #bbf7d0', color: '#dc2626', padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <form onSubmit={(e) => { e.preventDefault(); handleApplyCoupon(); }} style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        placeholder="Enter coupon code"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', textTransform: 'uppercase' }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isValidatingCoupon || !couponInput.trim()}
+                        style={{ padding: '8px 16px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '0.88rem', cursor: isValidatingCoupon || !couponInput.trim() ? 'not-allowed' : 'pointer', opacity: isValidatingCoupon || !couponInput.trim() ? 0.6 : 1 }}
+                      >
+                        {isValidatingCoupon ? 'Applying...' : 'Apply'}
+                      </button>
+                    </form>
+
+                    {couponError && (
+                      <div style={{ color: '#dc2626', fontSize: '0.82rem', marginTop: '6px', fontWeight: '600' }}>
+                        ✕ {couponError}
+                      </div>
+                    )}
+
+                    {availableCoupons.length > 0 && (
+                      <div style={{ marginTop: '12px' }}>
+                        <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+                          Available Coupons
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {availableCoupons.map((c) => (
+                            <div
+                              key={c.id || c.code}
+                              style={{ border: '1px dashed #cbd5e1', background: '#ffffff', padding: '8px 10px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            >
+                              <div>
+                                <span style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.85rem' }}>{c.code}</span>
+                                {c.description && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.description}</div>}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => { setCouponInput(c.code); handleApplyCoupon(c.code); }}
+                                style={{ background: 'none', border: 'none', color: '#e11d48', fontWeight: '800', fontSize: '0.82rem', cursor: 'pointer' }}
+                              >
+                                APPLY
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <PriceSummaryBreakup
                 items={items}
                 enabledCharges={enabledCharges}
                 totalSavings={totalSavings}
                 originalSubtotal={originalSubtotal}
+                appliedCoupon={appliedCoupon}
+                discountAmount={discountAmount}
               />
 
               <p className="summary-note" style={{ fontSize: '0.82rem', color: '#64748b', margin: '16px 0' }}>

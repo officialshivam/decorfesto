@@ -1,6 +1,7 @@
 import { createRepository } from '../dataAccess/repository.js';
 import { getAuthenticatedUser, getAuthenticatedCustomer, getUserRole, requireRole } from '../auth.js';
 import { createOrRefreshOrderOtp, getActiveOtpRecord } from '../otp.js';
+import { validateCouponLogic } from './coupons.js';
 
 function buildOrderId() {
   return `ORD-${Date.now().toString().slice(-8)}`;
@@ -132,8 +133,59 @@ export async function createOrder({ req }) {
   }
 
   const cleanDeliveryAddress = String(payload.deliveryAddress || payload.address || '').trim();
-  const orderSubtotal = Number(payload.subtotal || 0);
-  const finalOrderTotal = orderSubtotal + calculatedServiceFee;
+  const rawItems = Array.isArray(payload.items) ? payload.items : [];
+  let orderSubtotal = 0;
+  if (rawItems.length > 0) {
+    let allDecs = [];
+    try {
+      const decRepo = createRepository('decorations');
+      allDecs = (await decRepo.list()) || [];
+    } catch {
+      allDecs = [];
+    }
+
+    orderSubtotal = rawItems.reduce((sum, item) => {
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const decId = item.id || item.productId || item.decorationId;
+      const dbDec = allDecs.find((d) => String(d.id) === String(decId) || String(d.decorationId) === String(decId));
+
+      const basePrice = dbDec
+        ? Number(dbDec.price ?? dbDec.basePrice ?? dbDec.base_price ?? item.price ?? 0)
+        : Number(item.price || item.basePrice || item.total_price || 0);
+
+      const addOnTotal = Number(item.addOnPrice || item.customizationTotal || 0);
+      return sum + (basePrice + addOnTotal) * qty;
+    }, 0);
+  } else {
+    orderSubtotal = Number(payload.subtotal || 0);
+  }
+
+  let couponCode = payload.couponCode || payload.coupon_code || null;
+  let couponId = null;
+  let discountAmount = 0;
+
+  if (couponCode) {
+    const couponValidation = await validateCouponLogic({
+      code: couponCode,
+      subtotal: orderSubtotal,
+      items: rawItems,
+      customerId: validCustomerId,
+      customerPhone,
+    });
+
+    if (!couponValidation.valid) {
+      return {
+        statusCode: 400,
+        body: { error: couponValidation.message },
+      };
+    }
+
+    couponCode = couponValidation.coupon.code;
+    couponId = couponValidation.coupon.id;
+    discountAmount = couponValidation.discountAmount;
+  }
+
+  const finalOrderTotal = Math.max(0, Math.round((orderSubtotal - discountAmount + calculatedServiceFee) * 100) / 100);
 
   const order = {
     id: targetId,
@@ -146,7 +198,7 @@ export async function createOrder({ req }) {
     decorationId: payload.decorationId || payload.productId || payload.items?.[0]?.id || '1',
     decorationName: payload.decorationName || payload.items?.[0]?.productName || 'DecorFesto Package',
     customization: customizationObj,
-    items: Array.isArray(payload.items) ? payload.items : [],
+    items: rawItems,
     pincode: submittedPincode,
     scheduledDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
     eventDate: payload.scheduledDate || payload.eventDate || payload.date || payload.items?.[0]?.scheduledDate || payload.items?.[0]?.eventDate || payload.items?.[0]?.date || '',
@@ -157,6 +209,12 @@ export async function createOrder({ req }) {
     landmark: userLandmark,
     remarks: userRemarks,
     subtotal: orderSubtotal,
+    couponCode,
+    coupon_code: couponCode,
+    couponId,
+    coupon_id: couponId,
+    discountAmount,
+    discount_amount: discountAmount,
     serviceCharge: calculatedServiceFee,
     serviceCharges: calculatedServiceFee,
     totalAmount: finalOrderTotal,
