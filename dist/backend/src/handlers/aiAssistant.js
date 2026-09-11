@@ -191,7 +191,7 @@ export async function uploadAiSpaceImage({ req }) {
 }
 
 async function callGeminiVision(apiKey, imageBuffer, mimeType, roomType, occasion) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
   const base64Data = imageBuffer.toString('base64');
 
   const promptText = `You are a professional room and space interior decorator for event decor (birthdays, weddings, anniversaries, corporate events).
