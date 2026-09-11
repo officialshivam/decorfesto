@@ -149,7 +149,7 @@ export async function updateAdminCoupon({ req, params }) {
     return { statusCode: 403, body: { error: auth.message } };
   }
 
-  const id = params?.id || req?.query?.id;
+  const id = (Array.isArray(params) ? params[0] : params?.id) || req?.query?.id;
   if (!id) {
     return { statusCode: 400, body: { error: 'Coupon ID is required' } };
   }
@@ -199,7 +199,7 @@ export async function deleteAdminCoupon({ req, params }) {
     return { statusCode: 403, body: { error: auth.message } };
   }
 
-  const id = params?.id || req?.query?.id;
+  const id = (Array.isArray(params) ? params[0] : params?.id) || req?.query?.id;
   if (!id) {
     return { statusCode: 400, body: { error: 'Coupon ID is required' } };
   }
