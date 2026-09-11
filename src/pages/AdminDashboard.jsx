@@ -47,10 +47,11 @@ function ChartCard({ title, subtitle, children, actions }) {
 }
 
 function OrdersBarChart({ series }) {
+  const count = series.labels.length || 1;
+  const step = 700 / count;
   const maxOrders = Math.max(1, ...series.orders);
   const maxRevenue = Math.max(1, ...series.revenue);
-  const barWidth = 100 / series.labels.length;
-  const height = 132;
+  const height = 140;
 
   return (
     <div className="dash-chart">
@@ -59,21 +60,22 @@ function OrdersBarChart({ series }) {
         <svg viewBox={`0 0 700 ${height}`} className="dash-chart__svg" role="img" aria-label="Orders over the last 7 days">
           {series.labels.map((label, index) => {
             const value = series.orders[index];
-            const barHeight = value === 0 ? 2 : Math.max(4, (value / maxOrders) * (height - 28));
-            const x = index * 7 + barWidth / 2;
+            const barHeight = value === 0 ? 3 : Math.max(6, (value / maxOrders) * (height - 45));
+            const x = index * step + step / 2;
+            const barWidth = Math.min(36, step * 0.4);
             return (
-              <g key={`${label}-${index}`}>
-                <line x1={x} y1="2" x2={x} y2={height - 6} stroke="rgba(148,163,184,0.12)" strokeWidth="1" />
+              <g key={`ord-${label}-${index}`}>
+                <line x1={x} y1="10" x2={x} y2={height - 25} stroke="rgba(148,163,184,0.15)" strokeWidth="1" strokeDasharray="3 3" />
                 <rect
-                  x={x - barWidth * 0.18}
-                  width={barWidth * 0.36}
-                  y={height - barHeight}
+                  x={x - barWidth / 2}
+                  width={barWidth}
+                  y={height - 25 - barHeight}
                   height={barHeight}
-                  rx="3"
+                  rx="4"
                   fill="var(--dash-blue)"
                 />
-                <text x={x} y={height - 8} textAnchor="middle" className="dash-chart__bar-label">{value || ''}</text>
-                <text x={x} y={height + 12} textAnchor="middle" className="dash-chart__axis-label">{label}</text>
+                <text x={x} y={height - 30 - barHeight} textAnchor="middle" className="dash-chart__bar-label">{value || '0'}</text>
+                <text x={x} y={height - 6} textAnchor="middle" className="dash-chart__axis-label">{label}</text>
               </g>
             );
           })}
@@ -82,23 +84,27 @@ function OrdersBarChart({ series }) {
       <div className="dash-chart__row">
         <div className="dash-chart__label">REVENUE</div>
         <svg viewBox={`0 0 700 ${height}`} className="dash-chart__svg" role="img" aria-label="Revenue over the last 7 days">
-          {series.labels.map((label, index) => {
-            const value = series.revenue[index];
-            const barHeight = value === 0 ? 2 : Math.max(4, (value / maxRevenue) * (height - 28));
-            const x = index * 7 + barWidth / 2;
-            const y = height - barHeight + 6;
-            const path = index === 0
-              ? `M ${x} ${y}`
-              : `L ${x} ${y}`;
+          {(() => {
+            const points = series.revenue.map((value, index) => {
+              const x = index * step + step / 2;
+              const y = height - 25 - (value / maxRevenue) * (height - 45);
+              return { x, y, value };
+            });
+            const polylineStr = points.map((p) => `${p.x},${p.y}`).join(' ');
             return (
-              <g key={`rev-${label}-${index}`} className="dash-spark">
-                <text x={x} y={y - 6} textAnchor="middle" className="dash-chart__bar-label">{value ? `₹${formatINR(value)}` : ''}</text>
-                {index === 0 ? <path d={`M ${x} ${y} L ${x} ${y + 0.01}`} fill="none" stroke="var(--dash-accent)" strokeWidth="2" /> : <path d={path} fill="none" stroke="var(--dash-accent)" strokeWidth="2" />}
-                <circle cx={x} cy={y} r="3" fill="var(--dash-accent)" />
-                <text x={x} y={height - 2} textAnchor="middle" className="dash-chart__axis-label">{label}</text>
+              <g className="dash-spark">
+                <polyline points={polylineStr} fill="none" stroke="var(--dash-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                {points.map((p, index) => (
+                  <g key={`rev-${series.labels[index]}-${index}`}>
+                    <line x1={p.x} y1="10" x2={p.x} y2={height - 25} stroke="rgba(148,163,184,0.12)" strokeWidth="1" strokeDasharray="3 3" />
+                    <circle cx={p.x} cy={p.y} r="4" fill="var(--dash-accent)" />
+                    <text x={p.x} y={Math.max(14, p.y - 8)} textAnchor="middle" className="dash-chart__bar-label">{p.value ? `₹${formatINR(p.value)}` : '₹0'}</text>
+                    <text x={p.x} y={height - 6} textAnchor="middle" className="dash-chart__axis-label">{series.labels[index]}</text>
+                  </g>
+                ))}
               </g>
             );
-          })}
+          })()}
         </svg>
       </div>
     </div>
@@ -108,10 +114,19 @@ function OrdersBarChart({ series }) {
 function RevenueLineChart({ series }) {
   const maxRevenue = Math.max(1, ...series.revenue);
   const height = 160;
-  const points = series.revenue
-    .map((value, index) => `${index * 14},${height - 20 - (value / maxRevenue) * (height - 40)}`)
-    .join(' ');
-  const areaPoints = `0,${height - 20} ${points} 700,${height - 20}`;
+  const count = series.labels.length || 1;
+  const step = 700 / count;
+
+  const pointsList = series.revenue.map((value, index) => {
+    const x = index * step + step / 2;
+    const y = height - 30 - (value / maxRevenue) * (height - 50);
+    return { x, y, value };
+  });
+
+  const pointsStr = pointsList.map((p) => `${p.x},${p.y}`).join(' ');
+  const firstX = pointsList[0]?.x || 0;
+  const lastX = pointsList[pointsList.length - 1]?.x || 700;
+  const areaPoints = `${firstX},${height - 30} ${pointsStr} ${lastX},${height - 30}`;
 
   return (
     <div className="dash-chart">
@@ -123,10 +138,18 @@ function RevenueLineChart({ series }) {
           </linearGradient>
         </defs>
         <polygon points={areaPoints} fill="url(#revenueArea)" />
-        <polyline points={points} fill="none" stroke="var(--dash-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {series.labels.map((label, index) => (
-          <text key={`rev-axis-${label}-${index}`} x={index * 14} y={height - 4} textAnchor="middle" className="dash-chart__axis-label">{label}</text>
-        ))}
+        <polyline points={pointsStr} fill="none" stroke="var(--dash-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {pointsList.map((p, index) => {
+          const label = series.labels[index];
+          return (
+            <g key={`rev-line-${label}-${index}`}>
+              <line x1={p.x} y1="15" x2={p.x} y2={height - 30} stroke="rgba(148,163,184,0.12)" strokeWidth="1" strokeDasharray="3 3" />
+              <circle cx={p.x} cy={p.y} r="4" fill="var(--dash-accent)" />
+              <text x={p.x} y={Math.max(14, p.y - 8)} textAnchor="middle" className="dash-chart__bar-label">{p.value ? `₹${formatINR(p.value)}` : '₹0'}</text>
+              <text x={p.x} y={height - 8} textAnchor="middle" className="dash-chart__axis-label">{label}</text>
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
@@ -764,9 +787,9 @@ function ChargesManagementCard() {
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleDelete = (id, name) => {
+  const handleDelete = async (id, name) => {
     if (window.confirm(`Are you sure you want to permanently delete "${name}"? It will immediately stop appearing on customer checkouts.`)) {
-      deleteCharge(id);
+      await deleteAdminChargeApi(id);
       refresh();
       setMessage(`✓ Charge "${name}" deleted.`);
       setTimeout(() => setMessage(''), 3000);

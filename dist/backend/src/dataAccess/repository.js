@@ -22,6 +22,8 @@ const MYSQL_TABLE_MAP = {
   coupons: 'coupons',
   'coupon-usages': 'coupon_usages',
   coupon_usages: 'coupon_usages',
+  'site-settings': 'site_settings',
+  site_settings: 'site_settings',
 };
 
 /*
@@ -30,6 +32,20 @@ const MYSQL_TABLE_MAP = {
  * so migrated rows round-trip through the repository unchanged.
  */
 export const columnMaps = {
+  site_settings: {
+    id: 'id',
+    settingKey: 'setting_key',
+    settingValue: 'setting_value',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  'site-settings': {
+    id: 'id',
+    settingKey: 'setting_key',
+    settingValue: 'setting_value',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
   order_start_otps: {
     id: 'id',
     orderId: 'order_id',

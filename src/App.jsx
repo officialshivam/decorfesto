@@ -42,6 +42,7 @@ import { VendorAuthProvider, useVendorAuth } from './context/VendorAuthContext';
 
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { BrandingProvider } from './context/BrandingContext';
 import './App.css';
 
 function RequireAuth({ children }) {
@@ -97,77 +98,83 @@ function CustomerLayout() {
 
 function App() {
   return (
-    <AuthProvider>
-      <VendorAuthProvider>
-        <AdminAuthProvider>
-          <CartProvider>
-            <Router>
-              <Routes>
-                {/* VENDOR PORTAL ROUTES */}
-                <Route path="/vendor/login" element={<VendorLogin />} />
-                <Route
-                  path="/vendor"
-                  element={
-                    <RequireVendorAuth>
-                      <VendorLayout />
-                    </RequireVendorAuth>
-                  }
-                >
-                  <Route index element={<Navigate to="/vendor/dashboard" replace />} />
-                  <Route path="dashboard" element={<VendorDashboard />} />
-                  <Route path="orders" element={<VendorOrders />} />
-                  <Route path="orders/:orderId" element={<VendorOrderDetails />} />
-                  <Route path="profile" element={<VendorProfile />} />
-                  <Route path="*" element={<Navigate to="/vendor/dashboard" replace />} />
-                </Route>
+    <BrandingProvider>
+      <AuthProvider>
+        <VendorAuthProvider>
+          <AdminAuthProvider>
+            <CartProvider>
+              <Router>
+                <Routes>
+                  {/* PUBLIC VENDOR AUTH */}
+                  <Route path="/vendor/login" element={<VendorLogin />} />
 
-                {/* ADMIN ROUTES */}
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route
-                  path="/admin"
-                  element={
-                    <RequireAdminAuth>
-                      <AdminLayout />
-                    </RequireAdminAuth>
-                  }
-                >
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="orders/:id" element={<AdminOrderDetails />} />
-                  <Route path="vendors" element={<AdminVendors />} />
-                  <Route path="vendors/:vendorId" element={<AdminVendorDetails />} />
-                  <Route path="service-areas" element={<AdminServiceAreas />} />
-                  <Route path="decorations" element={<AdminDecorations />} />
-                  <Route path="categories" element={<AdminCategories />} />
-                  <Route path="coupons" element={<AdminCoupons />} />
-                  <Route path="customizations" element={<AdminCustomizations />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="*" element={<Navigate to="/admin" replace />} />
-                </Route>
+                  {/* VENDOR PORTAL ROUTES */}
+                  <Route
+                    path="/vendor"
+                    element={
+                      <RequireVendorAuth>
+                        <VendorLayout />
+                      </RequireVendorAuth>
+                    }
+                  >
+                    <Route index element={<Navigate to="/vendor/dashboard" replace />} />
+                    <Route path="dashboard" element={<VendorDashboard />} />
+                    <Route path="orders" element={<VendorOrders />} />
+                    <Route path="orders/:id" element={<VendorOrderDetails />} />
+                    <Route path="profile" element={<VendorProfile />} />
+                    <Route path="*" element={<Navigate to="/vendor/dashboard" replace />} />
+                  </Route>
 
-              {/* CUSTOMER ROUTES */}
-              <Route path="/" element={<CustomerLayout />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/catalog" element={<Catalog />} />
-                <Route path="/product/:id" element={<ErrorBoundary><ProductDetail /></ErrorBoundary>} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/checkout" element={<Navigate to="/cart" replace />} />
-                <Route path="/confirmation" element={<RequireAuth><Confirmation /></RequireAuth>} />
-                <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-                <Route path="/my-orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
-                <Route path="/my-orders/:id" element={<RequireAuth><MyOrderDetail /></RequireAuth>} />
-                <Route path="/ai-assistant" element={<AIAssistant />} />
-                <Route path="/consultation" element={<NIFTConsultation />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </Router>
-        </CartProvider>
-      </AdminAuthProvider>
-    </VendorAuthProvider>
-    </AuthProvider>
+                  {/* PUBLIC ADMIN AUTH */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+
+                  {/* ADMIN PORTAL ROUTES */}
+                  <Route
+                    path="/admin"
+                    element={
+                      <RequireAdminAuth>
+                        <AdminLayout />
+                      </RequireAdminAuth>
+                    }
+                  >
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="orders" element={<AdminOrders />} />
+                    <Route path="orders/:id" element={<AdminOrderDetails />} />
+                    <Route path="vendors" element={<AdminVendors />} />
+                    <Route path="vendors/:vendorId" element={<AdminVendorDetails />} />
+                    <Route path="service-areas" element={<AdminServiceAreas />} />
+                    <Route path="decorations" element={<AdminDecorations />} />
+                    <Route path="categories" element={<AdminCategories />} />
+                    <Route path="coupons" element={<AdminCoupons />} />
+                    <Route path="customizations" element={<AdminCustomizations />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="*" element={<Navigate to="/admin" replace />} />
+                  </Route>
+
+                  {/* CUSTOMER ROUTES */}
+                  <Route path="/" element={<CustomerLayout />}>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/catalog" element={<Catalog />} />
+                    <Route path="/product/:id" element={<ErrorBoundary><ProductDetail /></ErrorBoundary>} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/checkout" element={<Navigate to="/cart" replace />} />
+                    <Route path="/confirmation" element={<RequireAuth><Confirmation /></RequireAuth>} />
+                    <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+                    <Route path="/my-orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
+                    <Route path="/my-orders/:id" element={<RequireAuth><MyOrderDetail /></RequireAuth>} />
+                    <Route path="/ai-assistant" element={<AIAssistant />} />
+                    <Route path="/consultation" element={<NIFTConsultation />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Route>
+                </Routes>
+              </Router>
+            </CartProvider>
+          </AdminAuthProvider>
+        </VendorAuthProvider>
+      </AuthProvider>
+    </BrandingProvider>
   );
 }
 

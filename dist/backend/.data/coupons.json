@@ -1,0 +1,24 @@
+[
+  {
+    "id": "coupon_1789162590833_83g4n",
+    "code": "DECOR",
+    "name": "DECOR Welcome Offer",
+    "description": "Updated description test",
+    "discountType": "FIXED",
+    "discountValue": 150,
+    "maxDiscountAmount": null,
+    "minOrderAmount": 0,
+    "startsAt": null,
+    "expiresAt": null,
+    "usageLimit": null,
+    "usageCount": 0,
+    "perCustomerLimit": null,
+    "active": true,
+    "visibleToCustomers": true,
+    "firstOrderOnly": false,
+    "applicableCategories": null,
+    "applicableDecorations": null,
+    "createdAt": "2026-09-11T21:36:30.833Z",
+    "updatedAt": "2026-09-11T21:36:30.890Z"
+  }
+]

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { BrandLogo } from '../context/BrandingContext';
 
 function Navbar() {
   const { itemCount } = useCart();
@@ -36,34 +37,11 @@ function Navbar() {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: scrolled ? '12px 20px' : '16px 20px', transition: 'padding 0.3s ease' }}>
+      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: scrolled ? '10px 20px' : '14px 20px', transition: 'padding 0.3s ease' }}>
         
         {/* Brand */}
-        <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-          <div
-            style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
-              color: '#ffffff',
-              display: 'grid',
-              placeItems: 'center',
-              fontWeight: '800',
-              fontSize: '20px',
-              boxShadow: '0 4px 14px rgba(194, 65, 12, 0.3)',
-            }}
-          >
-            D
-          </div>
-          <div>
-            <strong style={{ display: 'block', fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', lineHeight: '1.1', letterSpacing: '-0.02em' }}>
-              DecorFesto
-            </strong>
-            <small style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', letterSpacing: '0.04em' }}>
-              PREMIUM CELEBRATIONS
-            </small>
-          </div>
+        <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+          <BrandLogo height={42} alt="DecorFesto" />
         </Link>
 
         {/* Desktop Nav Links */}

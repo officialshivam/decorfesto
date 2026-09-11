@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useVendorAuth } from '../context/VendorAuthContext';
+import { BrandLogo } from '../context/BrandingContext';
 
 export default function VendorLogin() {
   const { isVendorAuthenticated, loginVendor, vendorAuthError } = useVendorAuth();
@@ -57,24 +58,14 @@ export default function VendorLogin() {
       >
         {/* LOGO HEADER */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '56px',
-              height: '56px',
-              background: '#fff1f2',
-              color: '#e11d48',
-              borderRadius: '16px',
-              fontSize: '1.8rem',
-              marginBottom: '12px',
-            }}
-          >
-            🏪
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <BrandLogo height={48} alt="DecorFesto Vendor" />
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#e11d48', color: '#ffffff', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              VENDOR PORTAL
+            </span>
           </div>
-          <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: '900', color: '#0f172a', letterSpacing: '-0.02em' }}>
-            DecorFesto
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
+            Vendor Portal Access
           </h1>
           <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '0.95rem', fontWeight: '600' }}>
             Vendor Partner Operations Portal

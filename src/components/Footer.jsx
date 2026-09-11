@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { BrandLogo } from '../context/BrandingContext';
 
 function Footer() {
   return (
@@ -8,10 +9,7 @@ function Footer() {
         {/* Brand Column */}
         <div style={{ maxWidth: '320px' }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', marginBottom: '16px' }}>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', color: '#ffffff', display: 'grid', placeItems: 'center', fontWeight: '800', fontSize: '18px', boxShadow: '0 4px 12px rgba(234, 88, 12, 0.4)' }}>
-              D
-            </div>
-            <strong style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.02em' }}>DecorFesto</strong>
+            <BrandLogo height={42} alt="DecorFesto" style={{ background: '#ffffff', padding: '4px 8px', borderRadius: '8px' }} />
           </Link>
           <p style={{ fontSize: '14px', lineHeight: '1.65', color: '#64748b', margin: 0 }}>
             India's premier AI-powered decoration platform for birthdays, anniversaries, weddings, and memorable occasions.

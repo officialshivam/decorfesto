@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import { BrandLogo } from '../context/BrandingContext';
 
 const adminNavItems = [
   { label: 'Dashboard', to: '/admin' },
@@ -25,11 +26,10 @@ function AdminNavbar() {
   return (
     <header className="navbar admin-navbar">
       <div className="container navbar__inner">
-        <NavLink to="/admin" end className="brand" aria-label="DecorFesto admin dashboard">
-          <span className="brand__mark">D</span>
-          <span>
-            <strong>DecorFesto</strong>
-            <small>Admin</small>
+        <NavLink to="/admin" end aria-label="DecorFesto admin dashboard" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+          <BrandLogo height={34} alt="DecorFesto Admin" style={{ background: '#ffffff', padding: '3px 6px', borderRadius: '6px' }} />
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#0f172a', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Admin
           </span>
         </NavLink>
 

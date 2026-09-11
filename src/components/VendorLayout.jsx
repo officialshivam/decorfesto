@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useVendorAuth } from '../context/VendorAuthContext';
+import { BrandLogo } from '../context/BrandingContext';
 
 export default function VendorLayout() {
   const { vendorUser, logoutVendor } = useVendorAuth();
@@ -31,7 +32,7 @@ export default function VendorLayout() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Link to="/vendor/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.02em' }}>DecorFesto</span>
+            <BrandLogo height={34} alt="DecorFesto Vendor" style={{ background: '#ffffff', padding: '3px 6px', borderRadius: '6px' }} />
             <span style={{ fontSize: '0.75rem', fontWeight: '800', background: '#e11d48', color: '#fff', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Vendor Portal
             </span>

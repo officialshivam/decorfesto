@@ -16,8 +16,7 @@ import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVen
 import { migrateOtpEncryption } from './otp.js';
 import { uploadAiSpaceImage, analyzeAiSpace, generateAiDecoration } from './handlers/aiAssistant.js';
 import { listAdminCoupons, createAdminCoupon, updateAdminCoupon, deleteAdminCoupon, listAvailableCoupons, validateCouponEndpoint } from './handlers/coupons.js';
-
-
+import { getSiteBranding } from './handlers/siteSettings.js';
 
 function healthCheck() {
   return {
@@ -58,6 +57,7 @@ const routeHandlers = {
     '/vendor/profile': getVendorProfile,
     '/admin/coupons': listAdminCoupons,
     '/coupons/available': listAvailableCoupons,
+    '/site-settings/branding': getSiteBranding,
   },
   POST: {
     '/auth/customer-signup': customerSignup,
@@ -214,6 +214,23 @@ export async function initializeBackend() {
           CONSTRAINT fk_cu_coupon FOREIGN KEY (coupon_id) REFERENCES coupons (id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `).catch((err) => console.warn('Coupon Usages table init notice:', err.message));
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS site_settings (
+          id            VARCHAR(64)  NOT NULL PRIMARY KEY,
+          setting_key   VARCHAR(128) NOT NULL,
+          setting_value TEXT         NULL,
+          created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_site_settings_key (setting_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `).catch((err) => console.warn('Site Settings table init notice:', err.message));
+
+      await pool.query(`
+        INSERT INTO site_settings (id, setting_key, setting_value)
+        VALUES ('setting-site-logo', 'site_logo', '/uploads/branding/decorfesto-logo.png')
+        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+      `).catch((err) => console.warn('Site Logo seed notice:', err.message));
 
       await pool.query(`ALTER TABLE \`${ordersTable}\` ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});
       await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remarks TEXT NULL`).catch(() => {});

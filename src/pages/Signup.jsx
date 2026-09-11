@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BrandLogo } from '../context/BrandingContext';
 import MobileNumberInput, { validate10DigitMobile } from '../components/MobileNumberInput';
 
 function Signup() {
@@ -12,9 +13,9 @@ function Signup() {
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +40,7 @@ function Signup() {
   const validate = () => {
     const nextErrors = {};
 
-    if (!fullName.trim()) {
+    if (!fullName.trim() || fullName.trim().length < 2) {
       nextErrors.fullName = 'Please enter your full name.';
     }
 
@@ -48,18 +49,16 @@ function Signup() {
       nextErrors.mobile = mobileValidation.error;
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       nextErrors.email = 'Please enter a valid email address.';
     }
 
-    if (password.length < 6) {
+    if (!password || password.length < 6) {
       nextErrors.password = 'Password must be at least 6 characters.';
     }
 
-    if (!confirmPassword) {
-      nextErrors.confirmPassword = 'Please confirm your password.';
-    } else if (confirmPassword !== password) {
-      nextErrors.confirmPassword = 'Passwords do not match.';
+    if (!agreeTerms) {
+      nextErrors.agreeTerms = 'You must agree to the Terms of Service to create an account.';
     }
 
     setErrors(nextErrors);
@@ -68,14 +67,13 @@ function Signup() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitError('');
 
     if (!validate()) {
-      setSubmitError('Please fix the validation errors above (e.g. enter a full 10-digit mobile number).');
       return;
     }
 
     setIsSubmitting(true);
+    setSubmitError('');
 
     const mobileValidation = validate10DigitMobile(mobile);
     const result = await signup({
@@ -103,14 +101,8 @@ function Signup() {
         <div className="auth-card">
 
           {/* Brand */}
-          <div className="auth-card__brand">
-            <div className="brand__logo">
-              <span>🎉</span>
-            </div>
-            <div className="brand__text">
-              <strong>DecorFesto</strong>
-              <small>Premium celebrations</small>
-            </div>
+          <div className="auth-card__brand" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <BrandLogo height={48} alt="DecorFesto" />
           </div>
 
           {/* Header */}

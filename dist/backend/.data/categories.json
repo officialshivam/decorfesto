@@ -1,0 +1,82 @@
+[
+  {
+    "id": "category-birthday",
+    "name": "Birthday",
+    "displayOrder": 1,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.347Z",
+    "updatedAt": "2026-09-11T21:36:05.347Z"
+  },
+  {
+    "id": "category-anniversary",
+    "name": "Anniversary",
+    "displayOrder": 2,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.366Z",
+    "updatedAt": "2026-09-11T21:36:05.366Z"
+  },
+  {
+    "id": "category-proposal",
+    "name": "Proposal",
+    "displayOrder": 3,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.384Z",
+    "updatedAt": "2026-09-11T21:36:05.384Z"
+  },
+  {
+    "id": "category-baby-shower",
+    "name": "Baby Shower",
+    "displayOrder": 4,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.400Z",
+    "updatedAt": "2026-09-11T21:36:05.400Z"
+  },
+  {
+    "id": "category-housewarming",
+    "name": "Housewarming",
+    "displayOrder": 5,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.413Z",
+    "updatedAt": "2026-09-11T21:36:05.413Z"
+  },
+  {
+    "id": "category-wedding",
+    "name": "Wedding",
+    "displayOrder": 6,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.428Z",
+    "updatedAt": "2026-09-11T21:36:05.428Z"
+  },
+  {
+    "id": "category-kids",
+    "name": "Kids",
+    "displayOrder": 7,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.444Z",
+    "updatedAt": "2026-09-11T21:36:05.444Z"
+  },
+  {
+    "id": "category-romantic",
+    "name": "Romantic",
+    "displayOrder": 8,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.464Z",
+    "updatedAt": "2026-09-11T21:36:05.464Z"
+  },
+  {
+    "id": "category-festival",
+    "name": "Festival",
+    "displayOrder": 9,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.477Z",
+    "updatedAt": "2026-09-11T21:36:05.477Z"
+  },
+  {
+    "id": "category-custom",
+    "name": "Custom",
+    "displayOrder": 10,
+    "active": true,
+    "createdAt": "2026-09-11T21:36:05.492Z",
+    "updatedAt": "2026-09-11T21:36:05.492Z"
+  }
+]

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { BrandLogo } from '../context/BrandingContext';
 import MobileNumberInput, { validate10DigitMobile } from '../components/MobileNumberInput';
 
 function Login() {
@@ -58,21 +59,16 @@ function Login() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitError('');
 
-    if (!validate()) return;
-
-    setIsSubmitting(true);
-
-    let identifier;
-    if (identifierType === 'mobile') {
-      const mobileValidation = validate10DigitMobile(mobile);
-      identifier = mobileValidation.clean;
-    } else {
-      identifier = email.trim().toLowerCase();
+    if (!validate()) {
+      return;
     }
 
-    const result = await login({ identifier, password });
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    const identifier = identifierType === 'mobile' ? mobile : email.trim();
+    const result = await login({ identifier, password, identifierType });
 
     setIsSubmitting(false);
 
@@ -91,14 +87,8 @@ function Login() {
         <div className="auth-card">
 
           {/* Brand */}
-          <div className="auth-card__brand">
-            <div className="brand__logo">
-              <span>🎉</span>
-            </div>
-            <div className="brand__text">
-              <strong>DecorFesto</strong>
-              <small>Premium celebrations</small>
-            </div>
+          <div className="auth-card__brand" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <BrandLogo height={48} alt="DecorFesto" />
           </div>
 
           {/* Header */}

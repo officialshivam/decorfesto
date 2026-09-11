@@ -55,6 +55,7 @@ function isApiRequest(pathname, req) {
     '/availability',
     '/ai-assistant',
     '/coupons',
+    '/site-settings',
   ];
 
   if (explicitApiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {

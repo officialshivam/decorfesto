@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import { BrandLogo } from '../context/BrandingContext';
 
 export default function AdminLogin() {
   const { isAdminAuthenticated, loginAdmin, adminAuthError } = useAdminAuth();
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -19,11 +20,6 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setErrorMsg('Please enter both admin username and password.');
-      return;
-    }
-
     setLoading(true);
     setErrorMsg('');
 
@@ -33,7 +29,7 @@ export default function AdminLogin() {
     if (res.ok) {
       navigate(from, { replace: true });
     } else {
-      setErrorMsg(res.error || 'Invalid admin credentials.');
+      setErrorMsg(res.error || 'Invalid credentials.');
     }
   };
 
@@ -62,25 +58,14 @@ export default function AdminLogin() {
       >
         {/* LOGO HEADER */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '56px',
-              height: '56px',
-              borderRadius: '14px',
-              background: '#0f172a',
-              color: '#ffffff',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              marginBottom: '16px',
-            }}
-          >
-            D
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <BrandLogo height={48} alt="DecorFesto Admin" />
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#0f172a', color: '#ffffff', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              ADMIN PORTAL
+            </span>
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>
-            DecorFesto Admin
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', margin: '0 0 8px 0' }}>
+            Admin Portal Access
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
             Sign in to access Admin Control Center
