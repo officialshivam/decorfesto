@@ -29,21 +29,21 @@ function Navbar() {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: scrolled ? 'rgba(255, 255, 255, 0.95)' : 'rgba(250, 248, 245, 0.9)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: scrolled ? '1px solid #e2e8f0' : '1px solid rgba(226, 232, 240, 0.6)',
-        boxShadow: scrolled ? '0 4px 20px rgba(0, 0, 0, 0.05)' : 'none',
-        transition: 'all 0.3s ease',
+        background: scrolled ? 'rgba(255, 255, 255, 0.94)' : 'rgba(255, 252, 249, 0.88)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: scrolled ? '1px solid rgba(241, 245, 249, 0.9)' : '1px solid rgba(234, 88, 12, 0.08)',
+        boxShadow: scrolled ? '0 10px 30px -10px rgba(15, 23, 42, 0.08)' : 'none',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: scrolled ? '12px 16px' : '18px 16px', transition: 'padding 0.3s ease' }}>
+      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: scrolled ? '12px 20px' : '16px 20px', transition: 'padding 0.3s ease' }}>
         
         {/* Brand */}
         <Link to="/" onClick={closeMobileMenu} style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
           <div
             style={{
-              width: '40px',
-              height: '40px',
+              width: '42px',
+              height: '42px',
               borderRadius: '12px',
               background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
               color: '#ffffff',
@@ -51,37 +51,55 @@ function Navbar() {
               placeItems: 'center',
               fontWeight: '800',
               fontSize: '20px',
-              boxShadow: '0 4px 10px rgba(194, 65, 12, 0.3)',
+              boxShadow: '0 4px 14px rgba(194, 65, 12, 0.3)',
             }}
           >
             D
           </div>
           <div>
-            <strong style={{ display: 'block', fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', lineHeight: '1.1' }}>
+            <strong style={{ display: 'block', fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', lineHeight: '1.1', letterSpacing: '-0.02em' }}>
               DecorFesto
             </strong>
-            <small style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
-              Premium Celebrations
+            <small style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', letterSpacing: '0.04em' }}>
+              PREMIUM CELEBRATIONS
             </small>
           </div>
         </Link>
 
         {/* Desktop Nav Links */}
-        <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
-          <NavLink to="/" end style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '500', color: isActive ? '#c2410c' : '#334155' })}>
+        <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <NavLink to="/" end style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#334155' })}>
             Home
           </NavLink>
-          <NavLink to="/catalog" style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '500', color: isActive ? '#c2410c' : '#334155' })}>
+          <NavLink to="/catalog" style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#334155' })}>
             Decorations
           </NavLink>
-          <a href="/#how-it-works" style={{ textDecoration: 'none', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+          <NavLink
+            to="/ai-assistant"
+            style={({ isActive }) => ({
+              textDecoration: 'none',
+              fontSize: '13px',
+              fontWeight: '700',
+              color: isActive ? '#ea580c' : '#c2410c',
+              background: isActive ? '#fff4ed' : 'rgba(234, 88, 12, 0.06)',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              border: '1px solid rgba(234, 88, 12, 0.18)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+            })}
+          >
+            <span>✨ AI Visualizer</span>
+          </NavLink>
+          <a href="/#how-it-works" style={{ textDecoration: 'none', fontSize: '14px', fontWeight: '600', color: '#334155' }}>
             How It Works
           </a>
-          <a href="/#service-areas" style={{ textDecoration: 'none', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+          <a href="/#service-areas" style={{ textDecoration: 'none', fontSize: '14px', fontWeight: '600', color: '#334155' }}>
             Service Areas
           </a>
           {isAuthenticated && (
-            <NavLink to="/my-orders" style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '500', color: isActive ? '#c2410c' : '#334155' })}>
+            <NavLink to="/my-orders" style={({ isActive }) => ({ textDecoration: 'none', fontSize: '14px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#334155' })}>
               My Orders
             </NavLink>
           )}
@@ -95,21 +113,22 @@ function Navbar() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '20px',
-              background: '#fff7ed',
-              border: '1px solid #ffedd5',
+              padding: '8px 16px',
+              borderRadius: '999px',
+              background: '#fff4ed',
+              border: '1px solid rgba(234, 88, 12, 0.2)',
               color: '#c2410c',
               fontSize: '13px',
               fontWeight: '700',
               textDecoration: 'none',
               whiteSpace: 'nowrap',
+              boxShadow: '0 2px 6px rgba(194, 65, 12, 0.06)',
             }}
           >
             <span>🛒</span>
             <span>Cart</span>
             {itemCount > 0 && (
-              <span style={{ background: '#c2410c', color: '#ffffff', borderRadius: '50%', padding: '2px 7px', fontSize: '11px', fontWeight: '800' }}>
+              <span style={{ background: '#ea580c', color: '#ffffff', borderRadius: '50%', padding: '2px 7px', fontSize: '11px', fontWeight: '800' }}>
                 {itemCount}
               </span>
             )}
@@ -119,7 +138,7 @@ function Navbar() {
           <div className="desktop-auth" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {isAuthenticated ? (
               <>
-                <Link to="/profile" style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', textDecoration: 'none', background: '#f1f5f9', padding: '8px 14px', borderRadius: '10px' }}>
+                <Link to="/profile" style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', textDecoration: 'none', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: '12px' }}>
                   👤 {user?.fullName?.split(' ')[0] || 'Profile'}
                 </Link>
                 <button
@@ -127,12 +146,12 @@ function Navbar() {
                   onClick={logout}
                   style={{
                     background: 'none',
-                    border: '1px solid #cbd5e1',
-                    padding: '8px 14px',
-                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    padding: '8px 16px',
+                    borderRadius: '12px',
                     fontSize: '13px',
                     fontWeight: '600',
-                    color: '#475569',
+                    color: '#64748b',
                     cursor: 'pointer',
                   }}
                 >
@@ -147,13 +166,14 @@ function Navbar() {
                 <Link
                   to="/signup"
                   style={{
-                    background: '#0f172a',
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
                     color: '#ffffff',
-                    padding: '8px 18px',
-                    borderRadius: '10px',
+                    padding: '9px 20px',
+                    borderRadius: '12px',
                     fontSize: '14px',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     textDecoration: 'none',
+                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
                   }}
                 >
                   Sign up
@@ -176,7 +196,7 @@ function Navbar() {
               padding: '6px',
               display: 'none',
             }}
-            aria-label="Toggle navigation"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open navigation menu'}
           >
             {mobileMenuOpen ? '✕' : '☰'}
           </button>
@@ -196,11 +216,14 @@ function Navbar() {
             boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
           }}
         >
-          <NavLink to="/" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#c2410c' : '#0f172a', textDecoration: 'none' })}>
+          <NavLink to="/" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#0f172a', textDecoration: 'none' })}>
             Home
           </NavLink>
-          <NavLink to="/catalog" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#c2410c' : '#0f172a', textDecoration: 'none' })}>
+          <NavLink to="/catalog" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#0f172a', textDecoration: 'none' })}>
             Decorations
+          </NavLink>
+          <NavLink to="/ai-assistant" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#ea580c', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' })}>
+            <span>✨ AI Visualizer</span>
           </NavLink>
           <a href="/#how-it-works" onClick={closeMobileMenu} style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', textDecoration: 'none' }}>
             How It Works
@@ -209,7 +232,7 @@ function Navbar() {
             Service Areas
           </a>
           {isAuthenticated && (
-            <NavLink to="/my-orders" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#c2410c' : '#0f172a', textDecoration: 'none' })}>
+            <NavLink to="/my-orders" onClick={closeMobileMenu} style={({ isActive }) => ({ fontSize: '15px', fontWeight: isActive ? '700' : '600', color: isActive ? '#ea580c' : '#0f172a', textDecoration: 'none' })}>
               My Orders
             </NavLink>
           )}

@@ -396,6 +396,80 @@ export default function Home() {
       </section>
 
       {/* ========================================================================= */}
+      {/* 3. AI VISUALIZER HERO PROMO BANNER */}
+      {/* ========================================================================= */}
+      <section className="container" style={{ padding: '0 16px 80px 16px' }}>
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+            borderRadius: '28px',
+            padding: '48px 40px',
+            color: '#ffffff',
+            boxShadow: '0 20px 40px -15px rgba(15, 23, 42, 0.3)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '32px',
+            alignItems: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                borderRadius: '30px',
+                background: 'rgba(234, 88, 12, 0.2)',
+                border: '1px solid rgba(251, 146, 60, 0.3)',
+                color: '#fb923c',
+                fontSize: '13px',
+                fontWeight: '700',
+                marginBottom: '16px',
+              }}
+            >
+              <span>✨ Powered by Gemini Vision</span>
+            </div>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', fontWeight: '800', margin: '0 0 14px 0', lineHeight: '1.2' }}>
+              See Your Wall Decorated <br />
+              <span style={{ color: '#fb923c', fontStyle: 'italic' }}>Before You Book.</span>
+            </h2>
+            <p style={{ fontSize: '1.05rem', color: '#cbd5e1', lineHeight: '1.6', margin: '0 0 28px 0', maxWidth: '520px' }}>
+              Upload a picture of your room wall and let our Gemini AI analyze your space and render real before & after decoration preview options instantly.
+            </p>
+            <Link
+              to="/ai-assistant"
+              style={{
+                padding: '16px 32px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
+                color: '#ffffff',
+                fontWeight: '700',
+                fontSize: '15px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                boxShadow: '0 10px 25px rgba(234, 88, 12, 0.35)',
+              }}
+            >
+              <span>Try AI Room Visualizer</span>
+              <span>→</span>
+            </Link>
+          </div>
+          <div style={{ justifySelf: 'center', textAlign: 'center', position: 'relative', zIndex: 2 }}>
+            <div style={{ background: 'rgba(255, 255, 255, 0.08)', padding: '24px', borderRadius: '20px', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+              <div style={{ fontSize: '48px', marginBottom: '8px' }}>🖼️ ➔ 🎉</div>
+              <strong style={{ display: 'block', fontSize: '16px', color: '#ffffff' }}>Instant AI Transformation</strong>
+              <small style={{ color: '#94a3b8', fontSize: '13px' }}>Wall Analysis • Style Matching • 3D Render</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
       {/* 4. WHY DECORFESTO */}
       {/* ========================================================================= */}
       <section className="container" style={{ padding: '80px 16px' }}>

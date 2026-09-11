@@ -5,11 +5,18 @@ function ProductCard({ product }) {
 
   return (
     <article className="product-card">
-      <img src={product.imageUrl || product.image} alt={product.name} className="product-card__image" />
+      <div className="product-card__image-container">
+        <img
+          src={product.imageUrl || product.image}
+          alt={product.name}
+          className="product-card__image"
+          loading="lazy"
+        />
+      </div>
       <div className="product-card__content">
         <div className="product-card__meta">
-          <span className="product-card__occasion">{product.occasion}</span>
-          <span className="product-card__rating">★ {product.rating}</span>
+          <span className="product-card__occasion">✨ {product.occasion || product.category || 'Special'}</span>
+          {product.rating && <span className="product-card__rating">★ {product.rating}</span>}
         </div>
 
         <h3>{product.name}</h3>
@@ -26,9 +33,9 @@ function ProductCard({ product }) {
         </div>
 
         <div className="product-card__footer">
-          <span>{product.reviewCount} reviews</span>
+          <span>{product.reviewCount ? `${product.reviewCount} reviews` : 'Verified Decor'}</span>
           <Link to={`/product/${product.id}`} className="button button--small">
-            View Package
+            View Package →
           </Link>
         </div>
       </div>

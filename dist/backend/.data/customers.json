@@ -1,17 +1,1 @@
-[
-  {
-    "id": "cust_test_1788896288092",
-    "fullName": "Test Customer",
-    "name": "Test Customer",
-    "email": "test_1788896288092@example.com",
-    "phone": "+919876543210",
-    "mobile": "+919876543210",
-    "role": "CUSTOMER",
-    "savedAddress": "Flat 203, Block B, Green Heights, Saket",
-    "addressDetails": "{\"fullAddress\":\"Green Heights, Saket\",\"flatNo\":\"Flat 203\",\"pincode\":\"110017\",\"mobile\":\"+919876543210\",\"altMobile\":\"+919811122233\",\"landmark\":\"Near Metro Station Gate 2\",\"addressType\":\"Home\",\"city\":\"Delhi NCR\",\"state\":\"Delhi\"}",
-    "createdAt": "2026-09-08T19:38:08.092Z",
-    "updatedAt": "2026-09-08T19:38:08.116Z",
-    "address": "Flat 203, Block B, Green Heights, Saket",
-    "defaultPincode": "110017"
-  }
-]
+[]
