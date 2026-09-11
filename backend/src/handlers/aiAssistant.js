@@ -1,18 +1,21 @@
 import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
+import { createRepository } from '../dataAccess/repository.js';
 
 const UPLOAD_SUBDIR = path.join('uploads', 'ai-space');
-const SERVER_FILENAME_REGEX = /^ai-space-\d+-[a-f0-9]{16}\.(jpg|png|webp)$/;
+const SERVER_FILENAME_REGEX = /^ai-(space|generated)-\d+-[a-f0-9]{16}\.(jpg|png|webp)$/;
 
 // Rate Limiter Configuration: 10 minutes window
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_UPLOAD_REQUESTS = 10;
 const MAX_ANALYZE_REQUESTS = 5;
+const MAX_GENERATE_REQUESTS = 5;
 
 // In-memory stores: IP -> Array of timestamps [t1, t2, ...]
 const uploadRateMap = new Map();
 const analyzeRateMap = new Map();
+const generateRateMap = new Map();
 
 export function getClientIp(req) {
   if (!req) return '127.0.0.1';
@@ -34,7 +37,6 @@ export function getClientIp(req) {
 }
 
 function checkRateLimit(rateMap, ip, maxLimit, now = Date.now()) {
-  // Purge old keys if map exceeds 1000 entries to prevent unbounded memory growth
   if (rateMap.size > 1000) {
     const windowStart = now - WINDOW_MS;
     for (const [key, timestamps] of rateMap.entries()) {
@@ -60,10 +62,10 @@ function checkRateLimit(rateMap, ip, maxLimit, now = Date.now()) {
   return { allowed: true, count: userTimestamps.length };
 }
 
-// Reset rate limiters (used for unit testing)
 export function resetAiRateLimiters() {
   uploadRateMap.clear();
   analyzeRateMap.clear();
+  generateRateMap.clear();
 }
 
 function getUploadDirectories() {
@@ -86,20 +88,13 @@ export function validateImageBuffer(buffer) {
     return { valid: false, reason: 'File buffer is invalid or empty.' };
   }
 
-  // 10 MB limit check: 10 * 1024 * 1024 = 10485760 bytes
   if (buffer.length > 10485760) {
     return { valid: false, reason: 'Decoded image size exceeds maximum 10 MB limit.' };
   }
 
-  // Magic Numbers check:
-  // JPEG: FF D8 FF
   const isJpeg = buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
-
-  // PNG: 89 50 4E 47 0D 0A 1A 0A
   const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47 &&
                 buffer[4] === 0x0D && buffer[5] === 0x0A && buffer[6] === 0x1A && buffer[7] === 0x0A;
-
-  // WEBP: "RIFF" at offset 0, "WEBP" at offset 8
   const isRiff = buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46;
   const isWebp = isRiff && buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50;
 
@@ -111,6 +106,58 @@ export function validateImageBuffer(buffer) {
   const mime = isJpeg ? 'image/jpeg' : isPng ? 'image/png' : 'image/webp';
 
   return { valid: true, ext, mime, size: buffer.length };
+}
+
+export async function getMatchingDecorations({ occasion, spaceAnalysis }) {
+  try {
+    const repository = createRepository('decorations');
+    const all = await repository.list();
+    if (!all || !Array.isArray(all)) return [];
+
+    const activeDecorations = all.filter((item) => item && item.active !== false && item.status !== 'INACTIVE');
+    if (activeDecorations.length === 0) return [];
+
+    const normOccasion = String(occasion || '').toLowerCase().trim();
+    const normSpaceType = String(spaceAnalysis?.spaceType || '').toLowerCase().trim();
+    const styles = Array.isArray(spaceAnalysis?.styleCompatibility)
+      ? spaceAnalysis.styleCompatibility.map((s) => String(s).toLowerCase().trim())
+      : [];
+
+    const scored = activeDecorations.map((item) => {
+      let score = 0;
+      const itemOccasion = String(item.occasion || item.category || '').toLowerCase().trim();
+      const itemName = String(item.name || '').toLowerCase().trim();
+      const itemDesc = String(item.description || item.shortDescription || '').toLowerCase().trim();
+
+      if (normOccasion && (itemOccasion.includes(normOccasion) || normOccasion.includes(itemOccasion) || itemName.includes(normOccasion))) {
+        score += 10;
+      }
+      if (normSpaceType && (itemName.includes(normSpaceType) || itemDesc.includes(normSpaceType))) {
+        score += 5;
+      }
+      for (const style of styles) {
+        if (style && (itemName.includes(style) || itemDesc.includes(style))) {
+          score += 3;
+        }
+      }
+
+      return { item, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const topMatches = scored.slice(0, 3).map((entry) => entry.item);
+
+    return topMatches.map((item) => ({
+      id: String(item.id || item.decorationId),
+      name: String(item.name || 'DecorFesto Package'),
+      category: String(item.category || item.occasion || 'Decoration'),
+      price: Number(item.price ?? item.basePrice ?? 0),
+      image: item.image || item.imageUrl || (Array.isArray(item.images) ? item.images[0] : '') || '',
+    }));
+  } catch (err) {
+    console.warn('Catalog matching notice:', err.message);
+    return [];
+  }
 }
 
 export async function uploadAiSpaceImage({ req }) {
@@ -136,7 +183,6 @@ export async function uploadAiSpaceImage({ req }) {
       };
     }
 
-    // Pre-decoding string length check to prevent huge memory allocation (max ~14 million chars for 10MB base64)
     if (rawBase64.length > 14000000) {
       return {
         statusCode: 400,
@@ -146,7 +192,6 @@ export async function uploadAiSpaceImage({ req }) {
 
     const cleanBase64 = rawBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
 
-    // Malformed base64 encoding check
     if (!/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
       return {
         statusCode: 400,
@@ -155,7 +200,6 @@ export async function uploadAiSpaceImage({ req }) {
     }
 
     const buffer = Buffer.from(cleanBase64, 'base64');
-
     const validation = validateImageBuffer(buffer);
     if (!validation.valid) {
       return {
@@ -297,6 +341,47 @@ Respond ONLY with a JSON object matching this schema:
   return JSON.parse(rawText);
 }
 
+async function callGeminiImageGeneration(apiKey, imageBuffer, mimeType, promptText) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          { text: promptText },
+          {
+            inlineData: {
+              mimeType,
+              data: imageBuffer.toString('base64'),
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`Gemini Image API returned status ${response.status}: ${errorText.slice(0, 100)}`);
+  }
+
+  const resData = await response.json();
+  const parts = resData?.candidates?.[0]?.content?.parts || [];
+  for (const part of parts) {
+    if (part.inlineData && part.inlineData.data) {
+      return Buffer.from(part.inlineData.data, 'base64');
+    }
+  }
+
+  throw new Error('Gemini 3.1 Flash Image service did not return generated image data.');
+}
+
 export async function analyzeAiSpace({ req }) {
   try {
     const clientIp = getClientIp(req);
@@ -322,8 +407,6 @@ export async function analyzeAiSpace({ req }) {
     }
 
     const filename = path.basename(imageUrl);
-
-    // Strict filename isolation: Only allow server-generated ai-space-*.jpg/png/webp filenames
     if (!filename || !SERVER_FILENAME_REGEX.test(filename)) {
       return {
         statusCode: 400,
@@ -380,7 +463,6 @@ export async function analyzeAiSpace({ req }) {
       throw new Error('AI Vision service returned an invalid or empty response.');
     }
 
-    // Strict Normalization of all 10 required fields
     const structuredAnalysis = {
       spaceType: String(parsed.spaceType || roomType || 'Living Room').trim(),
       surfaceType: String(parsed.surfaceType || 'Accent Wall').trim(),
@@ -394,17 +476,135 @@ export async function analyzeAiSpace({ req }) {
       decorationConstraints: Array.isArray(parsed.decorationConstraints) ? parsed.decorationConstraints.map(String) : [],
     };
 
+    const matchingDecorations = await getMatchingDecorations({ occasion, spaceAnalysis: structuredAnalysis });
+
     return {
       statusCode: 200,
       body: {
         success: true,
         analysis: structuredAnalysis,
+        matchingDecorations,
       },
     };
   } catch (err) {
     return {
       statusCode: 500,
       body: { error: `AI Space Analysis failed: ${err.message}` },
+    };
+  }
+}
+
+export async function generateAiDecoration({ req }) {
+  try {
+    const clientIp = getClientIp(req);
+    const limitCheck = checkRateLimit(generateRateMap, clientIp, MAX_GENERATE_REQUESTS);
+
+    if (!limitCheck.allowed) {
+      return {
+        statusCode: 429,
+        body: { error: 'Too many decoration preview requests from your IP. Maximum 5 generation requests per 10 minutes allowed. Please try again later.' },
+      };
+    }
+
+    await ensureUploadDirs();
+    const payload = req.body || {};
+    const imageUrl = String(payload.imageUrl || '').trim();
+    const occasion = String(payload.occasion || 'Celebration').trim();
+
+    if (!imageUrl) {
+      return {
+        statusCode: 400,
+        body: { error: 'Image URL is required for decoration preview generation.' },
+      };
+    }
+
+    const filename = path.basename(imageUrl);
+    if (!filename || !SERVER_FILENAME_REGEX.test(filename)) {
+      return {
+        statusCode: 400,
+        body: { error: 'Invalid or unauthorized image reference for generation.' },
+      };
+    }
+
+    const dirs = getUploadDirectories();
+    let imageBuffer = null;
+
+    for (const dir of dirs) {
+      const fullPath = path.join(dir, filename);
+      try {
+        imageBuffer = await fs.readFile(fullPath);
+        if (imageBuffer) break;
+      } catch {}
+    }
+
+    if (!imageBuffer) {
+      return {
+        statusCode: 404,
+        body: { error: 'Uploaded image file not found on server.' },
+      };
+    }
+
+    const validation = validateImageBuffer(imageBuffer);
+    if (!validation.valid) {
+      return {
+        statusCode: 400,
+        body: { error: validation.reason },
+      };
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.DECORFESTO_AI_API_KEY;
+    if (!geminiKey) {
+      return {
+        statusCode: 503,
+        body: { error: 'AI decoration preview service is currently unavailable. Server GEMINI_API_KEY is not configured.' },
+      };
+    }
+
+    const matchingDecorations = await getMatchingDecorations({ occasion, spaceAnalysis: payload.spaceAnalysis });
+    const selectedNames = matchingDecorations.map((d) => d.name).join(', ');
+
+    const promptText = `Use the uploaded room/wall photograph as the exact base scene.
+Preserve the wall, room proportions, doors, windows, flooring, furniture and camera perspective.
+Decorate only the usable wall/free-space area.
+Create a realistic decoration for the selected occasion (${occasion}).
+Use the supplied DecorFesto catalog decoration references (${selectedNames || 'Balloon Arch & Backdrop Setup'}) as the design inspiration.
+Adapt the referenced decoration to fit the actual wall dimensions and available space.
+Do not redesign the room.
+Do not remove structural elements.
+Do not change doors or windows.
+Do not create unrelated decorations.
+The result should look like a realistic DecorFesto decoration installed in this exact space.`;
+
+    let generatedBuffer = null;
+    try {
+      generatedBuffer = await callGeminiImageGeneration(geminiKey, imageBuffer, validation.mime, promptText);
+    } catch (err) {
+      return {
+        statusCode: 500,
+        body: { error: `AI Image Generation failed: ${err.message}` },
+      };
+    }
+
+    const generatedFilename = `ai-generated-${Date.now()}-${crypto.randomBytes(8).toString('hex')}.png`;
+    for (const dir of dirs) {
+      await fs.writeFile(path.join(dir, generatedFilename), generatedBuffer).catch(() => {});
+    }
+
+    const safeUrl = `/uploads/ai-space/${generatedFilename}`;
+
+    return {
+      statusCode: 200,
+      body: {
+        success: true,
+        generatedImageUrl: safeUrl,
+        filename: generatedFilename,
+        matchingDecorations,
+      },
+    };
+  } catch (err) {
+    return {
+      statusCode: 500,
+      body: { error: `Decoration preview generation error: ${err.message}` },
     };
   }
 }

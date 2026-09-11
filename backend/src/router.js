@@ -15,7 +15,7 @@ import { createRepository } from './dataAccess/repository.js';
 import { createRazorpayOrder, verifyRazorpayPayment, razorpayWebhook } from './handlers/payments.js';
 import { getVendorOrders, getVendorOrderDetails, updateVendorOrderStatus, getVendorProfile, updateVendorProfile, changeVendorPassword, verifyStartOtp } from './handlers/vendorPortal.js';
 import { migrateOtpEncryption } from './otp.js';
-import { uploadAiSpaceImage, analyzeAiSpace } from './handlers/aiAssistant.js';
+import { uploadAiSpaceImage, analyzeAiSpace, generateAiDecoration } from './handlers/aiAssistant.js';
 
 
 
@@ -81,6 +81,7 @@ const routeHandlers = {
     '/admin/orders/:id/regenerate-otp': regenerateOrderOtp,
     '/ai-assistant/upload': uploadAiSpaceImage,
     '/ai-assistant/analyze-space': analyzeAiSpace,
+    '/ai-assistant/generate-decoration': generateAiDecoration,
   },
   PUT: {
     '/admin/charges/:id': updateAdminCharge,

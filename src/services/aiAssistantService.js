@@ -64,5 +64,36 @@ export async function analyzeAiSpaceImage({ imageUrl, roomType, occasion }) {
     throw new Error(data.error || 'AI space analysis is currently unavailable.');
   }
 
-  return data.analysis;
+  return {
+    analysis: data.analysis,
+    matchingDecorations: data.matchingDecorations || [],
+  };
+}
+
+export async function generateDecorationPreview({ imageUrl, occasion, spaceAnalysis, selectedDecorationIds }) {
+  if (!imageUrl) {
+    throw new Error('Image URL is required for decoration preview generation.');
+  }
+
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/ai-assistant/generate-decoration`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      imageUrl,
+      occasion,
+      spaceAnalysis,
+      selectedDecorationIds,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'AI decoration preview generation is currently unavailable.');
+  }
+
+  return {
+    generatedImageUrl: data.generatedImageUrl,
+    matchingDecorations: data.matchingDecorations || [],
+  };
 }
