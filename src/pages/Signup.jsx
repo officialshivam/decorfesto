@@ -14,7 +14,9 @@ function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
 
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
@@ -55,6 +57,12 @@ function Signup() {
 
     if (!password || password.length < 6) {
       nextErrors.password = 'Password must be at least 6 characters.';
+    }
+
+    if (!confirmPassword) {
+      nextErrors.confirmPassword = 'Please confirm your password.';
+    } else if (password !== confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match.';
     }
 
     if (!agreeTerms) {
@@ -220,6 +228,19 @@ function Signup() {
               </div>
               {errors.confirmPassword ? <p className="field-error">{errors.confirmPassword}</p> : null}
             </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#475569', cursor: 'pointer', margin: '4px 0 8px 0' }}>
+              <input
+                type="checkbox"
+                checked={agreeTerms}
+                onChange={(e) => {
+                  setAgreeTerms(e.target.checked);
+                  setErrors((curr) => ({ ...curr, agreeTerms: '' }));
+                }}
+              />
+              <span>I agree to the Terms of Service and Privacy Policy</span>
+            </label>
+            {errors.agreeTerms ? <p className="field-error">{errors.agreeTerms}</p> : null}
 
             {submitError ? (
               <div className="admin-error-banner auth-error" role="alert">
