@@ -43,13 +43,28 @@ export function isApiRequest(pathname, req) {
     return true;
   }
 
-  // If the browser sends a GET document navigation requesting HTML, it should ALWAYS serve the React SPA,
-  // EXCEPT for machine-only health check endpoints.
   const acceptHeader = req?.headers?.accept || '';
-  const isHtmlNavigation = req?.method === 'GET' && acceptHeader.includes('text/html');
+  const hasAuth = Boolean(req?.headers?.authorization || req?.headers?.['x-admin-key'] || req?.headers?.['x-user-role']);
+  const wantsJson = acceptHeader.includes('application/json');
+
+  // If the browser/client sends a GET document navigation or does not explicitly request JSON without credentials,
+  // it should serve the React SPA, EXCEPT for machine-only health checks or pure backend endpoints.
+  const isHtmlNavigation =
+    req?.method === 'GET' &&
+    (acceptHeader.includes('text/html') || (!wantsJson && !hasAuth));
 
   if (isHtmlNavigation) {
     if (pathname === '/health' || pathname.startsWith('/health/')) {
+      return true;
+    }
+    const pureApiPrefixes = [
+      '/auth',
+      '/payments',
+      '/availability',
+      '/ai-assistant',
+      '/site-settings',
+    ];
+    if (pureApiPrefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
       return true;
     }
     return false;
