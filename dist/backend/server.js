@@ -35,13 +35,26 @@ const distRoot = syncFs.existsSync(path.join(distCandidate, 'index.html'))
   ? distCandidate
   : path.resolve(__dirname, '..');
 
-function isApiRequest(pathname, req) {
+export function isApiRequest(pathname, req) {
   if (pathname.startsWith('/api/')) {
-    pathname = pathname.slice(4);
+    return true;
   }
   if (pathname === '/api') {
-    pathname = '/';
+    return true;
   }
+
+  // If the browser sends a GET document navigation requesting HTML, it should ALWAYS serve the React SPA,
+  // EXCEPT for machine-only health check endpoints.
+  const acceptHeader = req?.headers?.accept || '';
+  const isHtmlNavigation = req?.method === 'GET' && acceptHeader.includes('text/html');
+
+  if (isHtmlNavigation) {
+    if (pathname === '/health' || pathname.startsWith('/health/')) {
+      return true;
+    }
+    return false;
+  }
+
   const explicitApiPrefixes = [
     '/health',
     '/auth',
@@ -72,12 +85,6 @@ function isApiRequest(pathname, req) {
 
   if (pathname === '/orders' || pathname.startsWith('/orders/')) {
     return true;
-  }
-
-  // Non-API fallback only for browser GET document requests
-  const acceptHeader = req?.headers?.accept || '';
-  if (req?.method === 'GET' && acceptHeader.includes('text/html') && !acceptHeader.includes('application/json')) {
-    return false;
   }
 
   return false;

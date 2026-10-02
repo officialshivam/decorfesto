@@ -101,7 +101,7 @@ export function getCorsHeaders(reqHeaders = {}) {
   return {
     'Access-Control-Allow-Origin': getCorsOrigin(reqHeaders),
     'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-User-Role,X-Admin-Key,X-Customer-Id',
   };
 }

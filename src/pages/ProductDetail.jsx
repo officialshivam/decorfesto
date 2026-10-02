@@ -6,7 +6,6 @@ import DateTimeSelector from '../components/DateTimeSelector';
 import ProductImageGallery from '../components/ProductImageGallery';
 import { useCart } from '../context/CartContext';
 import { fetchDecorationByIdApi } from '../services/decorationService';
-import { checkPincodeServiceability } from '../services/mockServiceAreas';
 import { calculateAddOnCost } from '../utils/customizationUtils';
 import { isTimeSlotPast } from '../utils/dateTimeUtils';
 
@@ -167,9 +166,8 @@ function ProductDetail() {
       return;
     }
 
-    const liveCheck = checkPincodeServiceability(availability.pincode);
-    if (!liveCheck.isServiceable) {
-      setCartErrorMessage(liveCheck.message || 'Sorry, decoration service is not available at this pincode.');
+    if (!availability.available) {
+      setCartErrorMessage(availability.message || 'Sorry, decoration service is not available at this pincode.');
       return;
     }
 

@@ -1,5 +1,8 @@
-import { updateOrderStatus } from './orderService.js';
+import { getApiBaseUrl } from './apiConfig.js';
+import { updateOrderStatus, getStoredOrders } from './orderService.js';
 import { getVendorById } from './mockVendors.js';
+
+const API_BASE_URL = getApiBaseUrl();
 
 export function isOrderAssignedToVendor(order, vendorInput) {
   if (!order || !vendorInput) return false;
@@ -54,7 +57,7 @@ function getVendorAuthHeaders(extraHeaders = {}) {
 
 export async function fetchVendorOrdersApi(_vendorInput) {
   try {
-    const res = await fetch('/vendor/orders', {
+    const res = await fetch(`${API_BASE_URL}/vendor/orders`, {
       headers: getVendorAuthHeaders(),
       credentials: 'include',
     });
@@ -77,7 +80,7 @@ export async function fetchVendorOrdersApi(_vendorInput) {
 
 export async function fetchVendorOrderDetailApi(orderId, _vendorInput) {
   try {
-    const res = await fetch(`/vendor/orders/${orderId}`, {
+    const res = await fetch(`${API_BASE_URL}/vendor/orders/${orderId}`, {
       headers: getVendorAuthHeaders(),
       credentials: 'include',
     });
@@ -97,7 +100,7 @@ export async function fetchVendorOrderDetailApi(orderId, _vendorInput) {
 
 export async function updateVendorOrderStatusApi(orderId, vendorId, vendorName, nextBookingStatus, reason = '') {
   try {
-    const res = await fetch(`/vendor/orders/${orderId}/status`, {
+    const res = await fetch(`${API_BASE_URL}/vendor/orders/${orderId}/status`, {
       method: 'PATCH',
       headers: getVendorAuthHeaders({ 'Content-Type': 'application/json' }),
       credentials: 'include',
@@ -168,7 +171,7 @@ export async function updateVendorOrderStatusApi(orderId, vendorId, vendorName, 
 
 export async function verifyStartOtpApi(orderId, otp) {
   try {
-    const res = await fetch(`/vendor/orders/${orderId}/verify-start-otp`, {
+    const res = await fetch(`${API_BASE_URL}/vendor/orders/${orderId}/verify-start-otp`, {
       method: 'POST',
       headers: getVendorAuthHeaders({ 'Content-Type': 'application/json' }),
       credentials: 'include',

@@ -1,8 +1,12 @@
 import { calculateItemSubtotal, getEnabledCharges } from './chargeService.js';
 import { getCurrentUser, persistCurrentUser, readUsers, writeUsers } from './userService.js';
+import { getAdminAuthHeaders } from './adminAuthService.js';
+import { getApiBaseUrl } from './apiConfig.js';
+import { getCustomerAuthHeaders } from './customerAuthService.js';
 
 const ALL_ORDERS_STORAGE_KEY = 'decorfesto-all-orders';
 const LAST_ORDER_STORAGE_KEY = 'decorfesto-last-order';
+const API_BASE_URL = getApiBaseUrl();
 
 function sanitizeOrder(ord) {
   if (!ord) return null;
@@ -249,11 +253,6 @@ export function assignOrderVendor(orderId, vendor, vendorNameParam = '') {
   return getOrderById(orderId);
 }
 
-import { getApiBaseUrl } from './apiConfig.js';
-import { getCustomerAuthHeaders } from './customerAuthService.js';
-
-const API_BASE_URL = getApiBaseUrl();
-
 export async function createOrderApi(orderData, userFields = {}) {
   const headers = getCustomerAuthHeaders({ 'Content-Type': 'application/json' });
   const response = await fetch(`${API_BASE_URL}/orders`, {
@@ -271,8 +270,6 @@ export async function createOrderApi(orderData, userFields = {}) {
   const errData = await response.json().catch(() => ({}));
   throw new Error(errData.error || `Failed to create order on server (HTTP ${response.status}).`);
 }
-
-import { getAdminAuthHeaders } from './adminAuthService';
 
 export async function getOrdersApi() {
   try {

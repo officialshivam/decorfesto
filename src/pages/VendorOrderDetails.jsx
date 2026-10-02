@@ -28,7 +28,7 @@ function getStatusBadge(status) {
 }
 
 export default function VendorOrderDetails() {
-  const { orderId } = useParams();
+  const { id, orderId } = useParams();
   const { vendorUser } = useVendorAuth();
 
   const [order, setOrder] = useState(null);
@@ -102,23 +102,52 @@ export default function VendorOrderDetails() {
     }
   };
 
-
   useEffect(() => {
+    let isMounted = true;
     async function loadData() {
-      if (vendorUser?.id && orderId) {
-        setLoading(true);
-        setErrorMsg('');
-        const res = await fetchVendorOrderDetailApi(orderId, vendorUser.id);
-        if (res.ok) {
+      const currentOrderId = id || orderId;
+      if (!currentOrderId) {
+        if (isMounted) {
+          setErrorMsg('Order ID is missing from the URL.');
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (!vendorUser?.id) {
+        if (isMounted) {
+          setErrorMsg('Vendor authentication required. Please log in.');
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+      setErrorMsg('');
+
+      try {
+        const res = await fetchVendorOrderDetailApi(currentOrderId, vendorUser.id);
+        if (!isMounted) return;
+        if (res.ok && res.order) {
           setOrder(res.order);
         } else {
           setErrorMsg(res.error || 'Unable to load order details.');
         }
-        setLoading(false);
+      } catch (err) {
+        if (!isMounted) return;
+        setErrorMsg(err.message || 'Failed to load order details.');
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
+
     loadData();
-  }, [orderId, vendorUser?.id]);
+    return () => {
+      isMounted = false;
+    };
+  }, [id, orderId, vendorUser?.id]);
 
   const handleStatusChange = async (nextStatus, reason = '') => {
     if (!order || !vendorUser) return;

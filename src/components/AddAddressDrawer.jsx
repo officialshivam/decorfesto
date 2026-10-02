@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import MobileNumberInput, { sanitize10DigitMobile, validate10DigitMobile } from './MobileNumberInput';
-import { checkPincodeServiceability } from '../services/mockServiceAreas';
+import { checkAvailabilityOnServer } from '../services/serviceAreaApi';
 
 function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile = '', onSaveAddress, isSaving = false }) {
   const [form, setForm] = useState({
@@ -15,14 +15,16 @@ function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile 
 
   const [errors, setErrors] = useState({});
   const [pincodeStatus, setPincodeStatus] = useState({ isValidating: false, isServiceable: null, message: '', city: '', state: '' });
+  const prevIsOpenRef = useRef(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       const regMob = sanitize10DigitMobile(initialData?.mobile || registeredMobile || '');
+      const initPin = initialData?.pincode ? String(initialData.pincode).trim() : '';
       setForm({
         fullAddress: initialData?.fullAddress || initialData?.address || '',
         flatNo: initialData?.flatNo || initialData?.flatAddress || '',
-        pincode: initialData?.pincode || '',
+        pincode: initPin,
         mobile: regMob,
         altMobile: sanitize10DigitMobile(initialData?.altMobile || initialData?.alternateMobile || ''),
         landmark: initialData?.landmark || '',
@@ -30,47 +32,123 @@ function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile 
       });
       setErrors({});
 
-      if (initialData?.pincode && initialData.pincode.length === 6) {
-        const check = checkPincodeServiceability(initialData.pincode);
-        setPincodeStatus({
-          isValidating: false,
-          isServiceable: check.isServiceable,
-          message: check.message || (check.isServiceable ? 'Service area available' : 'Service unavailable'),
-          city: check.city || 'Delhi NCR',
-          state: check.state || 'Delhi',
-        });
+      if (initPin && initPin.length === 6 && /^[1-9][0-9]{5}$/.test(initPin)) {
+        setPincodeStatus({ isValidating: true, isServiceable: null, message: 'Checking service availability…', city: '', state: '' });
+        let cancelled = false;
+        checkAvailabilityOnServer(initPin)
+          .then((res) => {
+            if (cancelled) return;
+            const isOk = Boolean(res && (res.available || res.serviceable));
+            setPincodeStatus({
+              isValidating: false,
+              isServiceable: isOk,
+              message: isOk
+                ? `✓ Service area available (${res.city || res.areaName || 'Verified'})`
+                : (res?.message || '✕ Service unavailable at this pincode'),
+              city: res?.city || (initPin === '110032' ? 'Shahdara, Delhi' : 'Delhi NCR'),
+              state: res?.state || 'Delhi',
+            });
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setPincodeStatus({
+              isValidating: false,
+              isServiceable: false,
+              message: '✕ Unable to verify pincode at the moment. Please try again.',
+              city: 'Delhi NCR',
+              state: 'Delhi',
+            });
+          });
+        return () => {
+          cancelled = true;
+        };
       } else {
         setPincodeStatus({ isValidating: false, isServiceable: null, message: '', city: '', state: '' });
       }
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen, initialData, registeredMobile]);
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((curr) => ({ ...curr, [name]: value }));
-    setErrors((curr) => ({ ...curr, [name]: '' }));
-
     if (name === 'pincode') {
       const cleanPincode = value.replace(/\D/g, '').slice(0, 6);
-      if (cleanPincode.length === 6) {
-        setPincodeStatus({ isValidating: true, isServiceable: null, message: 'Validating pincode…', city: '', state: '' });
-        const check = checkPincodeServiceability(cleanPincode);
+      setForm((curr) => ({ ...curr, pincode: cleanPincode }));
+      setErrors((curr) => ({ ...curr, pincode: '' }));
+
+      if (cleanPincode.length < 6) {
         setPincodeStatus({
           isValidating: false,
-          isServiceable: check.isServiceable,
-          message: check.message || (check.isServiceable ? '✓ Service area available' : '✕ Service unavailable at this pincode'),
-          city: check.city || 'Delhi NCR',
-          state: check.state || 'Delhi',
+          isServiceable: null,
+          message: cleanPincode.length > 0 ? 'Enter 6-digit pincode' : '',
+          city: '',
+          state: '',
+        });
+      } else if (!/^[1-9][0-9]{5}$/.test(cleanPincode)) {
+        setPincodeStatus({
+          isValidating: false,
+          isServiceable: false,
+          message: '✕ Pincode must be 6 digits and cannot start with 0',
+          city: '',
+          state: '',
         });
       } else {
-        setPincodeStatus({ isValidating: false, isServiceable: null, message: '', city: '', state: '' });
+        setPincodeStatus({
+          isValidating: true,
+          isServiceable: null,
+          message: 'Checking service availability…',
+          city: '',
+          state: '',
+        });
+        checkAvailabilityOnServer(cleanPincode)
+          .then((res) => {
+            const isOk = Boolean(res && (res.available || res.serviceable));
+            setPincodeStatus({
+              isValidating: false,
+              isServiceable: isOk,
+              message: isOk
+                ? `✓ Service area available (${res.city || res.areaName || 'Verified'})`
+                : (res?.message || '✕ Service unavailable at this pincode'),
+              city: res?.city || (cleanPincode === '110032' ? 'Shahdara, Delhi' : 'Delhi NCR'),
+              state: res?.state || 'Delhi',
+            });
+          })
+          .catch(() => {
+            setPincodeStatus({
+              isValidating: false,
+              isServiceable: false,
+              message: '✕ Unable to verify pincode at the moment. Please try again.',
+              city: '',
+              state: '',
+            });
+          });
       }
+    } else {
+      setForm((curr) => ({ ...curr, [name]: value }));
+      setErrors((curr) => ({ ...curr, [name]: '' }));
     }
   };
 
-  const validate = () => {
+  const isFormValid = useMemo(() => {
+    const cleanPin = form.pincode ? form.pincode.replace(/\D/g, '').slice(0, 6) : '';
+    return Boolean(
+      form.fullAddress.trim() &&
+      form.flatNo.trim() &&
+      cleanPin.length === 6 &&
+      /^[1-9][0-9]{5}$/.test(cleanPin) &&
+      pincodeStatus.isServiceable === true &&
+      !pincodeStatus.isValidating &&
+      validate10DigitMobile(form.mobile).isValid &&
+      (!form.altMobile.trim() || validate10DigitMobile(form.altMobile).isValid)
+    );
+  }, [form, pincodeStatus]);
+
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSaving) return;
+
     const nextErrors = {};
 
     if (!form.fullAddress.trim()) {
@@ -81,13 +159,20 @@ function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile 
       nextErrors.flatNo = 'Flat / House No. is required.';
     }
 
-    const cleanPin = form.pincode.replace(/\D/g, '');
-    if (!cleanPin || cleanPin.length !== 6) {
+    const cleanPin = form.pincode.replace(/\D/g, '').slice(0, 6);
+    let pinCheck = null;
+
+    if (!cleanPin || cleanPin.length !== 6 || !/^[1-9][0-9]{5}$/.test(cleanPin)) {
       nextErrors.pincode = 'Please enter a valid 6-digit Indian pincode.';
     } else {
-      const check = checkPincodeServiceability(cleanPin);
-      if (!check.isServiceable) {
-        nextErrors.pincode = check.message || 'Decoration service is unavailable at this pincode.';
+      try {
+        pinCheck = await checkAvailabilityOnServer(cleanPin);
+        const isOk = Boolean(pinCheck && (pinCheck.available || pinCheck.serviceable));
+        if (!isOk) {
+          nextErrors.pincode = pinCheck?.message || 'Decoration service is unavailable at this pincode.';
+        }
+      } catch {
+        nextErrors.pincode = 'Unable to verify pincode at the moment. Please try again.';
       }
     }
 
@@ -102,15 +187,7 @@ function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile 
     }
 
     setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    const cleanPin = form.pincode.replace(/\D/g, '').slice(0, 6);
-    const pinCheck = checkPincodeServiceability(cleanPin);
+    if (Object.keys(nextErrors).length > 0) return;
 
     const savedAddressObj = {
       fullAddress: form.fullAddress.trim(),
@@ -121,8 +198,8 @@ function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile 
       altMobile: form.altMobile.trim() ? validate10DigitMobile(form.altMobile).fullMobile : '',
       landmark: form.landmark.trim(),
       addressType: form.addressType || 'Home',
-      city: pinCheck.city || 'Delhi NCR',
-      state: pinCheck.state || 'Delhi',
+      city: pinCheck?.city || (cleanPin === '110032' ? 'Shahdara, Delhi' : pincodeStatus.city || 'Delhi NCR'),
+      state: pinCheck?.state || pincodeStatus.state || 'Delhi',
     };
 
     onSaveAddress(savedAddressObj);
@@ -266,7 +343,20 @@ function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile 
               required
             />
             {pincodeStatus.message && (
-              <small style={{ color: pincodeStatus.isServiceable ? '#16a34a' : '#dc2626', fontWeight: '700', marginTop: '4px', display: 'block' }}>
+              <small
+                style={{
+                  color: pincodeStatus.isValidating
+                    ? '#0284c7'
+                    : pincodeStatus.isServiceable
+                    ? '#16a34a'
+                    : pincodeStatus.isServiceable === false
+                    ? '#dc2626'
+                    : '#64748b',
+                  fontWeight: '700',
+                  marginTop: '4px',
+                  display: 'block',
+                }}
+              >
                 {pincodeStatus.message}
               </small>
             )}
@@ -333,10 +423,10 @@ function AddAddressDrawer({ isOpen, onClose, initialData = {}, registeredMobile 
             type="button"
             className="button"
             onClick={handleSubmit}
-            disabled={isSaving}
+            disabled={isSaving || !isFormValid || pincodeStatus.isValidating}
             style={{ padding: '10px 24px', fontWeight: '700' }}
           >
-            {isSaving ? 'Saving…' : 'Save Address'}
+            {isSaving ? 'Saving…' : pincodeStatus.isValidating ? 'Validating Pincode…' : 'Save Address'}
           </button>
         </div>
       </aside>

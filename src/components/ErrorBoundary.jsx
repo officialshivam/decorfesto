@@ -39,16 +39,25 @@ class ErrorBoundary extends React.Component {
               >
                 {this.state.error?.stack || String(this.state.error)}
               </pre>
-              <button
-                type="button"
-                className="button button--small"
-                onClick={() => {
-                  this.setState({ hasError: false, error: null });
-                  window.location.reload();
-                }}
-              >
-                Reload Page
-              </button>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="button button--small"
+                  onClick={() => {
+                    this.setState({ hasError: false, error: null });
+                    window.location.reload();
+                  }}
+                >
+                  Reload Page
+                </button>
+                <a
+                  href="/"
+                  className="button button--secondary button--small"
+                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                >
+                  Return to Home
+                </a>
+              </div>
             </div>
           </section>
         </main>

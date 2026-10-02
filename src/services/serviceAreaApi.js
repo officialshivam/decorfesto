@@ -18,14 +18,34 @@ export async function fetchServiceAreasApi() {
   throw new Error(errData.error || `Failed to fetch service areas from server (HTTP ${response.status}).`);
 }
 
+const availabilityCache = new Map();
+
+export function clearAvailabilityCache() {
+  availabilityCache.clear();
+}
+
 export async function checkAvailabilityOnServer(pincode) {
+  const cleanPincode = String(pincode || '').trim();
+  if (!cleanPincode || !/^[1-9][0-9]{5}$/.test(cleanPincode)) {
+    return {
+      available: false,
+      error: 'Please enter a valid 6-digit Indian pincode.',
+    };
+  }
+
+  if (availabilityCache.has(cleanPincode)) {
+    return availabilityCache.get(cleanPincode);
+  }
+
   const response = await fetch(`${API_BASE_URL}/availability/check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pincode }),
+    body: JSON.stringify({ pincode: cleanPincode }),
   });
   if (response.ok) {
-    return await response.json();
+    const result = await response.json();
+    availabilityCache.set(cleanPincode, result);
+    return result;
   }
   const errData = await response.json().catch(() => ({}));
   throw new Error(errData.error || `Availability check failed (HTTP ${response.status}).`);
@@ -39,6 +59,7 @@ export async function saveServiceAreaOnServer(serviceArea) {
     credentials: 'include',
   });
   if (response.ok) {
+    clearAvailabilityCache();
     const result = await response.json();
     return result.serviceArea || result;
   }
@@ -53,6 +74,7 @@ export async function deleteServiceAreaApi(pincode) {
     credentials: 'include',
   });
   if (response.ok) {
+    clearAvailabilityCache();
     return await response.json();
   }
   const errData = await response.json().catch(() => ({}));

@@ -1,3 +1,8 @@
+import { getApiBaseUrl } from './apiConfig.js';
+import { getAdminAuthHeaders } from './adminAuthService.js';
+
+const API_BASE_URL = getApiBaseUrl();
+
 export const defaultUsers = [
   {
     id: 'customer-1',
@@ -208,11 +213,6 @@ export function getAllUsersForAdmin() {
     lastLogin: u.lastLogin || u.createdAt || new Date().toISOString(),
   }));
 }
-
-import { getApiBaseUrl } from './apiConfig.js';
-import { getAdminAuthHeaders } from './adminAuthService.js';
-
-const API_BASE_URL = getApiBaseUrl();
 
 export async function getAllUsersForAdminApi() {
   const base = getApiBaseUrl();

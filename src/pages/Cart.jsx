@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CartItem from '../components/CartItem';
 import AddAddressDrawer from '../components/AddAddressDrawer';
@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { fetchEnabledChargesApi, calculateItemSubtotal } from '../services/chargeService';
 import { updateCustomerProfileApi } from '../services/customerAuthService';
-import { checkPincodeServiceability } from '../services/mockServiceAreas';
+import { checkAvailabilityOnServer } from '../services/serviceAreaApi';
 import { createOrderApi } from '../services/orderService';
 import { initiateRazorpayPayment } from '../services/paymentService';
 import { addOrder as addOrderMock, saveLastOrder } from '../services/mockAuth';
@@ -127,6 +127,7 @@ function Cart() {
   };
 
   const originalSubtotal = items.reduce((sum, item) => {
+    if (!item) return sum;
     const base = item.basePrice || item.price || 0;
     const originalBase = item.originalPrice && item.originalPrice > base
       ? item.originalPrice
@@ -188,15 +189,21 @@ function Cart() {
     }
 
     const pin = (selectedAddress.pincode || items[0]?.pincode || '').replace(/\D/g, '');
-    if (!pin || pin.length !== 6) {
+    if (!pin || pin.length !== 6 || !/^[1-9][0-9]{5}$/.test(pin)) {
       setAddressError('Please provide a valid 6-digit delivery pincode.');
       setIsDrawerOpen(true);
       return;
     }
 
-    const serviceability = checkPincodeServiceability(pin);
-    if (!serviceability.isServiceable) {
-      setAddressError(serviceability.message || 'Decoration service is unavailable at this delivery pincode.');
+    try {
+      const serviceability = await checkAvailabilityOnServer(pin);
+      const isAvailable = Boolean(serviceability && (serviceability.available || serviceability.serviceable));
+      if (!isAvailable) {
+        setAddressError(serviceability?.message || 'Decoration service is unavailable at this delivery pincode.');
+        return;
+      }
+    } catch {
+      setAddressError('Unable to verify service availability at this delivery pincode. Please try again.');
       return;
     }
 
@@ -353,6 +360,12 @@ function Cart() {
     }
   };
 
+  const initialAddressData = useMemo(() => {
+    if (selectedAddress) return selectedAddress;
+    const defaultPin = items[0]?.pincode || '';
+    return defaultPin ? { pincode: defaultPin } : {};
+  }, [selectedAddress, items]);
+
   return (
     <main className="page">
       <section className="container section section--tight">
@@ -362,7 +375,7 @@ function Cart() {
           <p>Check your package selections, delivery address, and price breakup before proceeding to checkout.</p>
         </div>
 
-        {items.length === 0 && !isSubmitting && !isNavigatingRef.current ? (
+        {items.length === 0 ? (
           <div className="empty-state card-panel" style={{ padding: '40px', borderRadius: '16px', textAlign: 'center' }}>
             <h2>Your cart is empty</h2>
             <p>Add a decoration package to continue your celebration booking journey.</p>
@@ -414,7 +427,18 @@ function Cart() {
                       </div>
                     )}
                     <div style={{ color: '#475569', fontWeight: '600' }}>
-                      {selectedAddress.city || 'Delhi NCR'}, {selectedAddress.state || 'Delhi'} - {selectedAddress.pincode || items[0]?.pincode}
+                      {(() => {
+                        const rawCity = selectedAddress.city || 'Delhi NCR';
+                        const displayCity = rawCity.includes('Bihari Colony')
+                          ? 'Shahdara, Delhi'
+                          : rawCity;
+                        const displayState = selectedAddress.state || 'Delhi';
+                        const pin = selectedAddress.pincode || items[0]?.pincode || '';
+                        const areaText = displayCity.toLowerCase().includes(displayState.toLowerCase())
+                          ? displayCity
+                          : `${displayCity}, ${displayState}`;
+                        return pin ? `${areaText} - ${pin}` : areaText;
+                      })()}
                     </div>
                     {selectedAddress.mobile && (
                       <div style={{ color: '#0369a1', fontWeight: '600', marginTop: '2px' }}>
@@ -587,7 +611,7 @@ function Cart() {
         <AddAddressDrawer
           isOpen={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
-          initialData={selectedAddress || { pincode: items[0]?.pincode || '' }}
+          initialData={initialAddressData}
           registeredMobile={user?.mobile || user?.phone || ''}
           onSaveAddress={handleSaveAddress}
           isSaving={isSavingAddress}

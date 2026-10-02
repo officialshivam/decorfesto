@@ -1,5 +1,5 @@
 const staticPincodeFallback = {
-  '110032': 'Shahdara Bihari Colony, Delhi',
+  '110032': 'Shahdara, Delhi',
   '110001': 'Connaught Place, New Delhi',
   '400001': 'Fort, Mumbai',
   '560001': 'Bangalore G.P.O., Bangalore',

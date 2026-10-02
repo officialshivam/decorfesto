@@ -1,4 +1,7 @@
+import { getApiBaseUrl } from './apiConfig.js';
+
 const SERVICE_AREAS_STORAGE_KEY = 'decorfesto-admin-service-areas';
+const API_BASE_URL = getApiBaseUrl();
 
 export const defaultServiceAreas = [
   {
@@ -22,7 +25,7 @@ export const defaultServiceAreas = [
   {
     id: '110032',
     pincode: '110032',
-    city: 'Shahdara Bihari Colony, Delhi',
+    city: 'Shahdara, Delhi',
     state: 'Delhi',
     serviceable: true,
     createdAt: '2026-08-10T12:00:00.000Z',
@@ -154,10 +157,6 @@ export function checkPincodeServiceability(pincode) {
     message: '✕ Decoration service is currently unavailable at this pincode.',
   };
 }
-
-import { getApiBaseUrl } from './apiConfig.js';
-
-const API_BASE_URL = getApiBaseUrl();
 
 export async function checkPincodeServiceabilityApi(pincode) {
   try {

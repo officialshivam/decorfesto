@@ -19,7 +19,9 @@ export function isOrderAssignedToAuthVendor(order, vendorAuth) {
   // Orders with CREATED, APPROVED, CANCELLED, REJECTED, VENDOR_DECLINED, or DECLINED have no active vendor assignment.
   const activeVendorStatuses = [
     'VENDOR_ASSIGNED',
+    'ASSIGNED_TO_VENDOR',
     'VENDOR_ACCEPTED',
+    'ACCEPTED',
     'IN_PROGRESS',
     'READY_FOR_SETUP',
     'COMPLETED',

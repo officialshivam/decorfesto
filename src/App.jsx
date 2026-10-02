@@ -112,11 +112,13 @@ function RequireAdminAuth({ children }) {
 
 function CustomerLayout() {
   return (
-    <div className="app-shell">
-      <Navbar />
-      <Outlet />
-      <Footer />
-    </div>
+    <ErrorBoundary>
+      <div className="app-shell">
+        <Navbar />
+        <Outlet />
+        <Footer />
+      </div>
+    </ErrorBoundary>
   );
 }
 
@@ -138,7 +140,9 @@ function App() {
                     path="/vendor"
                     element={
                       <RequireVendorAuth>
-                        <VendorLayout />
+                        <ErrorBoundary>
+                          <VendorLayout />
+                        </ErrorBoundary>
                       </RequireVendorAuth>
                     }
                   >
@@ -146,6 +150,7 @@ function App() {
                     <Route path="dashboard" element={<VendorDashboard />} />
                     <Route path="orders" element={<VendorOrders />} />
                     <Route path="orders/:id" element={<VendorOrderDetails />} />
+                    <Route path="orders/:orderId" element={<VendorOrderDetails />} />
                     <Route path="profile" element={<VendorProfile />} />
                     <Route path="*" element={<Navigate to="/vendor/dashboard" replace />} />
                   </Route>
@@ -158,7 +163,9 @@ function App() {
                     path="/admin"
                     element={
                       <RequireAdminAuth>
-                        <AdminLayout />
+                        <ErrorBoundary>
+                          <AdminLayout />
+                        </ErrorBoundary>
                       </RequireAdminAuth>
                     }
                   >

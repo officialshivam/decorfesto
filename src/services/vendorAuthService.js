@@ -1,5 +1,8 @@
 import { getVendorById } from './mockVendors';
+import { getAdminAuthHeaders } from './adminAuthService.js';
+import { getApiBaseUrl } from './apiConfig.js';
 
+const API_BASE_URL = getApiBaseUrl();
 const VENDOR_SESSION_KEY = 'decorfesto-vendor-user';
 
 export function getStoredVendorUser() {
@@ -46,7 +49,7 @@ export function clearVendorSession() {
 
 export async function loginVendorApi({ identifier, password }) {
   try {
-    const res = await fetch('/auth/vendor-login', {
+    const res = await fetch(`${API_BASE_URL}/auth/vendor-login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ identifier, password }),
@@ -105,11 +108,9 @@ export async function loginVendorApi({ identifier, password }) {
   }
 }
 
-import { getAdminAuthHeaders } from './adminAuthService';
-
 export async function getVendorsApi() {
   try {
-    const res = await fetch('/vendors', {
+    const res = await fetch(`${API_BASE_URL}/vendors`, {
       headers: getAdminAuthHeaders(),
       credentials: 'include',
     });
@@ -124,7 +125,7 @@ export async function getVendorsApi() {
 
 export async function getVendorByIdApi(vendorId) {
   try {
-    const res = await fetch(`/vendors/${vendorId}`, {
+    const res = await fetch(`${API_BASE_URL}/vendors/${vendorId}`, {
       headers: getAdminAuthHeaders(),
       credentials: 'include',
     });
@@ -139,7 +140,7 @@ export async function getVendorByIdApi(vendorId) {
 
 export async function updateVendorApi(vendorId, updates) {
   try {
-    const res = await fetch(`/vendors/${vendorId}`, {
+    const res = await fetch(`${API_BASE_URL}/vendors/${vendorId}`, {
       method: 'PATCH',
       headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(updates),
@@ -156,7 +157,7 @@ export async function updateVendorApi(vendorId, updates) {
 
 export async function createVendorApi(vendorData) {
   try {
-    const res = await fetch('/vendors', {
+    const res = await fetch(`${API_BASE_URL}/vendors`, {
       method: 'POST',
       headers: getAdminAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(vendorData),
@@ -178,7 +179,7 @@ export async function fetchVendorProfileApi() {
       const token = window.sessionStorage.getItem('decorfesto_vendor_token') || window.localStorage.getItem('decorfesto_vendor_token');
       if (token) headers['Authorization'] = `Bearer ${token}`;
     }
-    const res = await fetch('/vendor/profile', { headers, credentials: 'include' });
+    const res = await fetch(`${API_BASE_URL}/vendor/profile`, { headers, credentials: 'include' });
     if (!res.ok) return null;
     const data = await res.json();
     return data.vendor || null;
@@ -195,7 +196,7 @@ export async function updateVendorProfileApi(updates) {
       const token = window.sessionStorage.getItem('decorfesto_vendor_token') || window.localStorage.getItem('decorfesto_vendor_token');
       if (token) headers['Authorization'] = `Bearer ${token}`;
     }
-    const res = await fetch('/vendor/profile', {
+    const res = await fetch(`${API_BASE_URL}/vendor/profile`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(updates),
